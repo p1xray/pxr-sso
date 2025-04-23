@@ -2,7 +2,7 @@ package app
 
 import (
 	"log/slog"
-	grpcapp "love-signal-sso/internal/app/grpc"
+	grpcapp "pxr-sso/internal/app/grpc"
 )
 
 // App is an application.

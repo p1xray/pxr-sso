@@ -2,11 +2,11 @@ package main
 
 import (
 	"log/slog"
-	"love-signal-sso/internal/app"
-	"love-signal-sso/internal/config"
-	"love-signal-sso/internal/lib/logger/handlers/slogpretty"
 	"os"
 	"os/signal"
+	"pxr-sso/internal/app"
+	"pxr-sso/internal/config"
+	"pxr-sso/internal/lib/logger/handlers/slogpretty"
 	"syscall"
 )
 
