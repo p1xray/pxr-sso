@@ -1,0 +1,9 @@
+version: '3'
+
+tasks:
+  dev:
+    aliases:
+      - dev
+    desc: 'run sso app with local config'
+    cmds:
+      - go run ./cmd/sso --config=./config/local.yaml
