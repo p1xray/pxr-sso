@@ -7,3 +7,10 @@ tasks:
     desc: 'run sso app with local config'
     cmds:
       - go run ./cmd/sso --config=./config/local.yaml
+
+  migrate:
+    aliases:
+      - migrate
+    desc: 'up migrations'
+    cmds:
+      - go run ./cmd/migrator --storage-path=./storage/sso.db -migrations-path=./migrations
