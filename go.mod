@@ -1,4 +1,4 @@
-module love-signal-sso
+module pxr-sso
 
 go 1.23.4
 
