@@ -3,6 +3,7 @@ package app
 import (
 	"log/slog"
 	grpcapp "pxr-sso/internal/app/grpc"
+	"pxr-sso/internal/service/auth"
 )
 
 // App is an application.
@@ -15,7 +16,9 @@ func New(
 	log *slog.Logger,
 	grpcPort int,
 ) *App {
-	grpcApp := grpcapp.New(log, grpcPort)
+	authService := auth.New(log)
+
+	grpcApp := grpcapp.New(log, grpcPort, authService)
 
 	return &App{
 		GRPCServer: grpcApp,

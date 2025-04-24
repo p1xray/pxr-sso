@@ -4,15 +4,17 @@ import (
 	"context"
 	ssopb "github.com/p1xray/pxr-sso-protos/gen/go/sso"
 	"google.golang.org/grpc"
+	"pxr-sso/internal/service"
 )
 
 type serverAPI struct {
 	ssopb.UnimplementedSsoServer
+	auth service.AuthService
 }
 
 // Register registers the implementation of the API service with the gRPC server.
-func Register(gRPC *grpc.Server) {
-	ssopb.RegisterSsoServer(gRPC, &serverAPI{})
+func Register(gRPC *grpc.Server, authService service.AuthService) {
+	ssopb.RegisterSsoServer(gRPC, &serverAPI{auth: authService})
 }
 
 func (s *serverAPI) Login(
