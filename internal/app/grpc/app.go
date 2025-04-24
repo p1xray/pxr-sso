@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	ssoserver "pxr-sso/internal/grpc"
 
 	"google.golang.org/grpc"
 )
@@ -21,6 +22,8 @@ func New(
 	port int,
 ) *App {
 	gRPCServer := grpc.NewServer()
+
+	ssoserver.Register(gRPCServer)
 
 	return &App{
 		log:        log,
