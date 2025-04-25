@@ -47,14 +47,17 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(data.Password)); err != nil {
 		a.log.Warn("invalid credentials", sl.Err(err))
 
 		return nil, fmt.Errorf("%s: %w", op, service.ErrInvalidCredentials)
 	}
-
-	// TODO: get user client by user link and client_code
+	
+	client, err := a.storage.UserClient(ctx, user.ID, data.ClientCode)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 
 	// TODO: create auth tokens
 
