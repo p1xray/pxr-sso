@@ -20,6 +20,7 @@ type LoginDTO struct {
 	ClientCode  string
 	UserAgent   string
 	Fingerprint string
+	Issuer      string
 }
 
 // TokensDTO represent auth tokens.

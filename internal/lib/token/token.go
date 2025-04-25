@@ -16,7 +16,7 @@ type CustomClaims struct {
 }
 
 // NewAccessToken returns new JWT with claims.
-func NewAccessToken(user dto.User, client dto.Client, duration time.Duration, issuer string) (string, error) {
+func NewAccessToken(user *dto.User, client *dto.Client, ttl time.Duration, issuer string) (string, error) {
 	now := time.Now()
 	claims := CustomClaims{
 		client.Code,
@@ -26,7 +26,7 @@ func NewAccessToken(user dto.User, client dto.Client, duration time.Duration, is
 			Subject:   strconv.FormatInt(user.ID, 10),
 			Issuer:    issuer,
 			Audience:  []string{client.Code},
-			ExpiresAt: jwt.NewNumericDate(now.Add(duration)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 		},
@@ -43,7 +43,7 @@ func NewAccessToken(user dto.User, client dto.Client, duration time.Duration, is
 }
 
 // NewRefreshToken returns new refresh token.
-func NewRefreshToken() (string, error) {
+func NewRefreshToken() string {
 	token := uuid.New()
-	return token.String(), nil
+	return token.String()
 }

@@ -8,14 +8,17 @@ import (
 	"log/slog"
 	"pxr-sso/internal/dto"
 	"pxr-sso/internal/lib/logger/sl"
+	"pxr-sso/internal/lib/token"
 	"pxr-sso/internal/service"
 	"pxr-sso/internal/storage"
+	"time"
 )
 
 // Auth is service for working with user authentication and authorization.
 type Auth struct {
-	log     *slog.Logger
-	storage storage.SSOStorage
+	log            *slog.Logger
+	storage        storage.SSOStorage
+	accessTokenTTL time.Duration
 }
 
 // New creates a new auth service.
@@ -53,13 +56,21 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 
 		return nil, fmt.Errorf("%s: %w", op, service.ErrInvalidCredentials)
 	}
-	
+
 	client, err := a.storage.UserClient(ctx, user.ID, data.ClientCode)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// TODO: create auth tokens
+	refreshToken := token.NewRefreshToken()
+	accessToken, err := token.NewAccessToken(user, client, a.accessTokenTTL, data.Issuer)
+	if err != nil {
+		a.log.Error("failed to generate access token", sl.Err(err))
+
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// TODO: create session in storage
 
 	// TODO: returns tokens in response
 	return &dto.TokensDTO{AccessToken: "", RefreshToken: ""}, nil
