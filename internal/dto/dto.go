@@ -2,8 +2,9 @@ package dto
 
 // User is information about the user.
 type User struct {
-	ID          int64
-	Permissions []string
+	ID           int64
+	PasswordHash string
+	Permissions  []string
 }
 
 // Client is information about the client.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"pxr-sso/internal/dto"
 	"pxr-sso/internal/lib/logger/sl"
@@ -46,8 +47,12 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+	
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(data.Password)); err != nil {
+		a.log.Warn("invalid credentials", sl.Err(err))
 
-	// TODO: check password hash
+		return nil, fmt.Errorf("%s: %w", op, service.ErrInvalidCredentials)
+	}
 
 	// TODO: get user client by user link and client_code
 
