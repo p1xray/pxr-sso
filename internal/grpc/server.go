@@ -2,8 +2,12 @@ package ssoserver
 
 import (
 	"context"
+	"errors"
 	ssopb "github.com/p1xray/pxr-sso-protos/gen/go/sso"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"pxr-sso/internal/dto"
 	"pxr-sso/internal/service"
 )
 
@@ -21,13 +25,55 @@ func (s *serverAPI) Login(
 	ctx context.Context,
 	req *ssopb.LoginRequest,
 ) (*ssopb.LoginResponse, error) {
-	// TODO: validate request
+	if err := validateLoginRequest(req); err != nil {
+		return nil, err
+	}
 
-	// TODO: call service login method
+	loginData := &dto.LoginDTO{
+		Username:    req.GetUsername(),
+		Password:    req.GetPassword(),
+		ClientCode:  req.GetClientCode(),
+		UserAgent:   req.GetUserAgent(),
+		Fingerprint: req.GetFingerprint(),
+		Issuer:      "issuer", // TODO: get from request
+	}
 
-	// TODO: returns tokens in response
+	tokens, err := s.auth.Login(ctx, loginData)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			return nil, invalidArgumentError("invalid username or password")
+		}
 
-	return &ssopb.LoginResponse{AccessToken: "", RefreshToken: ""}, nil
+		return nil, internalError("failed to login")
+	}
+
+	return &ssopb.LoginResponse{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken}, nil
+}
+
+func validateLoginRequest(req *ssopb.LoginRequest) error {
+	if req.GetUsername() == "" {
+		return invalidArgumentError("username is empty")
+	}
+
+	if req.GetPassword() == "" {
+		return invalidArgumentError("password is empty")
+	}
+
+	if req.GetClientCode() == "" {
+		return invalidArgumentError("client code is empty")
+	}
+
+	if req.GetUserAgent() == "" {
+		return invalidArgumentError("user agent is empty")
+	}
+
+	if req.GetFingerprint() == "" {
+		return invalidArgumentError("fingerprint is empty")
+	}
+
+	// TODO: add validate issuer from request
+
+	return nil
 }
 
 func (s *serverAPI) Register(
@@ -65,4 +111,12 @@ func (s *serverAPI) Logout(
 	// TODO: call service logout method
 
 	return &ssopb.LogoutResponse{Success: true}, nil
+}
+
+func invalidArgumentError(msg string) error {
+	return status.Error(codes.InvalidArgument, msg)
+}
+
+func internalError(msg string) error {
+	return status.Error(codes.Internal, msg)
 }
