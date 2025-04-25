@@ -2,7 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
 	"pxr-sso/internal/dto"
+)
+
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
 // AuthService is service for working with user authentication and authorization.
