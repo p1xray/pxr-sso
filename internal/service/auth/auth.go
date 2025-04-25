@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
+	"pxr-sso/internal/domain"
 	"pxr-sso/internal/dto"
 	"pxr-sso/internal/lib/logger/sl"
 	"pxr-sso/internal/lib/token"
@@ -16,9 +17,10 @@ import (
 
 // Auth is service for working with user authentication and authorization.
 type Auth struct {
-	log            *slog.Logger
-	storage        storage.SSOStorage
-	accessTokenTTL time.Duration
+	log             *slog.Logger
+	storage         storage.SSOStorage
+	accessTokenTTL  time.Duration
+	refreshTokenTTL time.Duration
 }
 
 // New creates a new auth service.
@@ -38,6 +40,7 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 	)
 	log.Info("attempting to login user")
 
+	// Get user from storage.
 	user, err := a.storage.UserByUsername(ctx, data.Username)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
@@ -51,17 +54,20 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	// Check password hash.
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(data.Password)); err != nil {
 		a.log.Warn("invalid credentials", sl.Err(err))
 
 		return nil, fmt.Errorf("%s: %w", op, service.ErrInvalidCredentials)
 	}
 
+	// Get user client by user link and client code from storage.
 	client, err := a.storage.UserClient(ctx, user.ID, data.ClientCode)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	// Create auth tokens.
 	refreshToken := token.NewRefreshToken()
 	accessToken, err := token.NewAccessToken(user, client, a.accessTokenTTL, data.Issuer)
 	if err != nil {
@@ -70,7 +76,19 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// TODO: create session in storage
+	// Create session in storage.
+	sessionToCreate := &domain.Session{
+		UserID:       user.ID,
+		RefreshToken: refreshToken,
+		UserAgent:    data.UserAgent,
+		Fingerprint:  data.Fingerprint,
+		ExpiresAt:    time.Now().Add(a.refreshTokenTTL),
+	}
+	if err = a.storage.CreateSession(ctx, sessionToCreate); err != nil {
+		a.log.Error("failed to create session", sl.Err(err))
+
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 
 	// TODO: returns tokens in response
 	return &dto.TokensDTO{AccessToken: "", RefreshToken: ""}, nil
