@@ -117,6 +117,7 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// TODO: returns tokens in response
-	return &dto.TokensDTO{AccessToken: "", RefreshToken: ""}, nil
+	log.Info("user logged in successfully")
+	
+	return &dto.TokensDTO{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
