@@ -16,7 +16,7 @@ type CustomClaims struct {
 }
 
 // NewAccessToken returns new JWT with claims.
-func NewAccessToken(user *dto.User, client *dto.Client, ttl time.Duration, issuer string) (string, error) {
+func NewAccessToken(user *dto.UserDTO, client *dto.ClientDTO, ttl time.Duration, issuer string) (string, error) {
 	now := time.Now()
 	claims := CustomClaims{
 		client.Code,

@@ -64,17 +64,44 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 	// Get user client by user link and client code from storage.
 	client, err := a.storage.UserClient(ctx, user.ID, data.ClientCode)
 	if err != nil {
+		a.log.Error("failed to get client", sl.Err(err))
+
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Create auth tokens.
-	refreshToken := token.NewRefreshToken()
-	accessToken, err := token.NewAccessToken(user, client, a.accessTokenTTL, data.Issuer)
+	// Get user permissions from storage.
+	userPermissions, err := a.storage.UserPermissions(ctx, user.ID)
+	if err != nil {
+		a.log.Error("failed to get user permissions", sl.Err(err))
+
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Create access token.
+	var permissionCodes []string
+	for _, permission := range userPermissions {
+		permissionCodes = append(permissionCodes, permission.Code)
+	}
+
+	userData := &dto.UserDTO{
+		ID:          user.ID,
+		Permissions: permissionCodes,
+	}
+
+	clientData := &dto.ClientDTO{
+		Code:      client.Code,
+		SecretKey: client.SecretKey,
+	}
+
+	accessToken, err := token.NewAccessToken(userData, clientData, a.accessTokenTTL, data.Issuer)
 	if err != nil {
 		a.log.Error("failed to generate access token", sl.Err(err))
 
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	// Create refresh token.
+	refreshToken := token.NewRefreshToken()
 
 	// Create session in storage.
 	sessionToCreate := &domain.Session{

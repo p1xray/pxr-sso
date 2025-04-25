@@ -1,14 +1,13 @@
 package dto
 
-// User is information about the user.
-type User struct {
-	ID           int64
-	PasswordHash string
-	Permissions  []string
+// UserDTO is information about the user.
+type UserDTO struct {
+	ID          int64
+	Permissions []string
 }
 
-// Client is information about the client.
-type Client struct {
+// ClientDTO is information about the client.
+type ClientDTO struct {
 	Code      string
 	SecretKey string
 }
