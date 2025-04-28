@@ -31,7 +31,7 @@ func New(
 }
 
 // Login checks if user with given credentials exists in the system and returns access and refresh tokens.
-func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, error) {
+func (a *Auth) Login(ctx context.Context, data dto.LoginDTO) (dto.TokensDTO, error) {
 	const op = "auth.Login"
 
 	log := a.log.With(
@@ -46,19 +46,19 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 		if errors.Is(err, storage.ErrUserNotFound) {
 			a.log.Warn("user not found", sl.Err(err))
 
-			return nil, fmt.Errorf("%s: %w", op, service.ErrInvalidCredentials)
+			return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrInvalidCredentials)
 		}
 
 		a.log.Error("failed to get user", sl.Err(err))
 
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	// Check password hash.
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(data.Password)); err != nil {
 		a.log.Warn("invalid credentials", sl.Err(err))
 
-		return nil, fmt.Errorf("%s: %w", op, service.ErrInvalidCredentials)
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrInvalidCredentials)
 	}
 
 	// Get user client by user link and client code from storage.
@@ -66,7 +66,7 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 	if err != nil {
 		a.log.Error("failed to get client", sl.Err(err))
 
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	// Get user permissions from storage.
@@ -74,7 +74,7 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 	if err != nil {
 		a.log.Error("failed to get user permissions", sl.Err(err))
 
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	// Create access token.
@@ -97,14 +97,14 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 	if err != nil {
 		a.log.Error("failed to generate access token", sl.Err(err))
 
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	// Create refresh token.
 	refreshToken := token.NewRefreshToken()
 
 	// Create session in storage.
-	sessionToCreate := &domain.Session{
+	sessionToCreate := domain.Session{
 		UserID:       user.ID,
 		RefreshToken: refreshToken,
 		UserAgent:    data.UserAgent,
@@ -114,10 +114,10 @@ func (a *Auth) Login(ctx context.Context, data *dto.LoginDTO) (*dto.TokensDTO, e
 	if err = a.storage.CreateSession(ctx, sessionToCreate); err != nil {
 		a.log.Error("failed to create session", sl.Err(err))
 
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	log.Info("user logged in successfully")
-	
-	return &dto.TokensDTO{AccessToken: accessToken, RefreshToken: refreshToken}, nil
+
+	return dto.TokensDTO{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }

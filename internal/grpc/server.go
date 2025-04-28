@@ -29,7 +29,7 @@ func (s *serverAPI) Login(
 		return nil, err
 	}
 
-	loginData := &dto.LoginDTO{
+	loginData := dto.LoginDTO{
 		Username:    req.GetUsername(),
 		Password:    req.GetPassword(),
 		ClientCode:  req.GetClientCode(),
