@@ -109,7 +109,37 @@ func (s *Storage) UserPermissions(ctx context.Context, userID int64) ([]domain.P
 
 // UserClient returns the user's client from the storage by code.
 func (s *Storage) UserClient(ctx context.Context, userID int64, clientCode string) (domain.Client, error) {
+	const op = "sqlite.UserClient"
 
+	stmt, err := s.db.PrepareContext(ctx,
+		`select c.id, c.name, c.code, c.secret_key, c.deleted, c.created_at, c.updated_at from clients c
+			join user_clients uc on uc.client_id = c.id
+		where uc.user_id = ? and c.code = ?;`)
+	if err != nil {
+		return domain.Client{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	row := stmt.QueryRowContext(ctx, userID, clientCode)
+
+	var client domain.Client
+	err = row.Scan(
+		&client.ID,
+		&client.Name,
+		&client.Code,
+		&client.SecretKey,
+		&client.Deleted,
+		&client.CreatedAt,
+		&client.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Client{}, fmt.Errorf("%s: %w", op, storage.ErrClientNotFound)
+		}
+
+		return domain.Client{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return client, nil
 }
 
 // CreateSession creates a new session in the storage.

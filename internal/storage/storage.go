@@ -7,7 +7,8 @@ import (
 )
 
 var (
-	ErrUserNotFound = errors.New("user not found")
+	ErrUserNotFound   = errors.New("user not found")
+	ErrClientNotFound = errors.New("client not found")
 )
 
 // SSOStorage provides access to data storage.
