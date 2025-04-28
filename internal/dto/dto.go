@@ -1,5 +1,10 @@
 package dto
 
+import (
+	"pxr-sso/internal/domain"
+	"time"
+)
+
 // UserDTO is information about the user.
 type UserDTO struct {
 	ID          int64
@@ -20,6 +25,19 @@ type LoginDTO struct {
 	UserAgent   string
 	Fingerprint string
 	Issuer      string
+}
+
+type RegisterDTO struct {
+	Username      string
+	Password      string
+	ClientCode    string
+	FIO           string
+	DateOfBirth   *time.Time
+	Gender        *domain.GenderEnum
+	AvatarFileKey *string
+	UserAgent     string
+	Fingerprint   string
+	Issuer        string
 }
 
 // TokensDTO represent auth tokens.

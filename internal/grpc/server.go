@@ -7,8 +7,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"pxr-sso/internal/domain"
 	"pxr-sso/internal/dto"
 	"pxr-sso/internal/service"
+	"time"
+)
+
+const (
+	emptyValue = 0
 )
 
 type serverAPI struct {
@@ -83,12 +89,48 @@ func (s *serverAPI) Register(
 	if err := validateRegisterRequest(req); err != nil {
 		return nil, err
 	}
+	
+	var dateOfBirth *time.Time
+	if req.GetDateOfBirth() != nil {
+		dateOfBirthPbAsTime := req.GetDateOfBirth().AsTime()
+		dateOfBirth = &dateOfBirthPbAsTime
+	}
 
-	// TODO: call service register method
+	var gender *domain.GenderEnum
+	if req.GetGender() != emptyValue {
+		genderEnum := domain.GenderEnum(req.GetGender().Number())
+		gender = &genderEnum
+	}
 
-	// TODO: returns tokens in response
+	var avatarFileKey *string
+	if req.GetAvatarFileKey() != nil {
+		avatarFileKeyPbString := req.GetAvatarFileKey().GetValue()
+		avatarFileKey = &avatarFileKeyPbString
+	}
 
-	return &ssopb.RegisterResponse{AccessToken: "", RefreshToken: ""}, nil
+	registerData := dto.RegisterDTO{
+		Username:      req.GetUserName(),
+		Password:      req.GetPassword(),
+		ClientCode:    req.GetClientCode(),
+		FIO:           req.GetFio(),
+		DateOfBirth:   dateOfBirth,
+		Gender:        gender,
+		AvatarFileKey: avatarFileKey,
+		UserAgent:     req.GetUserAgent(),
+		Fingerprint:   req.GetFingerprint(),
+		Issuer:        "issuer", // TODO: get from request
+	}
+
+	tokens, err := s.auth.Register(ctx, registerData)
+	if err != nil {
+		if errors.Is(err, service.ErrUserExists) {
+			return nil, invalidArgumentError("user with this username already exists")
+		}
+
+		return nil, internalError("failed to register")
+	}
+
+	return &ssopb.RegisterResponse{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken}, nil
 }
 
 func validateRegisterRequest(req *ssopb.RegisterRequest) error {
