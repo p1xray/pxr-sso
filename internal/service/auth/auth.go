@@ -129,3 +129,34 @@ func (a *Auth) Login(ctx context.Context, data dto.LoginDTO) (dto.TokensDTO, err
 
 	return dto.TokensDTO{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
+
+// Register registers new user in the system and returns access and refresh tokens.
+func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDTO, error) {
+	const op = "auth.Register"
+
+	log := a.log.With(
+		slog.String("op", op),
+		slog.String("username", data.Username),
+	)
+	log.Info("attempting to register new user")
+
+	// TODO: get user by username from storage.
+
+	// TODO: check if user is not exists in storage.
+
+	// TODO: get client by code from storage.
+
+	// TODO: create new user in storage.
+
+	// TODO: create user client link in storage.
+
+	// TODO: create auth tokens.
+
+	// TODO: create session in storage.
+
+	// TODO: returns auth tokens.
+
+	log.Info("user register successfully")
+
+	return dto.TokensDTO{AccessToken: "", RefreshToken: ""}, nil
+}
