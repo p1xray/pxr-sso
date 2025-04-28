@@ -34,7 +34,7 @@ func NewAccessToken(user *dto.UserDTO, client *dto.ClientDTO, ttl time.Duration,
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	tokenStr, err := token.SignedString(client.SecretKey)
+	tokenStr, err := token.SignedString([]byte(client.SecretKey))
 	if err != nil {
 		return "", err
 	}
