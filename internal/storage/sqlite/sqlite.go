@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/mattn/go-sqlite3"
 	"pxr-sso/internal/domain"
 	"pxr-sso/internal/storage"
 )
@@ -144,5 +145,34 @@ func (s *Storage) UserClient(ctx context.Context, userID int64, clientCode strin
 
 // CreateSession creates a new session in the storage.
 func (s *Storage) CreateSession(ctx context.Context, session domain.Session) error {
+	const op = "sqlite.CreateSession"
 
+	stmt, err := s.db.PrepareContext(ctx,
+		`insert into sessions (user_id, refresh_token, user_agent, fingerprint, expires_at, created_at, updated_at)
+		values(?, ?, ?, ?, ?, ?, ?);`)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, err = stmt.ExecContext(
+		ctx,
+		session.UserID,
+		session.RefreshToken,
+		session.UserAgent,
+		session.Fingerprint,
+		session.ExpiresAt,
+		session.CreatedAt,
+		session.UpdatedAt,
+	)
+
+	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
+			return fmt.Errorf("%s: %w", op, storage.ErrSessionExists)
+		}
+
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }

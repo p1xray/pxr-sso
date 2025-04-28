@@ -9,6 +9,7 @@ import (
 var (
 	ErrUserNotFound   = errors.New("user not found")
 	ErrClientNotFound = errors.New("client not found")
+	ErrSessionExists  = errors.New("session already exists")
 )
 
 // SSOStorage provides access to data storage.
