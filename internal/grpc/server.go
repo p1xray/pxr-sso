@@ -80,13 +80,46 @@ func (s *serverAPI) Register(
 	ctx context.Context,
 	req *ssopb.RegisterRequest,
 ) (*ssopb.RegisterResponse, error) {
-	// TODO: validate request
+	if err := validateRegisterRequest(req); err != nil {
+		return nil, err
+	}
 
 	// TODO: call service register method
 
 	// TODO: returns tokens in response
 
 	return &ssopb.RegisterResponse{AccessToken: "", RefreshToken: ""}, nil
+}
+
+func validateRegisterRequest(req *ssopb.RegisterRequest) error {
+	// TODO: fix field name in proto file
+	if req.GetUserName() == "" {
+		return invalidArgumentError("username is empty")
+	}
+
+	if req.GetPassword() == "" {
+		return invalidArgumentError("password is empty")
+	}
+
+	if req.GetClientCode() == "" {
+		return invalidArgumentError("client code is empty")
+	}
+
+	if req.GetFio() == "" {
+		return invalidArgumentError("FIO is empty")
+	}
+
+	if req.GetUserAgent() == "" {
+		return invalidArgumentError("user agent is empty")
+	}
+
+	if req.GetFingerprint() == "" {
+		return invalidArgumentError("fingerprint is empty")
+	}
+
+	// TODO: add validate issuer from request
+
+	return nil
 }
 
 func (s *serverAPI) RefreshTokens(
