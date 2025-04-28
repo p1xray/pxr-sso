@@ -13,7 +13,6 @@ var (
 // SSOStorage provides access to data storage.
 type SSOStorage interface {
 	// UserByUsername returns a user from the storage by their username.
-	// UserByUsername returns a user from the storage by their username.
 	UserByUsername(ctx context.Context, username string) (domain.User, error)
 
 	// UserPermissions returns the user's permissions from the storage.

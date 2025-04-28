@@ -26,8 +26,16 @@ type Auth struct {
 // New creates a new auth service.
 func New(
 	log *slog.Logger,
+	storage storage.SSOStorage,
+	accessTokenTTL time.Duration,
+	refreshTokenTTL time.Duration,
 ) *Auth {
-	return &Auth{log: log}
+	return &Auth{
+		log:             log,
+		storage:         storage,
+		accessTokenTTL:  accessTokenTTL,
+		refreshTokenTTL: refreshTokenTTL,
+	}
 }
 
 // Login checks if user with given credentials exists in the system and returns access and refresh tokens.
