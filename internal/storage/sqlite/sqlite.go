@@ -28,7 +28,7 @@ func New(storagePath string) (*Storage, error) {
 
 // UserByUsername returns a user from the storage by their username.
 func (s *Storage) UserByUsername(ctx context.Context, username string) (domain.User, error) {
-	const op = "sqlite.SaveUser"
+	const op = "sqlite.UserByUsername"
 
 	stmt, err := s.db.PrepareContext(ctx,
 		`select
@@ -76,7 +76,35 @@ func (s *Storage) UserByUsername(ctx context.Context, username string) (domain.U
 
 // UserPermissions returns the user's permissions from the storage.
 func (s *Storage) UserPermissions(ctx context.Context, userID int64) ([]domain.Permission, error) {
+	const op = "sqlite.UserPermissions"
 
+	stmt, err := s.db.PrepareContext(ctx,
+		`select p.id, p.code, p.description, p.active, p.deleted, p.created_at, p.updated_at from permissions p
+			join role_permissions rp on rp.permission_id = p.id
+			join user_roles ur on ur.role_id = rp.role_id
+		where ur.user_id = ?;`)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	rows, err := stmt.QueryContext(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	permissions := make([]domain.Permission, 0)
+	for rows.Next() {
+		p := domain.Permission{}
+		err := rows.Scan(&p.ID, &p.Code, &p.Description, &p.Active, &p.Deleted, &p.CreatedAt, &p.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		permissions = append(permissions, p)
+	}
+
+	return permissions, nil
 }
 
 // UserClient returns the user's client from the storage by code.
