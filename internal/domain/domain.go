@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"github.com/guregu/null/v6"
+	"time"
+)
 
 type GenderEnum uint
 
@@ -16,9 +19,9 @@ type User struct {
 	Username      string
 	PasswordHash  string
 	FIO           string
-	DateOfBirth   *time.Time
-	Gender        *GenderEnum
-	AvatarFileKey *string
+	DateOfBirth   null.Time
+	Gender        null.Value[GenderEnum]
+	AvatarFileKey null.String
 	Deleted       bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time

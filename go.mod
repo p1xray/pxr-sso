@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/guregu/null/v6 v6.0.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
