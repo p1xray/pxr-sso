@@ -5,7 +5,14 @@ import (
 	"time"
 )
 
-type GenderEnum uint
+type GenderEnum int16
+
+func (ge *GenderEnum) ToNullInt16() null.Int16 {
+	if ge == nil {
+		return null.NewInt16(0, false)
+	}
+	return null.Int16From(int16(*ge))
+}
 
 // Gender enum.
 const (
@@ -20,7 +27,7 @@ type User struct {
 	PasswordHash  string
 	FIO           string
 	DateOfBirth   null.Time
-	Gender        null.Value[GenderEnum]
+	Gender        null.Int16
 	AvatarFileKey null.String
 	Deleted       bool
 	CreatedAt     time.Time
@@ -59,4 +66,13 @@ type Permission struct {
 	Deleted     bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+// UserClientLink is data for link between user and client.
+type UserClientLink struct {
+	ID        int64
+	UserID    int64
+	ClientID  int64
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

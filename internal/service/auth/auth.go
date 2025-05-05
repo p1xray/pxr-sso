@@ -184,7 +184,7 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 		PasswordHash:  string(passwordHash),
 		FIO:           data.FIO,
 		DateOfBirth:   null.TimeFromPtr(data.DateOfBirth),
-		Gender:        null.ValueFromPtr(data.Gender),
+		Gender:        data.Gender.ToNullInt16(),
 		AvatarFileKey: null.StringFromPtr(data.AvatarFileKey),
 	}
 

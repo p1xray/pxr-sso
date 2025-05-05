@@ -181,3 +181,123 @@ func (s *Storage) CreateSession(ctx context.Context, session domain.Session) err
 
 	return nil
 }
+
+// ClientByCode returns client by their code from storage.
+func (s *Storage) ClientByCode(ctx context.Context, code string) (domain.Client, error) {
+	const op = "sqlite.ClientByCode"
+
+	stmt, err := s.db.PrepareContext(ctx,
+		`select c.id, c.name, c.code, c.secret_key, c.deleted, c.created_at, c.updated_at
+		from clients c
+		where c.code = ?;`)
+	if err != nil {
+		return domain.Client{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	row := stmt.QueryRowContext(ctx, code)
+
+	var client domain.Client
+	err = row.Scan(
+		&client.ID,
+		&client.Name,
+		&client.Code,
+		&client.SecretKey,
+		&client.Deleted,
+		&client.CreatedAt,
+		&client.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Client{}, fmt.Errorf("%s: %w", op, storage.ErrClientNotFound)
+		}
+
+		return domain.Client{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return client, nil
+}
+
+// CreateUser creates a new user in the storage and returns new user ID.
+func (s *Storage) CreateUser(ctx context.Context, user domain.User) (int64, error) {
+	const op = "sqlite.CreateUser"
+
+	stmt, err := s.db.PrepareContext(ctx,
+		`insert into users (username, password_hash, fio, date_of_birth, gender, avatar_file__key, deleted, created_at, updated_at)
+		values(?, ?, ?, ?, ?, ?, ?, ?, ?);`)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	now := time.Now()
+	user.Deleted = false
+	user.CreatedAt = now
+	user.UpdatedAt = now
+
+	res, err := stmt.ExecContext(
+		ctx,
+		user.Username,
+		user.PasswordHash,
+		user.FIO,
+		user.DateOfBirth,
+		user.Gender,
+		user.AvatarFileKey,
+		user.Deleted,
+		user.CreatedAt,
+		user.UpdatedAt,
+	)
+
+	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
+			return 0, fmt.Errorf("%s: %w", op, storage.ErrSessionExists)
+		}
+
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	newUserID, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return newUserID, nil
+}
+
+// CreateUserClientLink creates a link between user and client.
+func (s *Storage) CreateUserClientLink(ctx context.Context, userID int64, clientID int64) error {
+	const op = "sqlite.CreateUserClientLink"
+
+	stmt, err := s.db.PrepareContext(ctx,
+		`insert into user_clients (user_id, client_id, created_at, updated_at)
+		values (?, ?, ?, ?);`)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	now := time.Now()
+	userClientLink := domain.UserClientLink{
+		UserID:    userID,
+		ClientID:  clientID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	_, err = stmt.ExecContext(
+		ctx,
+		userClientLink.UserID,
+		userClientLink.ClientID,
+		userClientLink.CreatedAt,
+		userClientLink.UpdatedAt,
+	)
+
+	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
+			return fmt.Errorf("%s: %w", op, storage.ErrUserClientLinkExists)
+		}
+
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
