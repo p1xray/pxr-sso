@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/guregu/null/v6"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"pxr-sso/internal/domain"
@@ -13,6 +14,10 @@ import (
 	"pxr-sso/internal/service"
 	"pxr-sso/internal/storage"
 	"time"
+)
+
+const (
+	emptyValue = 0
 )
 
 // Auth is service for working with user authentication and authorization.
@@ -140,23 +145,112 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 	)
 	log.Info("attempting to register new user")
 
-	// TODO: get user by username from storage.
+	// Get user from storage.
+	user, err := a.storage.UserByUsername(ctx, data.Username)
+	if err != nil && !errors.Is(err, storage.ErrUserNotFound) {
+		a.log.Error("failed to get user", sl.Err(err))
 
-	// TODO: check if user is not exists in storage.
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
-	// TODO: get client by code from storage.
+	// Check if user with given username already exists
+	if user.ID > emptyValue {
+		a.log.Warn("user with given username already exists", sl.Err(err))
 
-	// TODO: create new user in storage.
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrUserExists)
+	}
 
-	// TODO: create user client link in storage.
+	// Get client by code from storage.
+	client, err := a.storage.ClientByCode(ctx, data.ClientCode)
+	if err != nil {
+		a.log.Error("failed to get client", sl.Err(err))
 
-	// TODO: create auth tokens.
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
-	// TODO: create session in storage.
+	// Generate hash from password.
+	passwordHash, err := bcrypt.GenerateFromPassword(
+		[]byte(data.Password),
+		bcrypt.DefaultCost)
+	if err != nil {
+		log.Error("failed to generate password hash", sl.Err(err))
 
-	// TODO: returns auth tokens.
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Create new user in storage.
+	userToCreate := domain.User{
+		Username:      data.Username,
+		PasswordHash:  string(passwordHash),
+		FIO:           data.FIO,
+		DateOfBirth:   null.TimeFromPtr(data.DateOfBirth),
+		Gender:        null.ValueFromPtr(data.Gender),
+		AvatarFileKey: null.StringFromPtr(data.AvatarFileKey),
+	}
+
+	newUserID, err := a.storage.CreateUser(ctx, userToCreate)
+	if err != nil {
+		a.log.Error("failed to create user", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Create user's client link in storage.
+	if err = a.storage.CreateUserClientLink(ctx, newUserID, client.ID); err != nil {
+		a.log.Error("failed to create user's client link", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Get user permissions from storage.
+	userPermissions, err := a.storage.UserPermissions(ctx, newUserID)
+	if err != nil {
+		a.log.Error("failed to get user permissions", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Create access token.
+	var permissionCodes []string
+	for _, permission := range userPermissions {
+		permissionCodes = append(permissionCodes, permission.Code)
+	}
+
+	userData := &dto.UserDTO{
+		ID:          newUserID,
+		Permissions: permissionCodes,
+	}
+
+	clientData := &dto.ClientDTO{
+		Code:      client.Code,
+		SecretKey: client.SecretKey,
+	}
+
+	accessToken, err := token.NewAccessToken(userData, clientData, a.accessTokenTTL, data.Issuer)
+	if err != nil {
+		a.log.Error("failed to generate access token", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Create refresh token.
+	refreshToken := token.NewRefreshToken()
+
+	// Create session in storage.
+	sessionToCreate := domain.Session{
+		UserID:       newUserID,
+		RefreshToken: refreshToken,
+		UserAgent:    data.UserAgent,
+		Fingerprint:  data.Fingerprint,
+		ExpiresAt:    time.Now().Add(a.refreshTokenTTL),
+	}
+	if err = a.storage.CreateSession(ctx, sessionToCreate); err != nil {
+		a.log.Error("failed to create session", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	log.Info("user register successfully")
 
-	return dto.TokensDTO{AccessToken: "", RefreshToken: ""}, nil
+	return dto.TokensDTO{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
