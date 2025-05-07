@@ -89,7 +89,7 @@ func (s *serverAPI) Register(
 	if err := validateRegisterRequest(req); err != nil {
 		return nil, err
 	}
-	
+
 	var dateOfBirth *time.Time
 	if req.GetDateOfBirth() != nil {
 		dateOfBirthPbAsTime := req.GetDateOfBirth().AsTime()
@@ -168,13 +168,31 @@ func (s *serverAPI) RefreshTokens(
 	ctx context.Context,
 	req *ssopb.RefreshTokensRequest,
 ) (*ssopb.RefreshTokensResponse, error) {
-	// TODO: validate request
+	if err := validateRefreshTokensRequest(req); err != nil {
+		return nil, err
+	}
 
 	// TODO: call service refresh tokens method
 
 	// TODO: returns tokens in response
 
 	return &ssopb.RefreshTokensResponse{AccessToken: "", RefreshToken: ""}, nil
+}
+
+func validateRefreshTokensRequest(req *ssopb.RefreshTokensRequest) error {
+	if req.GetRefreshToken() == "" {
+		return invalidArgumentError("refresh token is empty")
+	}
+
+	if req.GetUserAgent() == "" {
+		return invalidArgumentError("user agent is empty")
+	}
+
+	if req.GetFingerprint() == "" {
+		return invalidArgumentError("fingerprint is empty")
+	}
+
+	return nil
 }
 
 func (s *serverAPI) Logout(
