@@ -374,3 +374,24 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 
 	return dto.TokensDTO{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
+
+// Logout terminates the user's session.
+func (a *Auth) Logout(ctx context.Context, data dto.LogoutDTO) error {
+	const op = "auth.Logout"
+
+	log := a.log.With(
+		slog.String("op", op),
+		slog.String("refresh token", data.RefreshToken),
+	)
+	log.Info("attempting to user logout")
+
+	// TODO: get session by refresh token.
+
+	// TODO: if empty return error session not found.
+
+	// TODO: otherwise remove session from storage.
+
+	log.Info("user logout successfully")
+
+	return nil
+}
