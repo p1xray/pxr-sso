@@ -172,11 +172,18 @@ func (s *serverAPI) RefreshTokens(
 		return nil, err
 	}
 
-	// TODO: call service refresh tokens method
+	refreshTokensData := dto.RefreshTokensDTO{
+		RefreshToken: req.GetRefreshToken(),
+		UserAgent:    req.GetUserAgent(),
+		Fingerprint:  req.GetFingerprint(),
+	}
 
-	// TODO: returns tokens in response
+	tokens, err := s.auth.RefreshTokens(ctx, refreshTokensData)
+	if err != nil {
+		return nil, internalError("failed to refresh tokens")
+	}
 
-	return &ssopb.RefreshTokensResponse{AccessToken: "", RefreshToken: ""}, nil
+	return &ssopb.RefreshTokensResponse{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken}, nil
 }
 
 func validateRefreshTokensRequest(req *ssopb.RefreshTokensRequest) error {

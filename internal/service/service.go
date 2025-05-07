@@ -18,4 +18,7 @@ type AuthService interface {
 
 	// Register registers new user in the system and returns access and refresh tokens.
 	Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDTO, error)
+
+	// RefreshTokens refreshes the user's auth tokens.
+	RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dto.TokensDTO, error)
 }

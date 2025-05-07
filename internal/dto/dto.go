@@ -27,6 +27,7 @@ type LoginDTO struct {
 	Issuer      string
 }
 
+// RegisterDTO is data for register new user.
 type RegisterDTO struct {
 	Username      string
 	Password      string
@@ -38,6 +39,13 @@ type RegisterDTO struct {
 	UserAgent     string
 	Fingerprint   string
 	Issuer        string
+}
+
+// RefreshTokensDTO is data for refresh user's auth tokens.
+type RefreshTokensDTO struct {
+	RefreshToken string
+	UserAgent    string
+	Fingerprint  string
 }
 
 // TokensDTO represent auth tokens.
