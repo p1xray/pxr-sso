@@ -385,11 +385,26 @@ func (a *Auth) Logout(ctx context.Context, data dto.LogoutDTO) error {
 	)
 	log.Info("attempting to user logout")
 
-	// TODO: get session by refresh token.
+	// Get session by refresh token from storage.
+	session, err := a.storage.SessionByRefreshToken(ctx, data.RefreshToken)
+	if err != nil {
+		if errors.Is(err, storage.ErrSessionNotFound) {
+			a.log.Warn("session not found", sl.Err(err))
 
-	// TODO: if empty return error session not found.
+			return fmt.Errorf("%s: %w", op, service.ErrSessionNotFound)
+		}
 
-	// TODO: otherwise remove session from storage.
+		a.log.Error("failed to get session", sl.Err(err))
+
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Remove current session from storage.
+	if err = a.storage.RemoveSession(ctx, session.ID); err != nil {
+		a.log.Error("failed to remove session", sl.Err(err))
+
+		return fmt.Errorf("%s: %w", op, err)
+	}
 
 	log.Info("user logout successfully")
 
