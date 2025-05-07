@@ -254,3 +254,30 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 
 	return dto.TokensDTO{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
+
+// RefreshTokens refreshes the user's auth tokens.
+func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dto.TokensDTO, error) {
+	const op = "auth.RefreshTokens"
+
+	log := a.log.With(
+		slog.String("op", op),
+		slog.String("refresh token", data.RefreshToken),
+	)
+	log.Info("attempting to refresh tokens")
+
+	// TODO: get session by refresh token.
+
+	// TODO: check session:
+	//			"session not found" error if empty.
+	//			"token expired" if session expires.
+	//			"invalid session" if user-agent or fingerprint are not equal.
+
+	// TODO: delete current session.
+
+	// TODO: create access and refresh tokens.
+
+	// TODO: create new session.
+
+	// TODO: return tokens.
+	return dto.TokensDTO{AccessToken: "", RefreshToken: ""}, nil
+}
