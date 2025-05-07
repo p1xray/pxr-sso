@@ -174,8 +174,10 @@ func (s *serverAPI) RefreshTokens(
 
 	refreshTokensData := dto.RefreshTokensDTO{
 		RefreshToken: req.GetRefreshToken(),
+		ClientCode:   "test", // TODO: get from request
 		UserAgent:    req.GetUserAgent(),
 		Fingerprint:  req.GetFingerprint(),
+		Issuer:       "issuer", // TODO: get from request
 	}
 
 	tokens, err := s.auth.RefreshTokens(ctx, refreshTokensData)
@@ -198,6 +200,9 @@ func validateRefreshTokensRequest(req *ssopb.RefreshTokensRequest) error {
 	if req.GetFingerprint() == "" {
 		return invalidArgumentError("fingerprint is empty")
 	}
+
+	// TODO: add validate client code from request
+	// TODO: add validate issuer from request
 
 	return nil
 }

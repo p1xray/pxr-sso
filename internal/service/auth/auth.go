@@ -265,19 +265,112 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	)
 	log.Info("attempting to refresh tokens")
 
-	// TODO: get session by refresh token.
+	// Get session by refresh token.
+	session, err := a.storage.SessionByRefreshToken(ctx, data.RefreshToken)
+	if err != nil {
+		if errors.Is(err, storage.ErrSessionNotFound) {
+			a.log.Warn("session not found", sl.Err(err))
 
-	// TODO: check session:
-	//			"session not found" error if empty.
-	//			"token expired" if session expires.
-	//			"invalid session" if user-agent or fingerprint are not equal.
+			return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrSessionNotFound)
+		}
 
-	// TODO: delete current session.
+		a.log.Error("failed to get session", sl.Err(err))
 
-	// TODO: create access and refresh tokens.
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
-	// TODO: create new session.
+	// Check session expiration time.
+	now := time.Now()
+	if session.ExpiresAt.After(now) {
+		a.log.Warn("refresh token expired")
 
-	// TODO: return tokens.
-	return dto.TokensDTO{AccessToken: "", RefreshToken: ""}, nil
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrRefreshTokenExpired)
+	}
+
+	if session.UserAgent != data.UserAgent && session.Fingerprint != data.Fingerprint {
+		a.log.Warn("invalid session")
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrInvalidSession)
+	}
+
+	// Delete current session.
+	if err = a.storage.RemoveSession(ctx, session.ID); err != nil {
+		a.log.Error("failed to remove session", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Get user.
+	user, err := a.storage.User(ctx, session.UserID)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			a.log.Warn("user not found", sl.Err(err))
+
+			return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrUserNotFound)
+		}
+
+		a.log.Error("failed to get user", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Get user client by user link and client code from storage.
+	client, err := a.storage.UserClient(ctx, user.ID, data.ClientCode)
+	if err != nil {
+		a.log.Error("failed to get client", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Get user permissions from storage.
+	userPermissions, err := a.storage.UserPermissions(ctx, user.ID)
+	if err != nil {
+		a.log.Error("failed to get user permissions", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Create access token.
+	var permissionCodes []string
+	for _, permission := range userPermissions {
+		permissionCodes = append(permissionCodes, permission.Code)
+	}
+
+	userData := &dto.UserDTO{
+		ID:          user.ID,
+		Permissions: permissionCodes,
+	}
+
+	clientData := &dto.ClientDTO{
+		Code:      client.Code,
+		SecretKey: client.SecretKey,
+	}
+
+	accessToken, err := token.NewAccessToken(userData, clientData, a.accessTokenTTL, data.Issuer)
+	if err != nil {
+		a.log.Error("failed to generate access token", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Create refresh token.
+	refreshToken := token.NewRefreshToken()
+
+	// Create session in storage.
+	sessionToCreate := domain.Session{
+		UserID:       user.ID,
+		RefreshToken: refreshToken,
+		UserAgent:    data.UserAgent,
+		Fingerprint:  data.Fingerprint,
+		ExpiresAt:    time.Now().Add(a.refreshTokenTTL),
+	}
+	if err = a.storage.CreateSession(ctx, sessionToCreate); err != nil {
+		a.log.Error("failed to create session", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	log.Info("user register successfully")
+
+	return dto.TokensDTO{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }

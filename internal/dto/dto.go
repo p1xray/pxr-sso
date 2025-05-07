@@ -44,8 +44,10 @@ type RegisterDTO struct {
 // RefreshTokensDTO is data for refresh user's auth tokens.
 type RefreshTokensDTO struct {
 	RefreshToken string
+	ClientCode   string
 	UserAgent    string
 	Fingerprint  string
+	Issuer       string
 }
 
 // TokensDTO represent auth tokens.

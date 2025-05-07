@@ -11,6 +11,7 @@ var (
 	ErrClientNotFound       = errors.New("client not found")
 	ErrSessionExists        = errors.New("session already exists")
 	ErrUserClientLinkExists = errors.New("user's client link already exists")
+	ErrSessionNotFound      = errors.New("session not found")
 )
 
 // SSOStorage provides access to data storage.
@@ -35,4 +36,13 @@ type SSOStorage interface {
 
 	// CreateUserClientLink creates a link between user and client.
 	CreateUserClientLink(ctx context.Context, userID int64, clientID int64) error
+
+	// SessionByRefreshToken returns a session by its refresh token.
+	SessionByRefreshToken(ctx context.Context, refreshToken string) (domain.Session, error)
+
+	// RemoveSession removes a session by ID.
+	RemoveSession(ctx context.Context, id int64) error
+
+	// User returns a user from the storage by ID.
+	User(ctx context.Context, id int64) (domain.User, error)
 }
