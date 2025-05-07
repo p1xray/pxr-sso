@@ -265,7 +265,7 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	)
 	log.Info("attempting to refresh tokens")
 
-	// Get session by refresh token.
+	// Get session by refresh token from storage.
 	session, err := a.storage.SessionByRefreshToken(ctx, data.RefreshToken)
 	if err != nil {
 		if errors.Is(err, storage.ErrSessionNotFound) {
@@ -293,14 +293,14 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrInvalidSession)
 	}
 
-	// Delete current session.
+	// Remove current session from storage.
 	if err = a.storage.RemoveSession(ctx, session.ID); err != nil {
 		a.log.Error("failed to remove session", sl.Err(err))
 
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Get user.
+	// Get user from storage.
 	user, err := a.storage.User(ctx, session.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
@@ -370,7 +370,7 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	log.Info("user register successfully")
+	log.Info("tokens refreshed successfully")
 
 	return dto.TokensDTO{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
