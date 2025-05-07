@@ -10,14 +10,22 @@ import (
 
 // Config is the project configuration.
 type Config struct {
-	Env  string     `yaml:"env" env-default:"local"`
-	GRPC GRPCConfig `yaml:"grpc" env-required:"true"`
+	Env         string       `yaml:"env" env-default:"local"`
+	GRPC        GRPCConfig   `yaml:"grpc" env-required:"true"`
+	Tokens      TokensConfig `yaml:"tokens" env-required:"true"`
+	StoragePath string       `yaml:"storage_path" env-required:"true"`
 }
 
 // GRPCConfig is the gRPC server configuration.
 type GRPCConfig struct {
 	Port    int           `yaml:"port" env-required:"true"`
 	Timeout time.Duration `yaml:"timeout" env-required:"true"`
+}
+
+// TokensConfig is the auth tokens configuration.
+type TokensConfig struct {
+	AccessTokenTTL  time.Duration `yaml:"access_token_ttl" env-required:"true"`
+	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl" env-required:"true"`
 }
 
 // MustRun loads config and panics if any error occurs.

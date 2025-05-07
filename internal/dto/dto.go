@@ -1,13 +1,62 @@
 package dto
 
-// User is information about the user.
-type User struct {
+import (
+	"pxr-sso/internal/domain"
+	"time"
+)
+
+// UserDTO is information about the user.
+type UserDTO struct {
 	ID          int64
 	Permissions []string
 }
 
-// Client is information about the client.
-type Client struct {
+// ClientDTO is information about the client.
+type ClientDTO struct {
 	Code      string
 	SecretKey string
+}
+
+// LoginDTO is data for login user.
+type LoginDTO struct {
+	Username    string
+	Password    string
+	ClientCode  string
+	UserAgent   string
+	Fingerprint string
+	Issuer      string
+}
+
+// RegisterDTO is data for register new user.
+type RegisterDTO struct {
+	Username      string
+	Password      string
+	ClientCode    string
+	FIO           string
+	DateOfBirth   *time.Time
+	Gender        *domain.GenderEnum
+	AvatarFileKey *string
+	UserAgent     string
+	Fingerprint   string
+	Issuer        string
+}
+
+// RefreshTokensDTO is data for refresh user's auth tokens.
+type RefreshTokensDTO struct {
+	RefreshToken string
+	ClientCode   string
+	UserAgent    string
+	Fingerprint  string
+	Issuer       string
+}
+
+// LogoutDTO is data for logout.
+type LogoutDTO struct {
+	RefreshToken string
+}
+
+// TokensDTO represent auth tokens.
+type TokensDTO struct {
+	AccessToken  string
+	RefreshToken string
 }
