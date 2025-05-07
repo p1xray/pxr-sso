@@ -1,4 +1,4 @@
-package ssoserver
+package authserver
 
 import (
 	"context"
