@@ -3,7 +3,7 @@ package token
 import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"pxr-sso/internal/dto"
+	"pxr-sso/internal/logic/dto"
 	"strconv"
 	"time"
 )

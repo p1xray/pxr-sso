@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	grpcapp "pxr-sso/internal/app/grpc"
 	"pxr-sso/internal/config"
-	"pxr-sso/internal/service/auth"
+	"pxr-sso/internal/logic/service/auth"
 	"pxr-sso/internal/storage/sqlite"
 )
 

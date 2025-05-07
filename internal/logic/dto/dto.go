@@ -7,12 +7,14 @@ import (
 
 // UserDTO is information about the user.
 type UserDTO struct {
-	ID          int64
-	Permissions []string
+	ID           int64
+	PasswordHash string
+	Permissions  []string
 }
 
 // ClientDTO is information about the client.
 type ClientDTO struct {
+	ID        int64
 	Code      string
 	SecretKey string
 }
@@ -59,4 +61,23 @@ type LogoutDTO struct {
 type TokensDTO struct {
 	AccessToken  string
 	RefreshToken string
+}
+
+// SessionDTO is information about the session.
+type SessionDTO struct {
+	ID           int64
+	UserID       int64
+	RefreshToken string
+	UserAgent    string
+	Fingerprint  string
+	ExpiresAt    time.Time
+}
+
+// CreateSessionDTO is data for create new session.
+type CreateSessionDTO struct {
+	UserID       int64
+	RefreshToken string
+	UserAgent    string
+	Fingerprint  string
+	ExpiresAt    time.Time
 }

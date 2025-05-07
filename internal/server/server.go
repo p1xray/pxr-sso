@@ -4,7 +4,7 @@ import (
 	"context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"pxr-sso/internal/dto"
+	"pxr-sso/internal/logic/dto"
 )
 
 // AuthService is service for working with user authentication and authorization.

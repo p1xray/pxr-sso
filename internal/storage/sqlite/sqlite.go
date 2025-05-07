@@ -154,11 +154,7 @@ func (s *Storage) CreateSession(ctx context.Context, session domain.Session) err
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-
-	now := time.Now()
-	session.CreatedAt = now
-	session.UpdatedAt = now
-
+	
 	_, err = stmt.ExecContext(
 		ctx,
 		session.UserID,
