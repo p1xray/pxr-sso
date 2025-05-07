@@ -211,11 +211,24 @@ func (s *serverAPI) Logout(
 	ctx context.Context,
 	req *ssopb.LogoutRequest,
 ) (*ssopb.LogoutResponse, error) {
-	// TODO: validate request
+	if err := validateLogoutRequest(req); err != nil {
+		return &ssopb.LogoutResponse{Success: false}, err
+	}
 
-	// TODO: call service logout method
+	logoutData := dto.LogoutDTO{}
+	if err := s.auth.Logout(ctx, logoutData); err != nil {
+		return &ssopb.LogoutResponse{Success: false}, internalError("failed to logout")
+	}
 
 	return &ssopb.LogoutResponse{Success: true}, nil
+}
+
+func validateLogoutRequest(req *ssopb.LogoutRequest) error {
+	if req.GetRefreshToken() == "" {
+		return invalidArgumentError("refresh token is empty")
+	}
+
+	return nil
 }
 
 func invalidArgumentError(msg string) error {

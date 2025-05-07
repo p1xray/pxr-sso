@@ -25,4 +25,7 @@ type AuthService interface {
 
 	// RefreshTokens refreshes the user's auth tokens.
 	RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dto.TokensDTO, error)
+
+	// Logout terminates the user's session.
+	Logout(ctx context.Context, data dto.LogoutDTO) error
 }

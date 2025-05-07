@@ -50,6 +50,11 @@ type RefreshTokensDTO struct {
 	Issuer       string
 }
 
+// LogoutDTO is data for logout.
+type LogoutDTO struct {
+	RefreshToken string
+}
+
 // TokensDTO represent auth tokens.
 type TokensDTO struct {
 	AccessToken  string
