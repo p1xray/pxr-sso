@@ -301,3 +301,68 @@ func (s *Storage) CreateUserClientLink(ctx context.Context, userID int64, client
 
 	return nil
 }
+
+// RemoveSession removes a session by ID.
+func (s *Storage) RemoveSession(ctx context.Context, id int64) error {
+	const op = "sqlite.RemoveSession"
+
+	stmt, err := s.db.PrepareContext(ctx, `delete from sessions where id=?;`)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, err = stmt.ExecContext(ctx, id)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+// User returns a user from the storage by ID.
+func (s *Storage) User(ctx context.Context, id int64) (domain.User, error) {
+	const op = "sqlite.User"
+
+	stmt, err := s.db.PrepareContext(ctx,
+		`select
+    		u.id,
+    		u.username,
+    		u.password_hash,
+    		u.fio,
+    		u.date_of_birth,
+    		u.gender,
+    		u.avatar_file__key,
+    		u.deleted,
+    		u.created_at,
+    		u.updated_at
+		from users u
+		where u.id = ?;`)
+	if err != nil {
+		return domain.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	row := stmt.QueryRowContext(ctx, id)
+
+	var user domain.User
+	err = row.Scan(
+		&user.ID,
+		&user.Username,
+		&user.PasswordHash,
+		&user.FIO,
+		&user.DateOfBirth,
+		&user.Gender,
+		&user.AvatarFileKey,
+		&user.Deleted,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.User{}, fmt.Errorf("%s: %w", op, storage.ErrUserNotFound)
+		}
+
+		return domain.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return user, err
+}
