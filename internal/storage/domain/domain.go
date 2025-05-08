@@ -5,21 +5,6 @@ import (
 	"time"
 )
 
-type GenderEnum int16
-
-func (ge *GenderEnum) ToNullInt16() null.Int16 {
-	if ge == nil {
-		return null.NewInt16(0, false)
-	}
-	return null.Int16From(int16(*ge))
-}
-
-// Gender enum.
-const (
-	MALE   GenderEnum = 1
-	FEMALE GenderEnum = 2
-)
-
 // User is data for user in storage.
 type User struct {
 	ID            int64

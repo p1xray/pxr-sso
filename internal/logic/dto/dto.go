@@ -1,9 +1,25 @@
 package dto
 
 import (
-	"pxr-sso/internal/storage/domain"
+	"github.com/guregu/null/v6"
 	"time"
 )
+
+// GenderEnum is type for gender enum.
+type GenderEnum int16
+
+// Gender enum.
+const (
+	MALE   GenderEnum = 1
+	FEMALE GenderEnum = 2
+)
+
+func (ge *GenderEnum) ToNullInt16() null.Int16 {
+	if ge == nil {
+		return null.NewInt16(0, false)
+	}
+	return null.Int16From(int16(*ge))
+}
 
 // UserDTO is information about the user.
 type UserDTO struct {
@@ -36,7 +52,7 @@ type RegisterDTO struct {
 	ClientCode    string
 	FIO           string
 	DateOfBirth   *time.Time
-	Gender        *domain.GenderEnum
+	Gender        *GenderEnum
 	AvatarFileKey *string
 	UserAgent     string
 	Fingerprint   string
@@ -88,6 +104,6 @@ type CreateUserDTO struct {
 	PasswordHash  []byte
 	FIO           string
 	DateOfBirth   *time.Time
-	Gender        *domain.GenderEnum
+	Gender        *GenderEnum
 	AvatarFileKey *string
 }

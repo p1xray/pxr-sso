@@ -8,7 +8,6 @@ import (
 	"pxr-sso/internal/logic/dto"
 	"pxr-sso/internal/logic/service"
 	"pxr-sso/internal/server"
-	"pxr-sso/internal/storage/domain"
 	"time"
 )
 
@@ -95,9 +94,9 @@ func (s *serverAPI) Register(
 		dateOfBirth = &dateOfBirthPbAsTime
 	}
 
-	var gender *domain.GenderEnum
+	var gender *dto.GenderEnum
 	if req.GetGender() != emptyValue {
-		genderEnum := domain.GenderEnum(req.GetGender().Number())
+		genderEnum := dto.GenderEnum(req.GetGender().Number())
 		gender = &genderEnum
 	}
 
