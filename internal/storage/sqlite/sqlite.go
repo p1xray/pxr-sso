@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mattn/go-sqlite3"
-	"pxr-sso/internal/domain"
 	"pxr-sso/internal/storage"
+	"pxr-sso/internal/storage/domain"
 )
 
 // Storage provides access to sqlite storage.

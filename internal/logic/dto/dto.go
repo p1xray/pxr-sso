@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"pxr-sso/internal/domain"
+	"pxr-sso/internal/storage/domain"
 	"time"
 )
 

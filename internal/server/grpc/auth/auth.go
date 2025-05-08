@@ -5,10 +5,10 @@ import (
 	"errors"
 	ssopb "github.com/p1xray/pxr-sso-protos/gen/go/sso"
 	"google.golang.org/grpc"
-	"pxr-sso/internal/domain"
 	"pxr-sso/internal/logic/dto"
 	"pxr-sso/internal/logic/service"
 	"pxr-sso/internal/server"
+	"pxr-sso/internal/storage/domain"
 	"time"
 )
 

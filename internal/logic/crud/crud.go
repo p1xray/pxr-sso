@@ -2,7 +2,7 @@ package crud
 
 import (
 	"context"
-	"pxr-sso/internal/domain"
+	"pxr-sso/internal/storage/domain"
 )
 
 // UserProvider represents a user provider from storage.

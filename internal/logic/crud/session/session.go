@@ -2,9 +2,9 @@ package sessioncrud
 
 import (
 	"context"
-	"pxr-sso/internal/domain"
 	"pxr-sso/internal/logic/crud"
 	"pxr-sso/internal/logic/dto"
+	"pxr-sso/internal/storage/domain"
 	"time"
 )
 
