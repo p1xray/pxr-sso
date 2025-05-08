@@ -8,7 +8,6 @@ import (
 	"github.com/mattn/go-sqlite3"
 	"pxr-sso/internal/domain"
 	"pxr-sso/internal/storage"
-	"time"
 )
 
 // Storage provides access to sqlite storage.
@@ -67,7 +66,7 @@ func (s *Storage) UserByUsername(ctx context.Context, username string) (domain.U
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return domain.User{}, fmt.Errorf("%s: %w", op, storage.ErrUserNotFound)
+			return domain.User{}, fmt.Errorf("%s: %w", op, storage.ErrEntityNotFound)
 		}
 
 		return domain.User{}, fmt.Errorf("%s: %w", op, err)
@@ -135,7 +134,7 @@ func (s *Storage) UserClient(ctx context.Context, userID int64, clientCode strin
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return domain.Client{}, fmt.Errorf("%s: %w", op, storage.ErrClientNotFound)
+			return domain.Client{}, fmt.Errorf("%s: %w", op, storage.ErrEntityNotFound)
 		}
 
 		return domain.Client{}, fmt.Errorf("%s: %w", op, err)
@@ -145,17 +144,17 @@ func (s *Storage) UserClient(ctx context.Context, userID int64, clientCode strin
 }
 
 // CreateSession creates a new session in the storage.
-func (s *Storage) CreateSession(ctx context.Context, session domain.Session) error {
+func (s *Storage) CreateSession(ctx context.Context, session domain.Session) (int64, error) {
 	const op = "sqlite.CreateSession"
 
 	stmt, err := s.db.PrepareContext(ctx,
 		`insert into sessions (user_id, refresh_token, user_agent, fingerprint, expires_at, created_at, updated_at)
 		values(?, ?, ?, ?, ?, ?, ?);`)
 	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return 0, fmt.Errorf("%s: %w", op, err)
 	}
-	
-	_, err = stmt.ExecContext(
+
+	res, err := stmt.ExecContext(
 		ctx,
 		session.UserID,
 		session.RefreshToken,
@@ -169,13 +168,18 @@ func (s *Storage) CreateSession(ctx context.Context, session domain.Session) err
 	if err != nil {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
-			return fmt.Errorf("%s: %w", op, storage.ErrSessionExists)
+			return 0, fmt.Errorf("%s: %w", op, storage.ErrEntityExists)
 		}
 
-		return fmt.Errorf("%s: %w", op, err)
+		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return nil
+	newSessionID, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return newSessionID, nil
 }
 
 // ClientByCode returns client by their code from storage.
@@ -204,7 +208,7 @@ func (s *Storage) ClientByCode(ctx context.Context, code string) (domain.Client,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return domain.Client{}, fmt.Errorf("%s: %w", op, storage.ErrClientNotFound)
+			return domain.Client{}, fmt.Errorf("%s: %w", op, storage.ErrEntityNotFound)
 		}
 
 		return domain.Client{}, fmt.Errorf("%s: %w", op, err)
@@ -224,11 +228,6 @@ func (s *Storage) CreateUser(ctx context.Context, user domain.User) (int64, erro
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	now := time.Now()
-	user.Deleted = false
-	user.CreatedAt = now
-	user.UpdatedAt = now
-
 	res, err := stmt.ExecContext(
 		ctx,
 		user.Username,
@@ -245,7 +244,7 @@ func (s *Storage) CreateUser(ctx context.Context, user domain.User) (int64, erro
 	if err != nil {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
-			return 0, fmt.Errorf("%s: %w", op, storage.ErrSessionExists)
+			return 0, fmt.Errorf("%s: %w", op, storage.ErrEntityExists)
 		}
 
 		return 0, fmt.Errorf("%s: %w", op, err)
@@ -259,26 +258,18 @@ func (s *Storage) CreateUser(ctx context.Context, user domain.User) (int64, erro
 	return newUserID, nil
 }
 
-// CreateUserClientLink creates a link between user and client.
-func (s *Storage) CreateUserClientLink(ctx context.Context, userID int64, clientID int64) error {
+// CreateUserClientLink creates a user's client link and returns new link ID.
+func (s *Storage) CreateUserClientLink(ctx context.Context, userClientLink domain.UserClientLink) (int64, error) {
 	const op = "sqlite.CreateUserClientLink"
 
 	stmt, err := s.db.PrepareContext(ctx,
 		`insert into user_clients (user_id, client_id, created_at, updated_at)
 		values (?, ?, ?, ?);`)
 	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	now := time.Now()
-	userClientLink := domain.UserClientLink{
-		UserID:    userID,
-		ClientID:  clientID,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-
-	_, err = stmt.ExecContext(
+	res, err := stmt.ExecContext(
 		ctx,
 		userClientLink.UserID,
 		userClientLink.ClientID,
@@ -289,13 +280,18 @@ func (s *Storage) CreateUserClientLink(ctx context.Context, userID int64, client
 	if err != nil {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
-			return fmt.Errorf("%s: %w", op, storage.ErrUserClientLinkExists)
+			return 0, fmt.Errorf("%s: %w", op, storage.ErrEntityExists)
 		}
 
-		return fmt.Errorf("%s: %w", op, err)
+		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return nil
+	newLinkID, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return newLinkID, nil
 }
 
 // RemoveSession removes a session by ID.
@@ -354,11 +350,48 @@ func (s *Storage) User(ctx context.Context, id int64) (domain.User, error) {
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return domain.User{}, fmt.Errorf("%s: %w", op, storage.ErrUserNotFound)
+			return domain.User{}, fmt.Errorf("%s: %w", op, storage.ErrEntityNotFound)
 		}
 
 		return domain.User{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return user, err
+}
+
+// SessionByRefreshToken returns a session by its refresh token.
+func (s *Storage) SessionByRefreshToken(ctx context.Context, refreshToken string) (domain.Session, error) {
+	const op = "sqlite.SessionByRefreshToken"
+
+	stmt, err := s.db.PrepareContext(ctx,
+		`select id, user_id, refresh_token, user_agent, fingerprint, expires_at, created_at, updated_at
+		from sessions s
+		where s.refresh_token = ?;`)
+	if err != nil {
+		return domain.Session{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	row := stmt.QueryRowContext(ctx, refreshToken)
+
+	var session domain.Session
+	err = row.Scan(
+		&session.ID,
+		&session.UserID,
+		&session.RefreshToken,
+		&session.UserAgent,
+		&session.Fingerprint,
+		&session.ExpiresAt,
+		&session.CreatedAt,
+		&session.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Session{}, fmt.Errorf("%s: %w", op, storage.ErrEntityNotFound)
+		}
+
+		return domain.Session{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return session, err
 }

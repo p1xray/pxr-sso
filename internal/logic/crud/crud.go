@@ -19,8 +19,8 @@ type UserSaver interface {
 	// CreateUser creates a new user in the storage and returns new user ID.
 	CreateUser(ctx context.Context, user domain.User) (int64, error)
 
-	// CreateUserClientLink creates a link between user and client.
-	CreateUserClientLink(ctx context.Context, userID int64, clientID int64) error
+	// CreateUserClientLink creates a user's client link and returns new link ID.
+	CreateUserClientLink(ctx context.Context, userClientLink domain.UserClientLink) (int64, error)
 }
 
 // ClientProvider represents a client provider from storage.
@@ -46,8 +46,8 @@ type SessionProvider interface {
 
 // SessionSaver represents a session saver in storage.
 type SessionSaver interface {
-	// CreateSession creates a new session in the storage.
-	CreateSession(ctx context.Context, session domain.Session) error
+	// CreateSession creates a new session in the storage and returns new session ID.
+	CreateSession(ctx context.Context, session domain.Session) (int64, error)
 
 	// RemoveSession removes a session by ID.
 	RemoveSession(ctx context.Context, id int64) error

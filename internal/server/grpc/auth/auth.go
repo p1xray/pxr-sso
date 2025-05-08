@@ -214,7 +214,9 @@ func (s *serverAPI) Logout(
 		return &ssopb.LogoutResponse{Success: false}, err
 	}
 
-	logoutData := dto.LogoutDTO{}
+	logoutData := dto.LogoutDTO{
+		RefreshToken: req.GetRefreshToken(),
+	}
 	if err := s.auth.Logout(ctx, logoutData); err != nil {
 		return &ssopb.LogoutResponse{Success: false}, server.InternalError("failed to logout")
 	}

@@ -2,18 +2,15 @@ package usercrud
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"log/slog"
-	"pxr-sso/internal/lib/logger/sl"
+	"github.com/guregu/null/v6"
+	"pxr-sso/internal/domain"
 	"pxr-sso/internal/logic/crud"
 	"pxr-sso/internal/logic/dto"
-	"pxr-sso/internal/storage"
+	"time"
 )
 
 // CRUD provides methods for managing user data.
 type CRUD struct {
-	log                *slog.Logger
 	userProvider       crud.UserProvider
 	userSaver          crud.UserSaver
 	permissionProvider crud.PermissionProvider
@@ -21,13 +18,11 @@ type CRUD struct {
 
 // New creates a new instance of the user's CRUD.
 func New(
-	log *slog.Logger,
 	userProvider crud.UserProvider,
 	userSaver crud.UserSaver,
 	permissionProvider crud.PermissionProvider,
 ) *CRUD {
 	return &CRUD{
-		log:                log,
 		userProvider:       userProvider,
 		userSaver:          userSaver,
 		permissionProvider: permissionProvider,
@@ -36,36 +31,20 @@ func New(
 
 // UserWithPermission returns user data with permissions by user ID.
 func (c *CRUD) UserWithPermission(ctx context.Context, id int64) (dto.UserDTO, error) {
-	const op = "usercrud.UserWithPermission"
-
-	log := c.log.With(
-		slog.String("op", op),
-		slog.Int64("user ID", id),
-	)
-
 	user, err := c.userProvider.User(ctx, id)
 	if err != nil {
-		if errors.Is(err, storage.ErrUserNotFound) {
-			log.Warn("user not found in storage", sl.Err(err))
-
-			return dto.UserDTO{}, fmt.Errorf("%s: %w", op, err)
-		}
-
-		log.Error("failed to get user from storage", sl.Err(err))
-
-		return dto.UserDTO{}, fmt.Errorf("%s: %w", op, err)
+		return dto.UserDTO{}, err
 	}
 
 	permissionCodes, err := c.userPermissionCodes(ctx, user.ID)
 	if err != nil {
-		log.Error("failed to get user permissions from storage", sl.Err(err))
-
-		return dto.UserDTO{}, fmt.Errorf("%s: %w", op, err)
+		return dto.UserDTO{}, err
 	}
 
 	userData := dto.UserDTO{
-		ID:          user.ID,
-		Permissions: permissionCodes,
+		ID:           user.ID,
+		PasswordHash: user.PasswordHash,
+		Permissions:  permissionCodes,
 	}
 
 	return userData, nil
@@ -73,39 +52,63 @@ func (c *CRUD) UserWithPermission(ctx context.Context, id int64) (dto.UserDTO, e
 
 // UserWithPermissionByUsername returns user data with permissions by username.
 func (c *CRUD) UserWithPermissionByUsername(ctx context.Context, username string) (dto.UserDTO, error) {
-	const op = "usercrud.UserWithPermissionByUsername"
-
-	log := c.log.With(
-		slog.String("op", op),
-		slog.String("username", username),
-	)
-
 	user, err := c.userProvider.UserByUsername(ctx, username)
 	if err != nil {
-		if errors.Is(err, storage.ErrUserNotFound) {
-			log.Warn("user not found in storage", sl.Err(err))
-
-			return dto.UserDTO{}, fmt.Errorf("%s: %w", op, err)
-		}
-
-		log.Error("failed to get user from storage", sl.Err(err))
-
-		return dto.UserDTO{}, fmt.Errorf("%s: %w", op, err)
+		return dto.UserDTO{}, err
 	}
 
 	permissionCodes, err := c.userPermissionCodes(ctx, user.ID)
 	if err != nil {
-		log.Error("failed to get user permissions from storage", sl.Err(err))
-
-		return dto.UserDTO{}, fmt.Errorf("%s: %w", op, err)
+		return dto.UserDTO{}, err
 	}
 
 	userData := dto.UserDTO{
-		ID:          user.ID,
-		Permissions: permissionCodes,
+		ID:           user.ID,
+		PasswordHash: user.PasswordHash,
+		Permissions:  permissionCodes,
 	}
 
 	return userData, nil
+}
+
+// CreateUser creates a new user in the storage and returns new user ID.
+func (c *CRUD) CreateUser(ctx context.Context, user dto.CreateUserDTO) (int64, error) {
+	now := time.Now()
+	userToCreate := domain.User{
+		Username:      user.Username,
+		PasswordHash:  string(user.PasswordHash),
+		FIO:           user.FIO,
+		DateOfBirth:   null.TimeFromPtr(user.DateOfBirth),
+		Gender:        user.Gender.ToNullInt16(),
+		AvatarFileKey: null.StringFromPtr(user.AvatarFileKey),
+		Deleted:       false,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+
+	newUserID, err := c.userSaver.CreateUser(ctx, userToCreate)
+	if err != nil {
+		return 0, err
+	}
+
+	return newUserID, nil
+}
+
+// CreateUserClientLink creates a user's client link and returns new link ID.
+func (c *CRUD) CreateUserClientLink(ctx context.Context, userID int64, clientID int64) error {
+	now := time.Now()
+	userClientLinkToCreate := domain.UserClientLink{
+		UserID:    userID,
+		ClientID:  clientID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	if _, err := c.userSaver.CreateUserClientLink(ctx, userClientLinkToCreate); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *CRUD) userPermissionCodes(ctx context.Context, userID int64) ([]string, error) {

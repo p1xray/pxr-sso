@@ -81,3 +81,13 @@ type CreateSessionDTO struct {
 	Fingerprint  string
 	ExpiresAt    time.Time
 }
+
+// CreateUserDTO is data for create new user.
+type CreateUserDTO struct {
+	Username      string
+	PasswordHash  []byte
+	FIO           string
+	DateOfBirth   *time.Time
+	Gender        *domain.GenderEnum
+	AvatarFileKey *string
+}

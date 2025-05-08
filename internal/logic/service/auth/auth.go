@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/guregu/null/v6"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
-	"pxr-sso/internal/domain"
 	"pxr-sso/internal/lib/logger/sl"
 	"pxr-sso/internal/lib/token"
 	clientcrud "pxr-sso/internal/logic/crud/client"
@@ -28,9 +26,9 @@ type Auth struct {
 	log             *slog.Logger
 	accessTokenTTL  time.Duration
 	refreshTokenTTL time.Duration
-	userCRUD        usercrud.CRUD
-	clientCRUD      clientcrud.CRUD
-	sessionCRUD     sessioncrud.CRUD
+	userCRUD        *usercrud.CRUD
+	clientCRUD      *clientcrud.CRUD
+	sessionCRUD     *sessioncrud.CRUD
 }
 
 // New creates a new auth service.
@@ -38,9 +36,9 @@ func New(
 	log *slog.Logger,
 	accessTokenTTL time.Duration,
 	refreshTokenTTL time.Duration,
-	userCRUD usercrud.CRUD,
-	clientCRUD clientcrud.CRUD,
-	sessionCRUD sessioncrud.CRUD,
+	userCRUD *usercrud.CRUD,
+	clientCRUD *clientcrud.CRUD,
+	sessionCRUD *sessioncrud.CRUD,
 ) *Auth {
 	return &Auth{
 		log:             log,
@@ -65,7 +63,7 @@ func (a *Auth) Login(ctx context.Context, data dto.LoginDTO) (dto.TokensDTO, err
 	// Get user data from storage.
 	user, err := a.userCRUD.UserWithPermissionByUsername(ctx, data.Username)
 	if err != nil {
-		if errors.Is(err, storage.ErrUserNotFound) {
+		if errors.Is(err, storage.ErrEntityNotFound) {
 			a.log.Warn("user not found", sl.Err(err))
 
 			return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrInvalidCredentials)
@@ -133,7 +131,7 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 
 	// Get user from storage.
 	user, err := a.userCRUD.UserWithPermissionByUsername(ctx, data.Username)
-	if err != nil && !errors.Is(err, storage.ErrUserNotFound) {
+	if err != nil && !errors.Is(err, storage.ErrEntityNotFound) {
 		a.log.Error("failed to get user", sl.Err(err))
 
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
@@ -165,16 +163,16 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 	}
 
 	// Create new user in storage.
-	userToCreate := domain.User{
+	createUserData := dto.CreateUserDTO{
 		Username:      data.Username,
-		PasswordHash:  string(passwordHash),
+		PasswordHash:  passwordHash,
 		FIO:           data.FIO,
-		DateOfBirth:   null.TimeFromPtr(data.DateOfBirth),
-		Gender:        data.Gender.ToNullInt16(),
-		AvatarFileKey: null.StringFromPtr(data.AvatarFileKey),
+		DateOfBirth:   data.DateOfBirth,
+		Gender:        data.Gender,
+		AvatarFileKey: data.AvatarFileKey,
 	}
 
-	newUserID, err := a.storage.CreateUser(ctx, userToCreate)
+	newUserID, err := a.userCRUD.CreateUser(ctx, createUserData)
 	if err != nil {
 		a.log.Error("failed to create user", sl.Err(err))
 
@@ -182,7 +180,7 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 	}
 
 	// Create user's client link in storage.
-	if err = a.storage.CreateUserClientLink(ctx, newUserID, client.ID); err != nil {
+	if err = a.userCRUD.CreateUserClientLink(ctx, newUserID, client.ID); err != nil {
 		a.log.Error("failed to create user's client link", sl.Err(err))
 
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
@@ -237,9 +235,9 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	log.Info("attempting to refresh tokens")
 
 	// Get session by refresh token from storage.
-	session, err := a.storage.SessionByRefreshToken(ctx, data.RefreshToken)
+	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, data.RefreshToken)
 	if err != nil {
-		if errors.Is(err, storage.ErrSessionNotFound) {
+		if errors.Is(err, storage.ErrEntityNotFound) {
 			a.log.Warn("session not found", sl.Err(err))
 
 			return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrSessionNotFound)
@@ -252,7 +250,7 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 
 	// Check session expiration time.
 	now := time.Now()
-	if session.ExpiresAt.After(now) {
+	if session.ExpiresAt.Before(now) {
 		a.log.Warn("refresh token expired")
 
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrRefreshTokenExpired)
@@ -265,7 +263,7 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	}
 
 	// Remove current session from storage.
-	if err = a.storage.RemoveSession(ctx, session.ID); err != nil {
+	if err = a.sessionCRUD.RemoveSession(ctx, session.ID); err != nil {
 		a.log.Error("failed to remove session", sl.Err(err))
 
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
@@ -274,7 +272,7 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	// Get user from storage.
 	user, err := a.userCRUD.UserWithPermission(ctx, session.UserID)
 	if err != nil {
-		if errors.Is(err, storage.ErrUserNotFound) {
+		if errors.Is(err, storage.ErrEntityNotFound) {
 			a.log.Warn("user not found", sl.Err(err))
 
 			return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrUserNotFound)
@@ -334,9 +332,9 @@ func (a *Auth) Logout(ctx context.Context, data dto.LogoutDTO) error {
 	log.Info("attempting to user logout")
 
 	// Get session by refresh token from storage.
-	session, err := a.storage.SessionByRefreshToken(ctx, data.RefreshToken)
+	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, data.RefreshToken)
 	if err != nil {
-		if errors.Is(err, storage.ErrSessionNotFound) {
+		if errors.Is(err, storage.ErrEntityNotFound) {
 			a.log.Warn("session not found", sl.Err(err))
 
 			return fmt.Errorf("%s: %w", op, service.ErrSessionNotFound)
@@ -348,7 +346,7 @@ func (a *Auth) Logout(ctx context.Context, data dto.LogoutDTO) error {
 	}
 
 	// Remove current session from storage.
-	if err = a.storage.RemoveSession(ctx, session.ID); err != nil {
+	if err = a.sessionCRUD.RemoveSession(ctx, session.ID); err != nil {
 		a.log.Error("failed to remove session", sl.Err(err))
 
 		return fmt.Errorf("%s: %w", op, err)

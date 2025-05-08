@@ -2,10 +2,7 @@ package sessioncrud
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"pxr-sso/internal/domain"
-	"pxr-sso/internal/lib/logger/sl"
 	"pxr-sso/internal/logic/crud"
 	"pxr-sso/internal/logic/dto"
 	"time"
@@ -13,34 +10,33 @@ import (
 
 // CRUD provides methods for managing session data.
 type CRUD struct {
-	log             *slog.Logger
 	sessionProvider crud.SessionProvider
 	sessionSaver    crud.SessionSaver
 }
 
 // New creates a new instance of the session's CRUD.
 func New(
-	log *slog.Logger,
 	sessionProvider crud.SessionProvider,
 	sessionSaver crud.SessionSaver,
 ) *CRUD {
 	return &CRUD{
-		log:             log,
 		sessionProvider: sessionProvider,
 		sessionSaver:    sessionSaver,
 	}
 }
 
+// SessionByRefreshToken returns a session by its refresh token.
+func (c *CRUD) SessionByRefreshToken(ctx context.Context, refreshToken string) (domain.Session, error) {
+	session, err := c.sessionProvider.SessionByRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return domain.Session{}, err
+	}
+
+	return session, nil
+}
+
 // CreateSession creates a new session in the storage.
 func (c *CRUD) CreateSession(ctx context.Context, session dto.CreateSessionDTO) error {
-	const op = "sessioncrud.CreateSession"
-
-	log := c.log.With(
-		slog.String("op", op),
-		slog.Int64("user ID", session.UserID),
-		slog.String("refresh token", session.RefreshToken),
-	)
-
 	now := time.Now()
 	sessionToCreate := domain.Session{
 		UserID:       session.UserID,
@@ -51,10 +47,17 @@ func (c *CRUD) CreateSession(ctx context.Context, session dto.CreateSessionDTO) 
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
-	if err := c.sessionSaver.CreateSession(ctx, sessionToCreate); err != nil {
-		log.Error("failed to create session in storage", sl.Err(err))
+	if _, err := c.sessionSaver.CreateSession(ctx, sessionToCreate); err != nil {
+		return err
+	}
 
-		return fmt.Errorf("%s: %w", op, err)
+	return nil
+}
+
+// RemoveSession removes a session by ID.
+func (c *CRUD) RemoveSession(ctx context.Context, id int64) error {
+	if err := c.sessionSaver.RemoveSession(ctx, id); err != nil {
+		return err
 	}
 
 	return nil
