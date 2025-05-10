@@ -39,7 +39,7 @@ func (s *Storage) UserByUsername(ctx context.Context, username string) (domain.U
     		u.fio,
     		u.date_of_birth,
     		u.gender,
-    		u.avatar_file__key,
+    		u.avatar_file_key,
     		u.deleted,
     		u.created_at,
     		u.updated_at
@@ -222,7 +222,7 @@ func (s *Storage) CreateUser(ctx context.Context, user domain.User) (int64, erro
 	const op = "sqlite.CreateUser"
 
 	stmt, err := s.db.PrepareContext(ctx,
-		`insert into users (username, password_hash, fio, date_of_birth, gender, avatar_file__key, deleted, created_at, updated_at)
+		`insert into users (username, password_hash, fio, date_of_birth, gender, avatar_file_key, deleted, created_at, updated_at)
 		values(?, ?, ?, ?, ?, ?, ?, ?, ?);`)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
@@ -323,7 +323,7 @@ func (s *Storage) User(ctx context.Context, id int64) (domain.User, error) {
     		u.fio,
     		u.date_of_birth,
     		u.gender,
-    		u.avatar_file__key,
+    		u.avatar_file_key,
     		u.deleted,
     		u.created_at,
     		u.updated_at

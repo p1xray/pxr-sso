@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users
     fio VARCHAR(255) NOT NULL,
     date_of_birth TIMESTAMP,
     gender INTEGER,
-    avatar_file__key VARCHAR(255),
+    avatar_file_key VARCHAR(255),
     deleted BOOL NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
