@@ -1,0 +1,8 @@
+env: 'local'
+grpc:
+  port: 6004
+  timeout: 1h
+tokens:
+  access_token_ttl: 1h
+  refresh_token_ttl: 24h
+storage_path: './storage/sso.db'
