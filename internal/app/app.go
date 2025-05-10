@@ -4,7 +4,10 @@ import (
 	"log/slog"
 	grpcapp "pxr-sso/internal/app/grpc"
 	"pxr-sso/internal/config"
-	"pxr-sso/internal/service/auth"
+	clientcrud "pxr-sso/internal/logic/crud/client"
+	sessioncrud "pxr-sso/internal/logic/crud/session"
+	usercrud "pxr-sso/internal/logic/crud/user"
+	"pxr-sso/internal/logic/service/auth"
 	"pxr-sso/internal/storage/sqlite"
 )
 
@@ -23,7 +26,18 @@ func New(
 		panic(err)
 	}
 
-	authService := auth.New(log, storage, cfg.Tokens.AccessTokenTTL, cfg.Tokens.RefreshTokenTTL)
+	userCRUD := usercrud.New(storage, storage, storage)
+	clientCRUD := clientcrud.New(storage)
+	sessionCRUD := sessioncrud.New(storage, storage)
+
+	authService := auth.New(
+		log,
+		cfg.Tokens.AccessTokenTTL,
+		cfg.Tokens.RefreshTokenTTL,
+		userCRUD,
+		clientCRUD,
+		sessionCRUD,
+	)
 
 	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService)
 

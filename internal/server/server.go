@@ -1,18 +1,10 @@
-package service
+package server
 
 import (
 	"context"
-	"errors"
-	"pxr-sso/internal/dto"
-)
-
-var (
-	ErrInvalidCredentials  = errors.New("invalid credentials")
-	ErrUserExists          = errors.New("user already exists")
-	ErrSessionNotFound     = errors.New("session not found")
-	ErrRefreshTokenExpired = errors.New("refresh token expired")
-	ErrInvalidSession      = errors.New("invalid session")
-	ErrUserNotFound        = errors.New("user not found")
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"pxr-sso/internal/logic/dto"
 )
 
 // AuthService is service for working with user authentication and authorization.
@@ -28,4 +20,12 @@ type AuthService interface {
 
 	// Logout terminates the user's session.
 	Logout(ctx context.Context, data dto.LogoutDTO) error
+}
+
+func InvalidArgumentError(msg string) error {
+	return status.Error(codes.InvalidArgument, msg)
+}
+
+func InternalError(msg string) error {
+	return status.Error(codes.Internal, msg)
 }

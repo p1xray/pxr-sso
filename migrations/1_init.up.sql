@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users
     fio VARCHAR(255) NOT NULL,
     date_of_birth TIMESTAMP,
     gender INTEGER,
-    avatar_file__key VARCHAR(255),
+    avatar_file_key VARCHAR(255),
     deleted BOOL NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS user_clients
 );
 CREATE INDEX IF NOT EXISTS idx_user_clients_user_id ON user_clients (user_id);
 CREATE INDEX IF NOT EXISTS idx_user_clients_client_id ON user_clients (client_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_clients_user_id_client_id ON user_clients(user_id, client_id);
 
 CREATE TABLE IF NOT EXISTS sessions
 (
