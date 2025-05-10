@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS user_clients
 );
 CREATE INDEX IF NOT EXISTS idx_user_clients_user_id ON user_clients (user_id);
 CREATE INDEX IF NOT EXISTS idx_user_clients_client_id ON user_clients (client_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_clients_user_id_client_id ON user_clients(user_id, client_id);
 
 CREATE TABLE IF NOT EXISTS sessions
 (
