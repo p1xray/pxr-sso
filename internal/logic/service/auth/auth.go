@@ -244,6 +244,17 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	)
 	log.Info("attempting to refresh tokens")
 
+	// TODO: new refresh token steps
+	// * get client by code from storage
+	// * parse refresh token by client secret key
+	// * get session by refresh token ID from storage
+	// * validate current session
+	// * remove current session
+	// * get user by session from storage
+	// * create new access and refresh tokens
+	// * create new session in storage
+	// * return new tokens
+
 	// Get session by refresh token from storage.
 	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, data.RefreshToken)
 	if err != nil {
@@ -345,6 +356,13 @@ func (a *Auth) Logout(ctx context.Context, data dto.LogoutDTO) error {
 		slog.String("refresh token", data.RefreshToken),
 	)
 	log.Info("attempting to user logout")
+
+	// TODO: new logout steps
+	// * get client code in request
+	// * get client by code from storage
+	// * parse refresh token by client secret key
+	// * get session by refresh token ID from storage
+	// * remove current session from storage
 
 	// Get session by refresh token from storage.
 	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, data.RefreshToken)
