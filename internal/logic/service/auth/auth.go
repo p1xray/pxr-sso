@@ -98,12 +98,17 @@ func (a *Auth) Login(ctx context.Context, data dto.LoginDTO) (dto.TokensDTO, err
 	}
 
 	// Create refresh token.
-	refreshToken := token.NewRefreshToken()
+	refreshToken, refreshTokenID, err := token.NewRefreshToken(client.SecretKey, a.refreshTokenTTL)
+	if err != nil {
+		a.log.Error("failed to generate refresh token", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	// Create session in storage.
 	sessionToCreate := dto.CreateSessionDTO{
 		UserID:       user.ID,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshTokenID,
 		UserAgent:    data.UserAgent,
 		Fingerprint:  data.Fingerprint,
 		ExpiresAt:    time.Now().Add(a.refreshTokenTTL),
@@ -203,12 +208,17 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 	}
 
 	// Create refresh token.
-	refreshToken := token.NewRefreshToken()
+	refreshToken, refreshTokenID, err := token.NewRefreshToken(client.SecretKey, a.refreshTokenTTL)
+	if err != nil {
+		a.log.Error("failed to generate refresh token", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	// Create session in storage.
 	sessionToCreate := dto.CreateSessionDTO{
 		UserID:       newUser.ID,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshTokenID,
 		UserAgent:    data.UserAgent,
 		Fingerprint:  data.Fingerprint,
 		ExpiresAt:    time.Now().Add(a.refreshTokenTTL),
@@ -300,12 +310,17 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	}
 
 	// Create refresh token.
-	refreshToken := token.NewRefreshToken()
+	refreshToken, refreshTokenID, err := token.NewRefreshToken(client.SecretKey, a.refreshTokenTTL)
+	if err != nil {
+		a.log.Error("failed to generate refresh token", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	// Create session in storage.
 	sessionToCreate := dto.CreateSessionDTO{
 		UserID:       user.ID,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshTokenID,
 		UserAgent:    data.UserAgent,
 		Fingerprint:  data.Fingerprint,
 		ExpiresAt:    time.Now().Add(a.refreshTokenTTL),

@@ -54,19 +54,20 @@ func NewAccessToken(user *dto.UserDTO, client *dto.ClientDTO, ttl time.Duration,
 }
 
 // NewRefreshToken returns new refresh token.
-func NewRefreshToken(secretKey string, ttl time.Duration) (string, error) {
+func NewRefreshToken(secretKey string, ttl time.Duration) (refreshToken string, refreshTokenID string, err error) {
+	id := uuid.New().String()
 	now := time.Now()
 	claims := RefreshTokenClaims{
-		ID:     uuid.New().String(),
+		ID:     id,
 		Expiry: jwt.NewNumericDate(now.Add(ttl)),
 	}
 
 	tokenStr, err := createSignedTokenWithClaims(claims, secretKey)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return tokenStr, nil
+	return tokenStr, id, nil
 }
 
 // ParseToken parses a token as a string using a secret key into a set of claims.
