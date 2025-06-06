@@ -1,40 +1,51 @@
 package token
 
 import (
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
 	"pxr-sso/internal/logic/dto"
 	"strconv"
+	"strings"
 	"time"
 )
 
 // CustomClaims are custom claims of the current SSO project.
 type CustomClaims struct {
-	ClientID    string   `json:"client_id"`
-	Permissions []string `json:"permissions"`
-	jwt.RegisteredClaims
+	Scope string `json:"scope,omitempty"`
+}
+
+// AccessTokenClaims are all access token claims of the current SSO project.
+type AccessTokenClaims struct {
+	jwt.Claims
+	CustomClaims
+}
+
+// RefreshTokenClaims are refresh token claims of the current SSO project.
+type RefreshTokenClaims struct {
+	ID     string           `json:"jti,omitempty"`
+	Expiry *jwt.NumericDate `json:"exp,omitempty"`
 }
 
 // NewAccessToken returns new JWT with claims.
 func NewAccessToken(user *dto.UserDTO, client *dto.ClientDTO, ttl time.Duration, issuer string) (string, error) {
 	now := time.Now()
-	claims := CustomClaims{
-		client.Code,
-		user.Permissions,
-		jwt.RegisteredClaims{
+	claims := AccessTokenClaims{
+		jwt.Claims{
 			ID:        uuid.New().String(),
 			Subject:   strconv.FormatInt(user.ID, 10),
 			Issuer:    issuer,
 			Audience:  []string{client.Code},
-			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
+			Expiry:    jwt.NewNumericDate(now.Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 		},
+		CustomClaims{
+			Scope: strings.Join(user.Permissions, " "),
+		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	tokenStr, err := token.SignedString([]byte(client.SecretKey))
+	tokenStr, err := createSignedTokenWithClaims(claims, client.SecretKey)
 	if err != nil {
 		return "", err
 	}
@@ -43,7 +54,48 @@ func NewAccessToken(user *dto.UserDTO, client *dto.ClientDTO, ttl time.Duration,
 }
 
 // NewRefreshToken returns new refresh token.
-func NewRefreshToken() string {
-	token := uuid.New()
-	return token.String()
+func NewRefreshToken(secretKey string, ttl time.Duration) (string, error) {
+	now := time.Now()
+	claims := RefreshTokenClaims{
+		ID:     uuid.New().String(),
+		Expiry: jwt.NewNumericDate(now.Add(ttl)),
+	}
+
+	tokenStr, err := createSignedTokenWithClaims(claims, secretKey)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenStr, nil
+}
+
+// ParseToken parses a token as a string using a secret key into a set of claims.
+func ParseToken(tokenStr string, secretKey string) (AccessTokenClaims, error) {
+	token, err := jwt.ParseSigned(tokenStr, []jose.SignatureAlgorithm{jose.HS256})
+	if err != nil {
+		return AccessTokenClaims{}, err
+	}
+
+	claims := AccessTokenClaims{}
+	if err = token.Claims(secretKey, &claims); err != nil {
+		return AccessTokenClaims{}, err
+	}
+
+	return claims, nil
+}
+
+func createSignedTokenWithClaims(claims interface{}, secretKey string) (string, error) {
+	sig, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(secretKey)},
+		(&jose.SignerOptions{}).WithType("JWT"))
+	if err != nil {
+		return "", err
+	}
+
+	tokenStr, err := jwt.Signed(sig).Claims(claims).Serialize()
+	if err != nil {
+		return "", err
+	}
+
+	return tokenStr, nil
 }
