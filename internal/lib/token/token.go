@@ -70,8 +70,8 @@ func NewRefreshToken(secretKey string, ttl time.Duration) (refreshToken string, 
 	return tokenStr, id, nil
 }
 
-// ParseToken parses a token as a string using a secret key into a set of claims.
-func ParseToken(tokenStr string, secretKey string) (AccessTokenClaims, error) {
+// ParseAccessToken parses access token as a string using a secret key into a set of claims.
+func ParseAccessToken(tokenStr string, secretKey string) (AccessTokenClaims, error) {
 	token, err := jwt.ParseSigned(tokenStr, []jose.SignatureAlgorithm{jose.HS256})
 	if err != nil {
 		return AccessTokenClaims{}, err
@@ -80,6 +80,21 @@ func ParseToken(tokenStr string, secretKey string) (AccessTokenClaims, error) {
 	claims := AccessTokenClaims{}
 	if err = token.Claims(secretKey, &claims); err != nil {
 		return AccessTokenClaims{}, err
+	}
+
+	return claims, nil
+}
+
+// ParseRefreshToken parses refresh token as a string using a secret key into a set of claims.
+func ParseRefreshToken(tokenStr string, secretKey string) (RefreshTokenClaims, error) {
+	token, err := jwt.ParseSigned(tokenStr, []jose.SignatureAlgorithm{jose.HS256})
+	if err != nil {
+		return RefreshTokenClaims{}, err
+	}
+
+	claims := RefreshTokenClaims{}
+	if err = token.Claims(secretKey, &claims); err != nil {
+		return RefreshTokenClaims{}, err
 	}
 
 	return claims, nil

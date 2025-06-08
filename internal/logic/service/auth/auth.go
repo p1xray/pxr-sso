@@ -243,20 +243,25 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 		slog.String("refresh token", data.RefreshToken),
 	)
 	log.Info("attempting to refresh tokens")
+	
+	// Get client by code from storage.
+	client, err := a.clientCRUD.ClientByCode(ctx, data.ClientCode)
+	if err != nil {
+		a.log.Error("failed to get client", sl.Err(err))
 
-	// TODO: new refresh token steps
-	// * get client by code from storage
-	// * parse refresh token by client secret key
-	// * get session by refresh token ID from storage
-	// * validate current session
-	// * remove current session
-	// * get user by session from storage
-	// * create new access and refresh tokens
-	// * create new session in storage
-	// * return new tokens
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
-	// Get session by refresh token from storage.
-	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, data.RefreshToken)
+	// Parse refresh token by client secret key.
+	refreshTokenClaims, err := token.ParseRefreshToken(data.RefreshToken, client.SecretKey)
+	if err != nil {
+		a.log.Error("failed to parse refresh token", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Get session by refresh token ID from storage
+	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, refreshTokenClaims.ID)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			a.log.Warn("session not found", sl.Err(err))
@@ -277,17 +282,11 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrRefreshTokenExpired)
 	}
 
+	// Check session user agent and fingerprint.
 	if session.UserAgent != data.UserAgent && session.Fingerprint != data.Fingerprint {
 		a.log.Warn("invalid session")
 
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrInvalidSession)
-	}
-
-	// Remove current session from storage.
-	if err = a.sessionCRUD.RemoveSession(ctx, session.ID); err != nil {
-		a.log.Error("failed to remove session", sl.Err(err))
-
-		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	// Get user from storage.
@@ -304,10 +303,9 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Get user client by user link and client code from storage.
-	client, err := a.clientCRUD.UserClient(ctx, user.ID, data.ClientCode)
-	if err != nil {
-		a.log.Error("failed to get client", sl.Err(err))
+	// Remove current session from storage.
+	if err = a.sessionCRUD.RemoveSession(ctx, session.ID); err != nil {
+		a.log.Error("failed to remove session", sl.Err(err))
 
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
