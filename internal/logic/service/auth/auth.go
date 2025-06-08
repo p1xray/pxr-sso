@@ -98,12 +98,17 @@ func (a *Auth) Login(ctx context.Context, data dto.LoginDTO) (dto.TokensDTO, err
 	}
 
 	// Create refresh token.
-	refreshToken := token.NewRefreshToken()
+	refreshToken, refreshTokenID, err := token.NewRefreshToken(client.SecretKey, a.refreshTokenTTL)
+	if err != nil {
+		a.log.Error("failed to generate refresh token", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	// Create session in storage.
 	sessionToCreate := dto.CreateSessionDTO{
 		UserID:       user.ID,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshTokenID,
 		UserAgent:    data.UserAgent,
 		Fingerprint:  data.Fingerprint,
 		ExpiresAt:    time.Now().Add(a.refreshTokenTTL),
@@ -203,12 +208,17 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 	}
 
 	// Create refresh token.
-	refreshToken := token.NewRefreshToken()
+	refreshToken, refreshTokenID, err := token.NewRefreshToken(client.SecretKey, a.refreshTokenTTL)
+	if err != nil {
+		a.log.Error("failed to generate refresh token", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	// Create session in storage.
 	sessionToCreate := dto.CreateSessionDTO{
 		UserID:       newUser.ID,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshTokenID,
 		UserAgent:    data.UserAgent,
 		Fingerprint:  data.Fingerprint,
 		ExpiresAt:    time.Now().Add(a.refreshTokenTTL),
@@ -234,8 +244,24 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	)
 	log.Info("attempting to refresh tokens")
 
-	// Get session by refresh token from storage.
-	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, data.RefreshToken)
+	// Get client by code from storage.
+	client, err := a.clientCRUD.ClientByCode(ctx, data.ClientCode)
+	if err != nil {
+		a.log.Error("failed to get client", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Parse refresh token by client secret key.
+	refreshTokenClaims, err := token.ParseRefreshToken(data.RefreshToken, client.SecretKey)
+	if err != nil {
+		a.log.Error("failed to parse refresh token", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Get session by refresh token ID from storage.
+	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, refreshTokenClaims.ID)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			a.log.Warn("session not found", sl.Err(err))
@@ -256,17 +282,11 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrRefreshTokenExpired)
 	}
 
+	// Check session user agent and fingerprint.
 	if session.UserAgent != data.UserAgent && session.Fingerprint != data.Fingerprint {
 		a.log.Warn("invalid session")
 
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, service.ErrInvalidSession)
-	}
-
-	// Remove current session from storage.
-	if err = a.sessionCRUD.RemoveSession(ctx, session.ID); err != nil {
-		a.log.Error("failed to remove session", sl.Err(err))
-
-		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	// Get user from storage.
@@ -283,10 +303,9 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Get user client by user link and client code from storage.
-	client, err := a.clientCRUD.UserClient(ctx, user.ID, data.ClientCode)
-	if err != nil {
-		a.log.Error("failed to get client", sl.Err(err))
+	// Remove current session from storage.
+	if err = a.sessionCRUD.RemoveSession(ctx, session.ID); err != nil {
+		a.log.Error("failed to remove session", sl.Err(err))
 
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -300,12 +319,17 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	}
 
 	// Create refresh token.
-	refreshToken := token.NewRefreshToken()
+	refreshToken, refreshTokenID, err := token.NewRefreshToken(client.SecretKey, a.refreshTokenTTL)
+	if err != nil {
+		a.log.Error("failed to generate refresh token", sl.Err(err))
+
+		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	// Create session in storage.
 	sessionToCreate := dto.CreateSessionDTO{
 		UserID:       user.ID,
-		RefreshToken: refreshToken,
+		RefreshToken: refreshTokenID,
 		UserAgent:    data.UserAgent,
 		Fingerprint:  data.Fingerprint,
 		ExpiresAt:    time.Now().Add(a.refreshTokenTTL),
@@ -331,8 +355,24 @@ func (a *Auth) Logout(ctx context.Context, data dto.LogoutDTO) error {
 	)
 	log.Info("attempting to user logout")
 
+	// Get client by code from storage.
+	client, err := a.clientCRUD.ClientByCode(ctx, data.ClientCode)
+	if err != nil {
+		a.log.Error("failed to get client", sl.Err(err))
+
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Parse refresh token by client secret key.
+	refreshTokenClaims, err := token.ParseRefreshToken(data.RefreshToken, client.SecretKey)
+	if err != nil {
+		a.log.Error("failed to parse refresh token", sl.Err(err))
+
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	// Get session by refresh token from storage.
-	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, data.RefreshToken)
+	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, refreshTokenClaims.ID)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			a.log.Warn("session not found", sl.Err(err))
