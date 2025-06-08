@@ -39,7 +39,7 @@ func (s *serverAPI) Login(
 		ClientCode:  req.GetClientCode(),
 		UserAgent:   req.GetUserAgent(),
 		Fingerprint: req.GetFingerprint(),
-		Issuer:      "issuer", // TODO: get from request
+		Issuer:      req.GetIssuer(),
 	}
 
 	tokens, err := s.auth.Login(ctx, loginData)
@@ -75,7 +75,9 @@ func validateLoginRequest(req *ssopb.LoginRequest) error {
 		return server.InvalidArgumentError("fingerprint is empty")
 	}
 
-	// TODO: add validate issuer from request
+	if req.GetIssuer() == "" {
+		return server.InvalidArgumentError("issuer is empty")
+	}
 
 	return nil
 }
@@ -107,7 +109,7 @@ func (s *serverAPI) Register(
 	}
 
 	registerData := dto.RegisterDTO{
-		Username:      req.GetUserName(),
+		Username:      req.GetUsername(),
 		Password:      req.GetPassword(),
 		ClientCode:    req.GetClientCode(),
 		FIO:           req.GetFio(),
@@ -116,7 +118,7 @@ func (s *serverAPI) Register(
 		AvatarFileKey: avatarFileKey,
 		UserAgent:     req.GetUserAgent(),
 		Fingerprint:   req.GetFingerprint(),
-		Issuer:        "issuer", // TODO: get from request
+		Issuer:        req.GetIssuer(),
 	}
 
 	tokens, err := s.auth.Register(ctx, registerData)
@@ -132,8 +134,7 @@ func (s *serverAPI) Register(
 }
 
 func validateRegisterRequest(req *ssopb.RegisterRequest) error {
-	// TODO: fix field name in proto file
-	if req.GetUserName() == "" {
+	if req.GetUsername() == "" {
 		return server.InvalidArgumentError("username is empty")
 	}
 
@@ -157,7 +158,9 @@ func validateRegisterRequest(req *ssopb.RegisterRequest) error {
 		return server.InvalidArgumentError("fingerprint is empty")
 	}
 
-	// TODO: add validate issuer from request
+	if req.GetIssuer() == "" {
+		return server.InvalidArgumentError("issuer is empty")
+	}
 
 	return nil
 }
@@ -172,10 +175,10 @@ func (s *serverAPI) RefreshTokens(
 
 	refreshTokensData := dto.RefreshTokensDTO{
 		RefreshToken: req.GetRefreshToken(),
-		ClientCode:   "test", // TODO: get from request
+		ClientCode:   req.GetClientCode(),
 		UserAgent:    req.GetUserAgent(),
 		Fingerprint:  req.GetFingerprint(),
-		Issuer:       "issuer", // TODO: get from request
+		Issuer:       req.GetIssuer(),
 	}
 
 	tokens, err := s.auth.RefreshTokens(ctx, refreshTokensData)
@@ -199,8 +202,13 @@ func validateRefreshTokensRequest(req *ssopb.RefreshTokensRequest) error {
 		return server.InvalidArgumentError("fingerprint is empty")
 	}
 
-	// TODO: add validate client code from request
-	// TODO: add validate issuer from request
+	if req.GetClientCode() == "" {
+		return server.InvalidArgumentError("client code is empty")
+	}
+
+	if req.GetIssuer() == "" {
+		return server.InvalidArgumentError("issuer is empty")
+	}
 
 	return nil
 }
@@ -215,7 +223,7 @@ func (s *serverAPI) Logout(
 
 	logoutData := dto.LogoutDTO{
 		RefreshToken: req.GetRefreshToken(),
-		ClientCode:   "test", // TODO: get from request
+		ClientCode:   req.GetClientCode(),
 	}
 	if err := s.auth.Logout(ctx, logoutData); err != nil {
 		return &ssopb.LogoutResponse{Success: false}, server.InternalError("failed to logout")
@@ -229,7 +237,9 @@ func validateLogoutRequest(req *ssopb.LogoutRequest) error {
 		return server.InvalidArgumentError("refresh token is empty")
 	}
 
-	// TODO: add validate client code from request
+	if req.GetClientCode() == "" {
+		return server.InvalidArgumentError("client code is empty")
+	}
 
 	return nil
 }
