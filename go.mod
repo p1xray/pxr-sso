@@ -9,7 +9,7 @@ require (
 	github.com/guregu/null/v6 v6.0.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/mattn/go-sqlite3 v1.14.28
-	github.com/p1xray/pxr-sso-protos v0.0.1
+	github.com/p1xray/pxr-sso-protos v0.0.2
 	golang.org/x/crypto v0.37.0
 	gopkg.in/go-jose/go-jose.v2 v2.6.3
 )
