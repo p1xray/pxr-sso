@@ -243,7 +243,7 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 		slog.String("refresh token", data.RefreshToken),
 	)
 	log.Info("attempting to refresh tokens")
-	
+
 	// Get client by code from storage.
 	client, err := a.clientCRUD.ClientByCode(ctx, data.ClientCode)
 	if err != nil {
@@ -260,7 +260,7 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 		return dto.TokensDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Get session by refresh token ID from storage
+	// Get session by refresh token ID from storage.
 	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, refreshTokenClaims.ID)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
@@ -355,15 +355,24 @@ func (a *Auth) Logout(ctx context.Context, data dto.LogoutDTO) error {
 	)
 	log.Info("attempting to user logout")
 
-	// TODO: new logout steps
-	// * get client code in request
-	// * get client by code from storage
-	// * parse refresh token by client secret key
-	// * get session by refresh token ID from storage
-	// * remove current session from storage
+	// Get client by code from storage.
+	client, err := a.clientCRUD.ClientByCode(ctx, data.ClientCode)
+	if err != nil {
+		a.log.Error("failed to get client", sl.Err(err))
+
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Parse refresh token by client secret key.
+	refreshTokenClaims, err := token.ParseRefreshToken(data.RefreshToken, client.SecretKey)
+	if err != nil {
+		a.log.Error("failed to parse refresh token", sl.Err(err))
+
+		return fmt.Errorf("%s: %w", op, err)
+	}
 
 	// Get session by refresh token from storage.
-	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, data.RefreshToken)
+	session, err := a.sessionCRUD.SessionByRefreshToken(ctx, refreshTokenClaims.ID)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			a.log.Warn("session not found", sl.Err(err))

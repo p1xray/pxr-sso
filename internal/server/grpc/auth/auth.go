@@ -215,6 +215,7 @@ func (s *serverAPI) Logout(
 
 	logoutData := dto.LogoutDTO{
 		RefreshToken: req.GetRefreshToken(),
+		ClientCode:   "test", // TODO: get from request
 	}
 	if err := s.auth.Logout(ctx, logoutData); err != nil {
 		return &ssopb.LogoutResponse{Success: false}, server.InternalError("failed to logout")
@@ -227,6 +228,8 @@ func validateLogoutRequest(req *ssopb.LogoutRequest) error {
 	if req.GetRefreshToken() == "" {
 		return server.InvalidArgumentError("refresh token is empty")
 	}
+
+	// TODO: add validate client code from request
 
 	return nil
 }
