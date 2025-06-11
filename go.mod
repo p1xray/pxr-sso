@@ -11,7 +11,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/p1xray/pxr-sso-protos v0.0.2
 	golang.org/x/crypto v0.37.0
-	gopkg.in/go-jose/go-jose.v2 v2.6.3
 )
 
 require (

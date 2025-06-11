@@ -4,39 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"pxr-sso/pkg/jwt"
+	jwtparser "pxr-sso/pkg/jwt/parser"
 	"time"
 
-	"gopkg.in/go-jose/go-jose.v2/jwt"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 )
 
-// Signature algorithms
-const (
-	EdDSA = SignatureAlgorithm("EdDSA")
-	HS256 = SignatureAlgorithm("HS256") // HMAC using SHA-256
-	HS384 = SignatureAlgorithm("HS384") // HMAC using SHA-384
-	HS512 = SignatureAlgorithm("HS512") // HMAC using SHA-512
-	RS256 = SignatureAlgorithm("RS256") // RSASSA-PKCS-v1.5 using SHA-256
-	RS384 = SignatureAlgorithm("RS384") // RSASSA-PKCS-v1.5 using SHA-384
-	RS512 = SignatureAlgorithm("RS512") // RSASSA-PKCS-v1.5 using SHA-512
-	ES256 = SignatureAlgorithm("ES256") // ECDSA using P-256 and SHA-256
-	ES384 = SignatureAlgorithm("ES384") // ECDSA using P-384 and SHA-384
-	ES512 = SignatureAlgorithm("ES512") // ECDSA using P-521 and SHA-512
-	PS256 = SignatureAlgorithm("PS256") // RSASSA-PSS using SHA256 and MGF1-SHA256
-	PS384 = SignatureAlgorithm("PS384") // RSASSA-PSS using SHA384 and MGF1-SHA384
-	PS512 = SignatureAlgorithm("PS512") // RSASSA-PSS using SHA512 and MGF1-SHA512
-)
-
+// Validator is used to validate JWT.
 type Validator struct {
 	keyFunc            func(context.Context) ([]byte, error)
-	signatureAlgorithm SignatureAlgorithm
+	signatureAlgorithm jose.SignatureAlgorithm
 	expectedClaims     jwt.Expected
-	customClaims       func() CustomClaims
+	customClaims       func() jwtmiddleware.CustomClaims
 	allowedClockSkew   time.Duration
 }
 
-// SignatureAlgorithm represents a signature (or MAC) algorithm.
-type SignatureAlgorithm string
-
+// New returns new JWT validator instance.
 func New(
 	keyFunc func(context.Context) ([]byte, error),
 	issuer string,
@@ -57,10 +42,10 @@ func New(
 
 	validator := &Validator{
 		keyFunc:            keyFunc,
-		signatureAlgorithm: HS256,
+		signatureAlgorithm: jose.HS256,
 		expectedClaims: jwt.Expected{
-			Issuer:   issuer,
-			Audience: audience,
+			Issuer:      issuer,
+			AnyAudience: audience,
 		},
 	}
 
@@ -71,77 +56,63 @@ func New(
 	return validator, nil
 }
 
-func (v *Validator) ValidateToken(ctx context.Context, tokenString string) (ValidatedClaims, error) {
-	token, err := jwt.ParseSigned(tokenString)
+// ValidateToken validates the passed token and returns the validated claims from the token.
+func (v *Validator) ValidateToken(ctx context.Context, tokenString string) (jwtmiddleware.ValidatedClaims, error) {
+	token, err := jwt.ParseSigned(tokenString, []jose.SignatureAlgorithm{v.signatureAlgorithm})
 	if err != nil {
-		return ValidatedClaims{}, fmt.Errorf("error parsing token: %w", err)
+		return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("error parsing token: %w", err)
 	}
 
-	if err = validateSigningMethod(v.signatureAlgorithm, SignatureAlgorithm(token.Headers[0].Algorithm)); err != nil {
-		return ValidatedClaims{}, fmt.Errorf("signing method is invalid: %w", err)
-	}
-
-	registeredClaims, customClaims, err := v.deserializeClaims(ctx, token)
+	signatureAlgorithm, err := jwtparser.ParseSignatureAlgorithm(token)
 	if err != nil {
-		return ValidatedClaims{}, fmt.Errorf("error deserializing token claims: %w", err)
+		return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("error parsing signature algorithm: %w", err)
 	}
 
-	if err = validateClaimsWithLeeway(registeredClaims, v.expectedClaims, v.allowedClockSkew); err != nil {
-		return ValidatedClaims{}, fmt.Errorf("error validating claims: %w", err)
+	if err = validateSigningMethod(v.signatureAlgorithm, signatureAlgorithm); err != nil {
+		return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("signing method is invalid: %w", err)
+	}
+
+	registeredClaims, customClaims, err := v.parseClaims(ctx, token)
+	if err != nil {
+		return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("error deserializing token claims: %w", err)
+	}
+
+	if err = validateClaimsWithLeeway(registeredClaims.Claims, v.expectedClaims, v.allowedClockSkew); err != nil {
+		return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("error validating claims: %w", err)
 	}
 
 	if customClaims != nil {
 		if err = customClaims.Validate(ctx); err != nil {
-			return ValidatedClaims{}, fmt.Errorf("error validating custom claims: %w", err)
+			return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("error validating custom claims: %w", err)
 		}
 	}
 
-	validatedClaims := ValidatedClaims{
-		RegisteredClaims: RegisteredClaims{
-			Issuer:    registeredClaims.Issuer,
-			Subject:   registeredClaims.Subject,
-			Audience:  registeredClaims.Audience,
-			Expiry:    numericDateToUnixTime(registeredClaims.Expiry),
-			NotBefore: numericDateToUnixTime(registeredClaims.NotBefore),
-			IssuedAt:  numericDateToUnixTime(registeredClaims.IssuedAt),
-			ID:        registeredClaims.ID,
-		},
-		CustomClaims: customClaims,
+	validatedClaims := jwtmiddleware.ValidatedClaims{
+		RegisteredClaims: registeredClaims,
+		CustomClaims:     customClaims,
 	}
 
 	return validatedClaims, nil
 }
 
-func (v *Validator) deserializeClaims(ctx context.Context, token *jwt.JSONWebToken) (jwt.Claims, CustomClaims, error) {
+func (v *Validator) parseClaims(
+	ctx context.Context,
+	token *jwt.JSONWebToken,
+) (jwtmiddleware.AccessTokenClaims, jwtmiddleware.CustomClaims, error) {
 	key, err := v.keyFunc(ctx)
 	if err != nil {
-		return jwt.Claims{}, nil, fmt.Errorf("error getting key: %w", err)
+		return jwtmiddleware.AccessTokenClaims{}, nil, fmt.Errorf("error getting key: %w", err)
 	}
 
-	claims := []interface{}{&jwt.Claims{}}
-	if v.customClaimsExist() {
-		claims = append(claims, v.customClaims())
-	}
-
-	if err = token.Claims(key, claims...); err != nil {
-		return jwt.Claims{}, nil, fmt.Errorf("error getting token claims: %w", err)
-	}
-
-	registeredClaims := *claims[0].(*jwt.Claims)
-
-	var customClaims CustomClaims
-	if len(claims) > 1 {
-		customClaims = claims[1].(CustomClaims)
+	registeredClaims, customClaims, err := jwtparser.ParseAccessToken(token, key, v.customClaims)
+	if err != nil {
+		return jwtmiddleware.AccessTokenClaims{}, nil, fmt.Errorf("error parsing token: %w", err)
 	}
 
 	return registeredClaims, customClaims, nil
 }
 
-func (v *Validator) customClaimsExist() bool {
-	return v.customClaims != nil && v.customClaims() != nil
-}
-
-func validateSigningMethod(validAlgorithmName, tokenAlgorithmName SignatureAlgorithm) error {
+func validateSigningMethod(validAlgorithmName, tokenAlgorithmName jose.SignatureAlgorithm) error {
 	if validAlgorithmName != tokenAlgorithmName {
 		return fmt.Errorf("expected %q signing algorithm but token specified %q", validAlgorithmName, tokenAlgorithmName)
 	}
@@ -181,11 +152,4 @@ func validateClaimsWithLeeway(claims jwt.Claims, expected jwt.Expected, leeway t
 	}
 
 	return nil
-}
-
-func numericDateToUnixTime(date *jwt.NumericDate) int64 {
-	if date != nil {
-		return date.Time().Unix()
-	}
-	return 0
 }
