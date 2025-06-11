@@ -12,7 +12,7 @@ type JWTMiddleware struct {
 	tokenExtractor TokenExtractor
 }
 
-type ValidateToken func(context.Context, string) (interface{}, error)
+type ValidateToken func(context.Context, string) (ValidatedClaims, error)
 
 type ContextKey struct{}
 

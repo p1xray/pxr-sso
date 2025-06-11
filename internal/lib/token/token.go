@@ -5,32 +5,16 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
 	"pxr-sso/internal/logic/dto"
+	jwtmiddleware "pxr-sso/pkg/jwt"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// CustomClaims are custom claims of the current SSO project.
-type CustomClaims struct {
-	Scope string `json:"scope,omitempty"`
-}
-
-// AccessTokenClaims are all access token claims of the current SSO project.
-type AccessTokenClaims struct {
-	jwt.Claims
-	CustomClaims
-}
-
-// RefreshTokenClaims are refresh token claims of the current SSO project.
-type RefreshTokenClaims struct {
-	ID     string           `json:"jti,omitempty"`
-	Expiry *jwt.NumericDate `json:"exp,omitempty"`
-}
-
 // NewAccessToken returns new JWT with claims.
 func NewAccessToken(user *dto.UserDTO, client *dto.ClientDTO, ttl time.Duration, issuer string) (string, error) {
 	now := time.Now()
-	claims := AccessTokenClaims{
+	claims := jwtmiddleware.AccessTokenClaims{
 		jwt.Claims{
 			ID:        uuid.New().String(),
 			Subject:   strconv.FormatInt(user.ID, 10),
@@ -40,7 +24,7 @@ func NewAccessToken(user *dto.UserDTO, client *dto.ClientDTO, ttl time.Duration,
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 		},
-		CustomClaims{
+		jwtmiddleware.RegisteredCustomClaims{
 			Scope: strings.Join(user.Permissions, " "),
 		},
 	}
@@ -57,7 +41,7 @@ func NewAccessToken(user *dto.UserDTO, client *dto.ClientDTO, ttl time.Duration,
 func NewRefreshToken(secretKey string, ttl time.Duration) (refreshToken string, refreshTokenID string, err error) {
 	id := uuid.New().String()
 	now := time.Now()
-	claims := RefreshTokenClaims{
+	claims := jwtmiddleware.RefreshTokenClaims{
 		ID:     id,
 		Expiry: jwt.NewNumericDate(now.Add(ttl)),
 	}
@@ -71,30 +55,30 @@ func NewRefreshToken(secretKey string, ttl time.Duration) (refreshToken string, 
 }
 
 // ParseAccessToken parses access token as a string using a secret key into a set of claims.
-func ParseAccessToken(tokenStr string, secretKey string) (AccessTokenClaims, error) {
+func ParseAccessToken(tokenStr string, secretKey string) (jwtmiddleware.AccessTokenClaims, error) {
 	token, err := jwt.ParseSigned(tokenStr, []jose.SignatureAlgorithm{jose.HS256})
 	if err != nil {
-		return AccessTokenClaims{}, err
+		return jwtmiddleware.AccessTokenClaims{}, err
 	}
 
-	claims := AccessTokenClaims{}
+	claims := jwtmiddleware.AccessTokenClaims{}
 	if err = token.Claims(secretKey, &claims); err != nil {
-		return AccessTokenClaims{}, err
+		return jwtmiddleware.AccessTokenClaims{}, err
 	}
 
 	return claims, nil
 }
 
 // ParseRefreshToken parses refresh token as a string using a secret key into a set of claims.
-func ParseRefreshToken(tokenStr string, secretKey string) (RefreshTokenClaims, error) {
+func ParseRefreshToken(tokenStr string, secretKey string) (jwtmiddleware.RefreshTokenClaims, error) {
 	token, err := jwt.ParseSigned(tokenStr, []jose.SignatureAlgorithm{jose.HS256})
 	if err != nil {
-		return RefreshTokenClaims{}, err
+		return jwtmiddleware.RefreshTokenClaims{}, err
 	}
 
-	claims := RefreshTokenClaims{}
+	claims := jwtmiddleware.RefreshTokenClaims{}
 	if err = token.Claims(secretKey, &claims); err != nil {
-		return RefreshTokenClaims{}, err
+		return jwtmiddleware.RefreshTokenClaims{}, err
 	}
 
 	return claims, nil
