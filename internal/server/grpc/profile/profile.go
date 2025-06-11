@@ -60,7 +60,7 @@ func (s *serverAPI) GetProfile(
 	return &ssoprofilepb.GetProfileResponse{
 		UserId:        userProfile.UserID,
 		Username:      userProfile.Username,
-		Fio:           userProfile.Fio,
+		Fio:           userProfile.FIO,
 		DateOfBirth:   dateOfBirthPb,
 		Gender:        genderPb,
 		AvatarFileKey: avatarFileKeyPb,
