@@ -8,6 +8,7 @@ import (
 	sessioncrud "pxr-sso/internal/logic/crud/session"
 	usercrud "pxr-sso/internal/logic/crud/user"
 	"pxr-sso/internal/logic/service/auth"
+	"pxr-sso/internal/logic/service/profile"
 	"pxr-sso/internal/storage/sqlite"
 )
 
@@ -39,7 +40,9 @@ func New(
 		sessionCRUD,
 	)
 
-	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService)
+	profileService := profile.New(log, userCRUD)
+
+	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, profileService)
 
 	return &App{
 		GRPCServer: grpcApp,

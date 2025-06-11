@@ -108,3 +108,13 @@ type CreateUserDTO struct {
 	Gender        *GenderEnum
 	AvatarFileKey *string
 }
+
+// UserProfileDTO is user profile data.
+type UserProfileDTO struct {
+	UserID        int64
+	Username      string
+	Fio           string
+	DateOfBirth   *time.Time
+	Gender        *GenderEnum
+	AvatarFileKey *string
+}
