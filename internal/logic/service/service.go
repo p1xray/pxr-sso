@@ -11,4 +11,5 @@ var (
 	ErrRefreshTokenExpired = errors.New("refresh token expired")
 	ErrInvalidSession      = errors.New("invalid session")
 	ErrUserNotFound        = errors.New("user not found")
+	ErrClientNotFound      = errors.New("client not found")
 )

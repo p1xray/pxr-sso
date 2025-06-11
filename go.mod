@@ -1,15 +1,15 @@
 module pxr-sso
 
-go 1.23.4
+go 1.24.4
 
 require (
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/go-jose/go-jose/v4 v4.1.0
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/uuid v1.6.0
 	github.com/guregu/null/v6 v6.0.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/mattn/go-sqlite3 v1.14.28
-	github.com/p1xray/pxr-sso-protos v0.0.1
+	github.com/p1xray/pxr-sso-protos v0.0.2
 	golang.org/x/crypto v0.37.0
 )
 
