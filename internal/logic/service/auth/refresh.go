@@ -75,7 +75,7 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	}
 
 	// Get user from storage.
-	user, err := a.userCRUD.UserWithPermission(ctx, session.UserID)
+	user, err := a.userCRUD.UserWithPermissions(ctx, session.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			log.Warn("user not found", sl.Err(err))

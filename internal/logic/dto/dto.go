@@ -21,8 +21,8 @@ func (ge *GenderEnum) ToNullInt16() null.Int16 {
 	return null.Int16From(int16(*ge))
 }
 
-// UserDTO is information about the user.
-type UserDTO struct {
+// UserWithPermissionsDTO is information about the user with permissions.
+type UserWithPermissionsDTO struct {
 	ID           int64
 	PasswordHash string
 	Permissions  []string
@@ -103,6 +103,26 @@ type CreateSessionDTO struct {
 type CreateUserDTO struct {
 	Username      string
 	PasswordHash  []byte
+	FIO           string
+	DateOfBirth   *time.Time
+	Gender        *GenderEnum
+	AvatarFileKey *string
+}
+
+// UserProfileDTO is user profile data.
+type UserProfileDTO struct {
+	UserID        int64
+	Username      string
+	FIO           string
+	DateOfBirth   *time.Time
+	Gender        *GenderEnum
+	AvatarFileKey *string
+}
+
+// UserDTO is information about the user.
+type UserDTO struct {
+	ID            int64
+	Username      string
 	FIO           string
 	DateOfBirth   *time.Time
 	Gender        *GenderEnum

@@ -6,6 +6,7 @@ import (
 	"net"
 	"pxr-sso/internal/server"
 	authserver "pxr-sso/internal/server/grpc/auth"
+	profileserver "pxr-sso/internal/server/grpc/profile"
 
 	"google.golang.org/grpc"
 )
@@ -22,10 +23,12 @@ func New(
 	log *slog.Logger,
 	port int,
 	authService server.AuthService,
+	profileService server.ProfileService,
 ) *App {
 	gRPCServer := grpc.NewServer()
 
 	authserver.Register(gRPCServer, authService)
+	profileserver.Register(gRPCServer, profileService)
 
 	return &App{
 		log:        log,

@@ -24,7 +24,7 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 	log.Info("attempting to register new user")
 
 	// Get user from storage.
-	user, err := a.userCRUD.UserWithPermissionByUsername(ctx, data.Username)
+	user, err := a.userCRUD.UserWithPermissionsByUsername(ctx, data.Username)
 	if err != nil && !errors.Is(err, storage.ErrEntityNotFound) {
 		log.Error("failed to get user", sl.Err(err))
 
@@ -87,7 +87,7 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 	}
 
 	// Get user permissions from storage.
-	newUser, err := a.userCRUD.UserWithPermission(ctx, newUserID)
+	newUser, err := a.userCRUD.UserWithPermissions(ctx, newUserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			log.Warn("user not found", sl.Err(err))

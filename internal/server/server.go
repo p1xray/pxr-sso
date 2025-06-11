@@ -22,10 +22,20 @@ type AuthService interface {
 	Logout(ctx context.Context, data dto.LogoutDTO) error
 }
 
+// ProfileService is service for working with user profile.
+type ProfileService interface {
+	// UserProfile returns user profile data.
+	UserProfile(ctx context.Context, userID int64) (dto.UserProfileDTO, error)
+}
+
 func InvalidArgumentError(msg string) error {
 	return status.Error(codes.InvalidArgument, msg)
 }
 
 func InternalError(msg string) error {
 	return status.Error(codes.Internal, msg)
+}
+
+func NotFoundError(msg string) error {
+	return status.Error(codes.NotFound, msg)
 }
