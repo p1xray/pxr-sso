@@ -7,13 +7,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"pxr-sso/internal/lib/logger/sl"
-	"pxr-sso/internal/lib/token"
 	clientcrud "pxr-sso/internal/logic/crud/client"
 	sessioncrud "pxr-sso/internal/logic/crud/session"
 	usercrud "pxr-sso/internal/logic/crud/user"
 	"pxr-sso/internal/logic/dto"
 	"pxr-sso/internal/logic/service"
 	"pxr-sso/internal/storage"
+	jwtcreator "pxr-sso/pkg/jwt/creator"
+	jwtparser "pxr-sso/pkg/jwt/parser"
+	"strconv"
 	"time"
 )
 
@@ -90,7 +92,15 @@ func (a *Auth) Login(ctx context.Context, data dto.LoginDTO) (dto.TokensDTO, err
 	}
 
 	// Create access token.
-	accessToken, err := token.NewAccessToken(&user, &client, a.accessTokenTTL, data.Issuer)
+	createAccessTokenData := jwtcreator.AccessTokenCreateData{
+		Subject:  strconv.FormatInt(user.ID, 10),
+		Audience: client.Code,
+		Scopes:   user.Permissions,
+		Issuer:   data.Issuer,
+		TTL:      a.accessTokenTTL,
+		Key:      []byte(client.SecretKey),
+	}
+	accessToken, err := jwtcreator.NewAccessToken(createAccessTokenData)
 	if err != nil {
 		a.log.Error("failed to generate access token", sl.Err(err))
 
@@ -98,7 +108,7 @@ func (a *Auth) Login(ctx context.Context, data dto.LoginDTO) (dto.TokensDTO, err
 	}
 
 	// Create refresh token.
-	refreshToken, refreshTokenID, err := token.NewRefreshToken(client.SecretKey, a.refreshTokenTTL)
+	refreshToken, refreshTokenID, err := jwtcreator.NewRefreshToken([]byte(client.SecretKey), a.refreshTokenTTL)
 	if err != nil {
 		a.log.Error("failed to generate refresh token", sl.Err(err))
 
@@ -200,7 +210,15 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 	}
 
 	// Create access token.
-	accessToken, err := token.NewAccessToken(&newUser, &client, a.accessTokenTTL, data.Issuer)
+	createAccessTokenData := jwtcreator.AccessTokenCreateData{
+		Subject:  strconv.FormatInt(user.ID, 10),
+		Audience: client.Code,
+		Scopes:   user.Permissions,
+		Issuer:   data.Issuer,
+		TTL:      a.accessTokenTTL,
+		Key:      []byte(client.SecretKey),
+	}
+	accessToken, err := jwtcreator.NewAccessToken(createAccessTokenData)
 	if err != nil {
 		a.log.Error("failed to generate access token", sl.Err(err))
 
@@ -208,7 +226,7 @@ func (a *Auth) Register(ctx context.Context, data dto.RegisterDTO) (dto.TokensDT
 	}
 
 	// Create refresh token.
-	refreshToken, refreshTokenID, err := token.NewRefreshToken(client.SecretKey, a.refreshTokenTTL)
+	refreshToken, refreshTokenID, err := jwtcreator.NewRefreshToken([]byte(client.SecretKey), a.refreshTokenTTL)
 	if err != nil {
 		a.log.Error("failed to generate refresh token", sl.Err(err))
 
@@ -253,7 +271,7 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	}
 
 	// Parse refresh token by client secret key.
-	refreshTokenClaims, err := token.ParseRefreshToken(data.RefreshToken, client.SecretKey)
+	refreshTokenClaims, err := jwtparser.ParseRefreshToken(data.RefreshToken, []byte(client.SecretKey))
 	if err != nil {
 		a.log.Error("failed to parse refresh token", sl.Err(err))
 
@@ -311,7 +329,15 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	}
 
 	// Create access token.
-	accessToken, err := token.NewAccessToken(&user, &client, a.accessTokenTTL, data.Issuer)
+	createAccessTokenData := jwtcreator.AccessTokenCreateData{
+		Subject:  strconv.FormatInt(user.ID, 10),
+		Audience: client.Code,
+		Scopes:   user.Permissions,
+		Issuer:   data.Issuer,
+		TTL:      a.accessTokenTTL,
+		Key:      []byte(client.SecretKey),
+	}
+	accessToken, err := jwtcreator.NewAccessToken(createAccessTokenData)
 	if err != nil {
 		a.log.Error("failed to generate access token", sl.Err(err))
 
@@ -319,7 +345,7 @@ func (a *Auth) RefreshTokens(ctx context.Context, data dto.RefreshTokensDTO) (dt
 	}
 
 	// Create refresh token.
-	refreshToken, refreshTokenID, err := token.NewRefreshToken(client.SecretKey, a.refreshTokenTTL)
+	refreshToken, refreshTokenID, err := jwtcreator.NewRefreshToken([]byte(client.SecretKey), a.refreshTokenTTL)
 	if err != nil {
 		a.log.Error("failed to generate refresh token", sl.Err(err))
 
@@ -364,7 +390,7 @@ func (a *Auth) Logout(ctx context.Context, data dto.LogoutDTO) error {
 	}
 
 	// Parse refresh token by client secret key.
-	refreshTokenClaims, err := token.ParseRefreshToken(data.RefreshToken, client.SecretKey)
+	refreshTokenClaims, err := jwtparser.ParseRefreshToken(data.RefreshToken, []byte(client.SecretKey))
 	if err != nil {
 		a.log.Error("failed to parse refresh token", sl.Err(err))
 

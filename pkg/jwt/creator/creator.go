@@ -14,18 +14,21 @@ type AccessTokenCreateData struct {
 	Subject  string
 	Audience string
 	Scopes   []string
+	Issuer   string
+	TTL      time.Duration
+	Key      []byte
 }
 
 // NewAccessToken returns new JWT with claims.
-func NewAccessToken(data AccessTokenCreateData, key []byte, ttl time.Duration, issuer string) (string, error) {
+func NewAccessToken(data AccessTokenCreateData) (string, error) {
 	now := time.Now()
 	claims := jwtmiddleware.AccessTokenClaims{
 		Claims: jwt.Claims{
 			ID:        uuid.New().String(),
 			Subject:   data.Subject,
-			Issuer:    issuer,
+			Issuer:    data.Issuer,
 			Audience:  []string{data.Audience},
-			Expiry:    jwt.NewNumericDate(now.Add(ttl)),
+			Expiry:    jwt.NewNumericDate(now.Add(data.TTL)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 		},
@@ -34,7 +37,7 @@ func NewAccessToken(data AccessTokenCreateData, key []byte, ttl time.Duration, i
 		},
 	}
 
-	tokenStr, err := createSignedTokenWithClaims(claims, key)
+	tokenStr, err := createSignedTokenWithClaims(claims, data.Key)
 	if err != nil {
 		return "", err
 	}
