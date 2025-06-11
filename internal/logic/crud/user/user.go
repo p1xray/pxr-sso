@@ -29,19 +29,45 @@ func New(
 	}
 }
 
-// UserWithPermission returns user data with permissions by user ID.
-func (c *CRUD) UserWithPermission(ctx context.Context, id int64) (dto.UserDTO, error) {
+// User returns user data by user ID.
+func (c *CRUD) User(ctx context.Context, id int64) (dto.UserDTO, error) {
 	user, err := c.userProvider.User(ctx, id)
 	if err != nil {
 		return dto.UserDTO{}, err
 	}
 
-	permissionCodes, err := c.userPermissionCodes(ctx, user.ID)
-	if err != nil {
-		return dto.UserDTO{}, err
+	genderNumeric := user.Gender.Ptr()
+	var gender *dto.GenderEnum
+	if genderNumeric != nil {
+		genderValue := dto.GenderEnum(*genderNumeric)
+		gender = &genderValue
 	}
 
 	userData := dto.UserDTO{
+		ID:            user.ID,
+		Username:      user.Username,
+		FIO:           user.FIO,
+		DateOfBirth:   user.DateOfBirth.Ptr(),
+		Gender:        gender,
+		AvatarFileKey: user.AvatarFileKey.Ptr(),
+	}
+
+	return userData, nil
+}
+
+// UserWithPermissions returns user data with permissions by user ID.
+func (c *CRUD) UserWithPermissions(ctx context.Context, id int64) (dto.UserWithPermissionsDTO, error) {
+	user, err := c.userProvider.User(ctx, id)
+	if err != nil {
+		return dto.UserWithPermissionsDTO{}, err
+	}
+
+	permissionCodes, err := c.userPermissionCodes(ctx, user.ID)
+	if err != nil {
+		return dto.UserWithPermissionsDTO{}, err
+	}
+
+	userData := dto.UserWithPermissionsDTO{
 		ID:           user.ID,
 		PasswordHash: user.PasswordHash,
 		Permissions:  permissionCodes,
@@ -50,19 +76,19 @@ func (c *CRUD) UserWithPermission(ctx context.Context, id int64) (dto.UserDTO, e
 	return userData, nil
 }
 
-// UserWithPermissionByUsername returns user data with permissions by username.
-func (c *CRUD) UserWithPermissionByUsername(ctx context.Context, username string) (dto.UserDTO, error) {
+// UserWithPermissionsByUsername returns user data with permissions by username.
+func (c *CRUD) UserWithPermissionsByUsername(ctx context.Context, username string) (dto.UserWithPermissionsDTO, error) {
 	user, err := c.userProvider.UserByUsername(ctx, username)
 	if err != nil {
-		return dto.UserDTO{}, err
+		return dto.UserWithPermissionsDTO{}, err
 	}
 
 	permissionCodes, err := c.userPermissionCodes(ctx, user.ID)
 	if err != nil {
-		return dto.UserDTO{}, err
+		return dto.UserWithPermissionsDTO{}, err
 	}
 
-	userData := dto.UserDTO{
+	userData := dto.UserWithPermissionsDTO{
 		ID:           user.ID,
 		PasswordHash: user.PasswordHash,
 		Permissions:  permissionCodes,

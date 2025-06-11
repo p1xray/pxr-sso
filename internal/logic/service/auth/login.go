@@ -24,7 +24,7 @@ func (a *Auth) Login(ctx context.Context, data dto.LoginDTO) (dto.TokensDTO, err
 	log.Info("attempting to login user")
 
 	// Get user data from storage.
-	user, err := a.userCRUD.UserWithPermissionByUsername(ctx, data.Username)
+	user, err := a.userCRUD.UserWithPermissionsByUsername(ctx, data.Username)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			log.Warn("user not found", sl.Err(err))
