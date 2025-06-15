@@ -53,7 +53,7 @@ type tokens struct {
 
 func (a *Auth) createAccessAndRefreshTokens(
 	log *slog.Logger,
-	user dto.UserDTO,
+	user dto.UserWithPermissionsDTO,
 	client dto.ClientDTO,
 	issuer string,
 ) (tokens, error) {
