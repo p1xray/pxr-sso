@@ -8,7 +8,7 @@ import (
 
 const (
 	authorizationHeader = "Authorization"
-	bearerPrefix        = "Bearer "
+	bearerPrefix        = "Bearer"
 )
 
 var (
