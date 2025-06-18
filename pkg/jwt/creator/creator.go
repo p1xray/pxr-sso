@@ -4,7 +4,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
-	jwtmiddleware "pxr-sso/pkg/jwt"
+	jwtmiddleware "github.com/p1xray/pxr-sso/pkg/jwt"
 	"strings"
 	"time"
 )

@@ -2,8 +2,8 @@ package clientcrud
 
 import (
 	"context"
-	"pxr-sso/internal/logic/crud"
-	"pxr-sso/internal/logic/dto"
+	"github.com/p1xray/pxr-sso/internal/logic/crud"
+	"github.com/p1xray/pxr-sso/internal/logic/dto"
 )
 
 // CRUD provides methods for managing client data.

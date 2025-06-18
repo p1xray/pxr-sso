@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/p1xray/pxr-sso/internal/lib/logger/sl"
+	"github.com/p1xray/pxr-sso/internal/logic/dto"
+	"github.com/p1xray/pxr-sso/internal/logic/service"
+	"github.com/p1xray/pxr-sso/internal/storage"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
-	"pxr-sso/internal/lib/logger/sl"
-	"pxr-sso/internal/logic/dto"
-	"pxr-sso/internal/logic/service"
-	"pxr-sso/internal/storage"
 	"time"
 )
 

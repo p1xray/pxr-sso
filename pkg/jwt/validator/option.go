@@ -1,7 +1,7 @@
 package validator
 
 import (
-	"pxr-sso/pkg/jwt"
+	"github.com/p1xray/pxr-sso/pkg/jwt"
 	"time"
 )
 

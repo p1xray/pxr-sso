@@ -2,11 +2,11 @@ package grpcapp
 
 import (
 	"fmt"
+	"github.com/p1xray/pxr-sso/internal/server"
+	authserver "github.com/p1xray/pxr-sso/internal/server/grpc/auth"
+	profileserver "github.com/p1xray/pxr-sso/internal/server/grpc/profile"
 	"log/slog"
 	"net"
-	"pxr-sso/internal/server"
-	authserver "pxr-sso/internal/server/grpc/auth"
-	profileserver "pxr-sso/internal/server/grpc/profile"
 
 	"google.golang.org/grpc"
 )

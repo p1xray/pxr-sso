@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/p1xray/pxr-sso/internal/lib/logger/sl"
+	usercrud "github.com/p1xray/pxr-sso/internal/logic/crud/user"
+	"github.com/p1xray/pxr-sso/internal/logic/dto"
+	"github.com/p1xray/pxr-sso/internal/logic/service"
+	"github.com/p1xray/pxr-sso/internal/storage"
 	"log/slog"
-	"pxr-sso/internal/lib/logger/sl"
-	usercrud "pxr-sso/internal/logic/crud/user"
-	"pxr-sso/internal/logic/dto"
-	"pxr-sso/internal/logic/service"
-	"pxr-sso/internal/storage"
 )
 
 // Profile is service for working with user profile.
@@ -38,7 +38,7 @@ func (p *Profile) UserProfile(ctx context.Context, userID int64) (dto.UserProfil
 		slog.Int64("user id", userID),
 	)
 	log.Info("attempting to get user profile")
-	
+
 	user, err := p.userCRUD.User(ctx, userID)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
