@@ -5,10 +5,10 @@ import (
 	"errors"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	ssoprofilepb "github.com/p1xray/pxr-sso-protos/gen/go/profile"
+	"github.com/p1xray/pxr-sso/internal/logic/service"
+	"github.com/p1xray/pxr-sso/internal/server"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"pxr-sso/internal/logic/service"
-	"pxr-sso/internal/server"
 )
 
 const (

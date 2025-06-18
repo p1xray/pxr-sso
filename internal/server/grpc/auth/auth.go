@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	ssopb "github.com/p1xray/pxr-sso-protos/gen/go/sso"
+	"github.com/p1xray/pxr-sso/internal/logic/dto"
+	"github.com/p1xray/pxr-sso/internal/logic/service"
+	"github.com/p1xray/pxr-sso/internal/server"
 	"google.golang.org/grpc"
-	"pxr-sso/internal/logic/dto"
-	"pxr-sso/internal/logic/service"
-	"pxr-sso/internal/server"
 	"time"
 )
 

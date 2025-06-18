@@ -1,13 +1,13 @@
 package auth
 
 import (
+	"github.com/p1xray/pxr-sso/internal/lib/logger/sl"
+	clientcrud "github.com/p1xray/pxr-sso/internal/logic/crud/client"
+	sessioncrud "github.com/p1xray/pxr-sso/internal/logic/crud/session"
+	usercrud "github.com/p1xray/pxr-sso/internal/logic/crud/user"
+	"github.com/p1xray/pxr-sso/internal/logic/dto"
+	jwtcreator "github.com/p1xray/pxr-sso/pkg/jwt/creator"
 	"log/slog"
-	"pxr-sso/internal/lib/logger/sl"
-	clientcrud "pxr-sso/internal/logic/crud/client"
-	sessioncrud "pxr-sso/internal/logic/crud/session"
-	usercrud "pxr-sso/internal/logic/crud/user"
-	"pxr-sso/internal/logic/dto"
-	jwtcreator "pxr-sso/pkg/jwt/creator"
 	"strconv"
 	"time"
 )
