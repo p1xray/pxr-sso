@@ -1,12 +1,12 @@
 package main
 
 import (
+	"github.com/p1xray/pxr-sso/internal/app"
+	"github.com/p1xray/pxr-sso/internal/config"
+	"github.com/p1xray/pxr-sso/internal/lib/logger/handlers/slogpretty"
 	"log/slog"
 	"os"
 	"os/signal"
-	"pxr-sso/internal/app"
-	"pxr-sso/internal/config"
-	"pxr-sso/internal/lib/logger/handlers/slogpretty"
 	"syscall"
 )
 

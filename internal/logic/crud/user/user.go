@@ -3,9 +3,9 @@ package usercrud
 import (
 	"context"
 	"github.com/guregu/null/v6"
-	"pxr-sso/internal/logic/crud"
-	"pxr-sso/internal/logic/dto"
-	"pxr-sso/internal/storage/domain"
+	"github.com/p1xray/pxr-sso/internal/logic/crud"
+	"github.com/p1xray/pxr-sso/internal/logic/dto"
+	"github.com/p1xray/pxr-sso/internal/storage/domain"
 	"time"
 )
 

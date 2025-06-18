@@ -1,4 +1,4 @@
-module pxr-sso
+module github.com/p1xray/pxr-sso
 
 go 1.24.4
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"pxr-sso/pkg/jwt"
-	jwtparser "pxr-sso/pkg/jwt/parser"
+	"github.com/p1xray/pxr-sso/pkg/jwt"
+	jwtparser "github.com/p1xray/pxr-sso/pkg/jwt/parser"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"

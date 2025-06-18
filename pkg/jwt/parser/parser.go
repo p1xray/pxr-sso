@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	jwtmiddleware "pxr-sso/pkg/jwt"
+	jwtmiddleware "github.com/p1xray/pxr-sso/pkg/jwt"
 )
 
 // ParseAccessToken parses access token using a secret key into a set of claims.

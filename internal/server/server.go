@@ -2,9 +2,9 @@ package server
 
 import (
 	"context"
+	"github.com/p1xray/pxr-sso/internal/logic/dto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"pxr-sso/internal/logic/dto"
 )
 
 // AuthService is service for working with user authentication and authorization.

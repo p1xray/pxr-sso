@@ -1,15 +1,15 @@
 package app
 
 import (
+	grpcapp "github.com/p1xray/pxr-sso/internal/app/grpc"
+	"github.com/p1xray/pxr-sso/internal/config"
+	clientcrud "github.com/p1xray/pxr-sso/internal/logic/crud/client"
+	sessioncrud "github.com/p1xray/pxr-sso/internal/logic/crud/session"
+	usercrud "github.com/p1xray/pxr-sso/internal/logic/crud/user"
+	"github.com/p1xray/pxr-sso/internal/logic/service/auth"
+	"github.com/p1xray/pxr-sso/internal/logic/service/profile"
+	"github.com/p1xray/pxr-sso/internal/storage/sqlite"
 	"log/slog"
-	grpcapp "pxr-sso/internal/app/grpc"
-	"pxr-sso/internal/config"
-	clientcrud "pxr-sso/internal/logic/crud/client"
-	sessioncrud "pxr-sso/internal/logic/crud/session"
-	usercrud "pxr-sso/internal/logic/crud/user"
-	"pxr-sso/internal/logic/service/auth"
-	"pxr-sso/internal/logic/service/profile"
-	"pxr-sso/internal/storage/sqlite"
 )
 
 // App is an application.
