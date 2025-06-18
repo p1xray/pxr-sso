@@ -27,7 +27,7 @@ func AuthHeaderTokenExtractor(r *http.Request) (string, error) {
 	}
 
 	authHeaderParts := strings.Fields(authHeader)
-	if len(authHeaderParts) != 2 || strings.ToLower(authHeaderParts[0]) != bearerPrefix {
+	if len(authHeaderParts) != 2 || strings.ToLower(authHeaderParts[0]) != strings.ToLower(bearerPrefix) {
 		return "", ErrInvalidHeaderFormat
 	}
 
