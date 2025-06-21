@@ -11,28 +11,26 @@ import (
 func ParseAccessToken(
 	token *jwt.JSONWebToken,
 	secretKey []byte,
-	customClaimsFunc func() jwtmiddleware.CustomClaims,
-) (jwtmiddleware.AccessTokenClaims, jwtmiddleware.CustomClaims, error) {
-	claims := []interface{}{&jwt.Claims{}, &jwtmiddleware.RegisteredCustomClaims{}}
+	customClaimsFunc func() jwtclaims.CustomClaims,
+) (jwtclaims.AccessTokenClaims, jwtclaims.CustomClaims, error) {
+	defaultClaims := jwt.Claims{}
+	registeredCustomClaims := jwtclaims.RegisteredCustomClaims{}
+	var customClaims jwtclaims.CustomClaims
+
+	if err := token.Claims(secretKey, &defaultClaims, &registeredCustomClaims); err != nil {
+		return jwtclaims.AccessTokenClaims{}, nil, fmt.Errorf("error getting token claims: %w", err)
+	}
+
 	if customClaimsExist(customClaimsFunc) {
-		claims = append(claims, customClaimsFunc())
+		customClaims = customClaimsFunc()
+		if err := token.Claims(secretKey, &customClaims); err != nil {
+			return jwtclaims.AccessTokenClaims{}, nil, fmt.Errorf("error getting token custom claims: %w", err)
+		}
 	}
 
-	if err := token.Claims(secretKey, &claims); err != nil {
-		return jwtmiddleware.AccessTokenClaims{}, nil, fmt.Errorf("error getting token claims: %w", err)
-	}
-
-	defaultClaims := *claims[0].(*jwt.Claims)
-	registeredCustomClaims := *claims[1].(*jwtmiddleware.RegisteredCustomClaims)
-
-	registeredClaims := jwtmiddleware.AccessTokenClaims{
+	registeredClaims := jwtclaims.AccessTokenClaims{
 		Claims:                 defaultClaims,
 		RegisteredCustomClaims: registeredCustomClaims,
-	}
-
-	var customClaims jwtmiddleware.CustomClaims
-	if len(claims) > 2 {
-		customClaims = claims[2].(jwtmiddleware.CustomClaims)
 	}
 
 	return registeredClaims, customClaims, nil
