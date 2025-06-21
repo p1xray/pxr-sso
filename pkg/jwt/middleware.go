@@ -3,6 +3,7 @@ package jwtmiddleware
 import (
 	"context"
 	"fmt"
+	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
 	"net/http"
 )
 
@@ -12,7 +13,7 @@ type JWTMiddleware struct {
 	tokenExtractor TokenExtractor
 }
 
-type ValidateToken func(context.Context, string) (ValidatedClaims, error)
+type ValidateToken func(context.Context, string) (jwtclaims.ValidatedClaims, error)
 
 type ContextKey struct{}
 
@@ -35,11 +36,13 @@ func (m *JWTMiddleware) ParseJWT(next http.Handler) http.Handler {
 
 		if token == "" {
 			m.errorHandler(w, r, ErrJWTMissing)
+			return
 		}
 
 		validatedToken, err := m.validateToken(r.Context(), token)
 		if err != nil {
 			m.errorHandler(w, r, err)
+			return
 		}
 
 		r = r.Clone(context.WithValue(r.Context(), ContextKey{}, validatedToken))
