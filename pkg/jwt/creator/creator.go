@@ -4,7 +4,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
-	jwtmiddleware "github.com/p1xray/pxr-sso/pkg/jwt"
+	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
 	"strings"
 	"time"
 )
@@ -22,7 +22,7 @@ type AccessTokenCreateData struct {
 // NewAccessToken returns new JWT with claims.
 func NewAccessToken(data AccessTokenCreateData) (string, error) {
 	now := time.Now()
-	claims := jwtmiddleware.AccessTokenClaims{
+	claims := jwtclaims.AccessTokenClaims{
 		Claims: jwt.Claims{
 			ID:        uuid.New().String(),
 			Subject:   data.Subject,
@@ -32,7 +32,7 @@ func NewAccessToken(data AccessTokenCreateData) (string, error) {
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 		},
-		RegisteredCustomClaims: jwtmiddleware.RegisteredCustomClaims{
+		RegisteredCustomClaims: jwtclaims.RegisteredCustomClaims{
 			Scope: strings.Join(data.Scopes, " "),
 		},
 	}
@@ -49,7 +49,7 @@ func NewAccessToken(data AccessTokenCreateData) (string, error) {
 func NewRefreshToken(key []byte, ttl time.Duration) (refreshToken string, refreshTokenID string, err error) {
 	id := uuid.New().String()
 	now := time.Now()
-	claims := jwtmiddleware.RefreshTokenClaims{
+	claims := jwtclaims.RefreshTokenClaims{
 		ID:     id,
 		Expiry: jwt.NewNumericDate(now.Add(ttl)),
 	}

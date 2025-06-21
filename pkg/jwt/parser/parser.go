@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	jwtmiddleware "github.com/p1xray/pxr-sso/pkg/jwt"
+	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
 )
 
 // ParseAccessToken parses access token using a secret key into a set of claims.
@@ -39,15 +39,15 @@ func ParseAccessToken(
 }
 
 // ParseRefreshToken parses refresh token as a string using a secret key into a set of claims.
-func ParseRefreshToken(tokenStr string, secretKey []byte) (jwtmiddleware.RefreshTokenClaims, error) {
+func ParseRefreshToken(tokenStr string, secretKey []byte) (jwtclaims.RefreshTokenClaims, error) {
 	token, err := jwt.ParseSigned(tokenStr, []jose.SignatureAlgorithm{jose.HS256})
 	if err != nil {
-		return jwtmiddleware.RefreshTokenClaims{}, err
+		return jwtclaims.RefreshTokenClaims{}, err
 	}
 
-	claims := jwtmiddleware.RefreshTokenClaims{}
+	claims := jwtclaims.RefreshTokenClaims{}
 	if err = token.Claims(secretKey, &claims); err != nil {
-		return jwtmiddleware.RefreshTokenClaims{}, err
+		return jwtclaims.RefreshTokenClaims{}, err
 	}
 
 	return claims, nil
@@ -67,6 +67,6 @@ func ParseSignatureAlgorithm(token *jwt.JSONWebToken) (jose.SignatureAlgorithm, 
 	return jose.SignatureAlgorithm(signatureAlgorithm), nil
 }
 
-func customClaimsExist(customClaimsFunc func() jwtmiddleware.CustomClaims) bool {
+func customClaimsExist(customClaimsFunc func() jwtclaims.CustomClaims) bool {
 	return customClaimsFunc != nil && customClaimsFunc() != nil
 }

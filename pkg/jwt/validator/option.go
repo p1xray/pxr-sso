@@ -1,7 +1,7 @@
 package validator
 
 import (
-	"github.com/p1xray/pxr-sso/pkg/jwt"
+	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
 	"time"
 )
 
@@ -11,7 +11,7 @@ type Option func(*Validator)
 // WithCustomClaims sets up a function that returns the object CustomClaims that will be unmarshalled into
 // and on which Validate is called on for custom validation.
 // If this option is not used the Validator will do nothing for custom claims.
-func WithCustomClaims(f func() jwtmiddleware.CustomClaims) Option {
+func WithCustomClaims(f func() jwtclaims.CustomClaims) Option {
 	return func(v *Validator) {
 		v.customClaims = f
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/p1xray/pxr-sso/pkg/jwt"
+	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
 	jwtparser "github.com/p1xray/pxr-sso/pkg/jwt/parser"
 	"time"
 
@@ -17,7 +17,7 @@ type Validator struct {
 	keyFunc            func(context.Context) ([]byte, error)
 	signatureAlgorithm jose.SignatureAlgorithm
 	expectedClaims     jwt.Expected
-	customClaims       func() jwtmiddleware.CustomClaims
+	customClaims       func() jwtclaims.CustomClaims
 	allowedClockSkew   time.Duration
 }
 
