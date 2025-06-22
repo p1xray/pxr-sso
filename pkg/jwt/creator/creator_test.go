@@ -41,6 +41,21 @@ func Test_NewAccessToken(t *testing.T) {
 			},
 		},
 		{
+			name: "successfully creates a new token with custom claims",
+			data: AccessTokenCreateData{
+				Subject:  "1",
+				Audience: "testAudience",
+				Issuer:   "testIssuer",
+				Scopes:   []string{"test.read", "test.write"},
+				CustomClaims: map[string]interface{}{
+					"custom1": "value1",
+					"custom2": "value2",
+				},
+				TTL: time.Duration(30) * time.Minute,
+				Key: []byte(validKey),
+			},
+		},
+		{
 			name: "throws an error when creating a token signed by invalid key",
 			data: AccessTokenCreateData{
 				Key: []byte(invalidKey),
@@ -126,6 +141,7 @@ func checkAccessTokenClaims(t *testing.T, claims map[string]interface{}, expecte
 	checkNbfClaim(t, claims)
 	checkIatClaim(t, claims)
 	checkScopeClaim(t, claims, expectedData.Scopes)
+	checkCustomClaims(t, claims, expectedData.CustomClaims)
 }
 
 func checkRefreshTokenClaims(t *testing.T, claims map[string]interface{}, tokenID string) {
@@ -224,6 +240,19 @@ func checkScopeClaim(t *testing.T, claims map[string]interface{}, expectedScopes
 	require.True(t, ok)
 
 	assert.Equal(t, strings.Join(expectedScopes, " "), scope.(string))
+}
+
+func checkCustomClaims(t *testing.T, claims map[string]interface{}, expectedCustom map[string]interface{}) {
+	if len(expectedCustom) == 0 {
+		return
+	}
+
+	for k, v := range expectedCustom {
+		value, ok := claims[k]
+		assert.True(t, ok)
+
+		assert.Equal(t, v, value)
+	}
 }
 
 func parseJtiClaim(t *testing.T, claims map[string]interface{}) string {
