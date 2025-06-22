@@ -1,12 +1,19 @@
 package jwtcreator
 
 import (
+	"errors"
+	"fmt"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
 	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
 	"strings"
 	"time"
+)
+
+var (
+	ErrCreateSigner   = errors.New("error creating signer")
+	ErrTokenSerialize = errors.New("error serializing token")
 )
 
 // AccessTokenCreateData is data to create new access token.
@@ -67,12 +74,12 @@ func createSignedTokenWithClaims(claims interface{}, key []byte) (string, error)
 		jose.SigningKey{Algorithm: jose.HS256, Key: key},
 		(&jose.SignerOptions{}).WithType("JWT"))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %w", ErrCreateSigner, err)
 	}
 
 	tokenStr, err := jwt.Signed(sig).Claims(claims).Serialize()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %w", ErrTokenSerialize, err)
 	}
 
 	return tokenStr, nil
