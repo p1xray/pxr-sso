@@ -18,18 +18,19 @@ var (
 
 // AccessTokenCreateData is data to create new access token.
 type AccessTokenCreateData struct {
-	Subject  string
-	Audience string
-	Scopes   []string
-	Issuer   string
-	TTL      time.Duration
-	Key      []byte
+	Subject      string
+	Audience     string
+	Scopes       []string
+	Issuer       string
+	CustomClaims map[string]interface{}
+	TTL          time.Duration
+	Key          []byte
 }
 
 // NewAccessToken returns new JWT with claims.
 func NewAccessToken(data AccessTokenCreateData) (string, error) {
 	now := time.Now()
-	claims := jwtclaims.AccessTokenClaims{
+	registeredClaims := jwtclaims.AccessTokenClaims{
 		Claims: jwt.Claims{
 			ID:        uuid.New().String(),
 			Subject:   data.Subject,
@@ -44,7 +45,7 @@ func NewAccessToken(data AccessTokenCreateData) (string, error) {
 		},
 	}
 
-	tokenStr, err := createSignedTokenWithClaims(claims, data.Key)
+	tokenStr, err := createSignedTokenWithClaims(data.Key, registeredClaims, data.CustomClaims)
 	if err != nil {
 		return "", err
 	}
@@ -61,7 +62,7 @@ func NewRefreshToken(key []byte, ttl time.Duration) (refreshToken string, refres
 		Expiry: jwt.NewNumericDate(now.Add(ttl)),
 	}
 
-	tokenStr, err := createSignedTokenWithClaims(claims, key)
+	tokenStr, err := createSignedTokenWithClaims(key, claims, nil)
 	if err != nil {
 		return "", "", err
 	}
@@ -69,7 +70,7 @@ func NewRefreshToken(key []byte, ttl time.Duration) (refreshToken string, refres
 	return tokenStr, id, nil
 }
 
-func createSignedTokenWithClaims(claims interface{}, key []byte) (string, error) {
+func createSignedTokenWithClaims(key []byte, registeredClaims interface{}, customClaims interface{}) (string, error) {
 	sig, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.HS256, Key: key},
 		(&jose.SignerOptions{}).WithType("JWT"))
@@ -77,7 +78,7 @@ func createSignedTokenWithClaims(claims interface{}, key []byte) (string, error)
 		return "", fmt.Errorf("%w: %w", ErrCreateSigner, err)
 	}
 
-	tokenStr, err := jwt.Signed(sig).Claims(claims).Serialize()
+	tokenStr, err := jwt.Signed(sig).Claims(registeredClaims).Claims(customClaims).Serialize()
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrTokenSerialize, err)
 	}
