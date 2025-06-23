@@ -78,7 +78,14 @@ func createSignedTokenWithClaims(key []byte, registeredClaims interface{}, custo
 		return "", fmt.Errorf("%w: %w", ErrCreateSigner, err)
 	}
 
-	tokenStr, err := jwt.Signed(sig).Claims(registeredClaims).Claims(customClaims).Serialize()
+	tokenBuilder := jwt.Signed(sig)
+	tokenBuilder = tokenBuilder.Claims(registeredClaims)
+
+	if customClaims != nil {
+		tokenBuilder = tokenBuilder.Claims(customClaims)
+	}
+
+	tokenStr, err := tokenBuilder.Serialize()
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrTokenSerialize, err)
 	}
