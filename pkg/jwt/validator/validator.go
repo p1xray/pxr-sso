@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/p1xray/pxr-sso/pkg/jwt"
+	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
 	jwtparser "github.com/p1xray/pxr-sso/pkg/jwt/parser"
 	"time"
 
@@ -12,12 +12,25 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 )
 
+var (
+	ErrEmptyKeyFunc              = errors.New("keyFunc is required")
+	ErrEmptyIssuer               = errors.New("issuer is required")
+	ErrEmptyAudience             = errors.New("audience is required")
+	ErrParsingToken              = errors.New("error parsing token")
+	ErrParsingSignatureAlgorithm = errors.New("error parsing signature algorithm")
+	ErrInvalidSigningMethod      = errors.New("signing method is invalid")
+	ErrDeserializingTokenClaims  = errors.New("error deserializing token claims")
+	ErrValidatingClaims          = errors.New("error validating token claims")
+	ErrValidatingCustomClaims    = errors.New("error validating  token custom claims")
+	ErrGettingKey                = errors.New("error getting key")
+)
+
 // Validator is used to validate JWT.
 type Validator struct {
 	keyFunc            func(context.Context) ([]byte, error)
 	signatureAlgorithm jose.SignatureAlgorithm
 	expectedClaims     jwt.Expected
-	customClaims       func() jwtmiddleware.CustomClaims
+	customClaims       func() jwtclaims.CustomClaims
 	allowedClockSkew   time.Duration
 }
 
@@ -29,15 +42,15 @@ func New(
 	options ...Option,
 ) (*Validator, error) {
 	if keyFunc == nil {
-		return nil, errors.New("keyFunc is required")
+		return nil, ErrEmptyKeyFunc
 	}
 
 	if issuer == "" {
-		return nil, errors.New("issuer is required")
+		return nil, ErrEmptyIssuer
 	}
 
 	if len(audience) == 0 {
-		return nil, errors.New("audience is required")
+		return nil, ErrEmptyAudience
 	}
 
 	validator := &Validator{
@@ -57,37 +70,37 @@ func New(
 }
 
 // ValidateToken validates the passed token and returns the validated claims from the token.
-func (v *Validator) ValidateToken(ctx context.Context, tokenString string) (jwtmiddleware.ValidatedClaims, error) {
+func (v *Validator) ValidateToken(ctx context.Context, tokenString string) (jwtclaims.ValidatedClaims, error) {
 	token, err := jwt.ParseSigned(tokenString, []jose.SignatureAlgorithm{v.signatureAlgorithm})
 	if err != nil {
-		return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("error parsing token: %w", err)
+		return jwtclaims.ValidatedClaims{}, fmt.Errorf("%w: %w", ErrParsingToken, err)
 	}
 
 	signatureAlgorithm, err := jwtparser.ParseSignatureAlgorithm(token)
 	if err != nil {
-		return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("error parsing signature algorithm: %w", err)
+		return jwtclaims.ValidatedClaims{}, fmt.Errorf("%w: %w", ErrParsingSignatureAlgorithm, err)
 	}
 
 	if err = validateSigningMethod(v.signatureAlgorithm, signatureAlgorithm); err != nil {
-		return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("signing method is invalid: %w", err)
+		return jwtclaims.ValidatedClaims{}, fmt.Errorf("%w: %w", ErrInvalidSigningMethod, err)
 	}
 
 	registeredClaims, customClaims, err := v.parseClaims(ctx, token)
 	if err != nil {
-		return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("error deserializing token claims: %w", err)
+		return jwtclaims.ValidatedClaims{}, fmt.Errorf("%w: %w", ErrDeserializingTokenClaims, err)
 	}
 
 	if err = validateClaimsWithLeeway(registeredClaims.Claims, v.expectedClaims, v.allowedClockSkew); err != nil {
-		return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("error validating claims: %w", err)
+		return jwtclaims.ValidatedClaims{}, fmt.Errorf("%w: %w", ErrValidatingClaims, err)
 	}
 
 	if customClaims != nil {
 		if err = customClaims.Validate(ctx); err != nil {
-			return jwtmiddleware.ValidatedClaims{}, fmt.Errorf("error validating custom claims: %w", err)
+			return jwtclaims.ValidatedClaims{}, fmt.Errorf("%w: %w", ErrValidatingCustomClaims, err)
 		}
 	}
 
-	validatedClaims := jwtmiddleware.ValidatedClaims{
+	validatedClaims := jwtclaims.ValidatedClaims{
 		RegisteredClaims: registeredClaims,
 		CustomClaims:     customClaims,
 	}
@@ -98,15 +111,15 @@ func (v *Validator) ValidateToken(ctx context.Context, tokenString string) (jwtm
 func (v *Validator) parseClaims(
 	ctx context.Context,
 	token *jwt.JSONWebToken,
-) (jwtmiddleware.AccessTokenClaims, jwtmiddleware.CustomClaims, error) {
+) (jwtclaims.AccessTokenClaims, jwtclaims.CustomClaims, error) {
 	key, err := v.keyFunc(ctx)
 	if err != nil {
-		return jwtmiddleware.AccessTokenClaims{}, nil, fmt.Errorf("error getting key: %w", err)
+		return jwtclaims.AccessTokenClaims{}, nil, fmt.Errorf("%w: %w", ErrGettingKey, err)
 	}
 
 	registeredClaims, customClaims, err := jwtparser.ParseAccessToken(token, key, v.customClaims)
 	if err != nil {
-		return jwtmiddleware.AccessTokenClaims{}, nil, fmt.Errorf("error parsing token: %w", err)
+		return jwtclaims.AccessTokenClaims{}, nil, fmt.Errorf("%w: %w", ErrParsingToken, err)
 	}
 
 	return registeredClaims, customClaims, nil
@@ -129,7 +142,7 @@ func validateClaimsWithLeeway(claims jwt.Claims, expected jwt.Expected, leeway t
 
 	isAudienceFound := false
 	for _, aud := range claims.Audience {
-		if claims.Audience.Contains(aud) {
+		if expectedClaims.AnyAudience.Contains(aud) {
 			isAudienceFound = true
 			break
 		}

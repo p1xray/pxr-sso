@@ -1,4 +1,4 @@
-package jwtmiddleware
+package jwtclaims
 
 import (
 	"context"
