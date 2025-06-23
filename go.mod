@@ -6,6 +6,7 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.0
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/golang/protobuf v1.5.4
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/guregu/null/v6 v6.0.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
