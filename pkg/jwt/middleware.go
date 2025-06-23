@@ -41,7 +41,7 @@ func (m *JWTMiddleware) ParseJWT(next http.Handler) http.Handler {
 
 		validatedToken, err := m.validateToken(r.Context(), token)
 		if err != nil {
-			m.errorHandler(w, r, err)
+			m.errorHandler(w, r, fmt.Errorf("%w: %w", ErrJWTInvalid, err))
 			return
 		}
 
