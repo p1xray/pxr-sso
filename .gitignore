@@ -29,7 +29,7 @@ go.work.sum
 storage/*
 
 ### VisualStudioCode ###
-.vscode/*
+.vscode/
 
 # Local History for Visual Studio Code
 .history/
@@ -43,4 +43,4 @@ storage/*
 .ionide
 
 ### GoLand ###
-.idea/*
+.idea/
