@@ -2,13 +2,9 @@ package profileserver
 
 import (
 	"context"
-	"errors"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	ssoprofilepb "github.com/p1xray/pxr-sso-protos/gen/go/profile"
-	"github.com/p1xray/pxr-sso/internal/logic/service"
 	"github.com/p1xray/pxr-sso/internal/server"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -17,12 +13,12 @@ const (
 
 type serverAPI struct {
 	ssoprofilepb.UnimplementedSsoProfileServer
-	profile server.ProfileService
+	// profile server.ProfileService TODO: implement profile use case
 }
 
 // Register registers the implementation of the API service with the gRPC server.
-func Register(gRPC *grpc.Server, profileService server.ProfileService) {
-	ssoprofilepb.RegisterSsoProfileServer(gRPC, &serverAPI{profile: profileService})
+func Register(gRPC *grpc.Server) {
+	ssoprofilepb.RegisterSsoProfileServer(gRPC, &serverAPI{})
 }
 
 func (s *serverAPI) GetProfile(
@@ -33,38 +29,40 @@ func (s *serverAPI) GetProfile(
 		return nil, err
 	}
 
-	userProfile, err := s.profile.UserProfile(ctx, req.GetUserId())
-	if err != nil {
-		if errors.Is(err, service.ErrUserNotFound) {
-			return nil, server.NotFoundError("user not found")
-		}
+	//userProfile, err := s.profile.UserProfile(ctx, req.GetUserId())
+	//if err != nil {
+	//	if errors.Is(err, service.ErrUserNotFound) {
+	//		return nil, server.NotFoundError("user not found")
+	//	}
+	//
+	//	return nil, server.InternalError("failed to get user profile")
+	//}
+	//
+	//var dateOfBirthPb *timestamppb.Timestamp
+	//if userProfile.DateOfBirth != nil {
+	//	dateOfBirthPb = timestamppb.New(*userProfile.DateOfBirth)
+	//}
+	//
+	//genderPb := ssoprofilepb.Gender_GENDER_UNSPECIFIED
+	//if userProfile.Gender != nil {
+	//	genderPb = ssoprofilepb.Gender(*userProfile.Gender)
+	//}
+	//
+	//var avatarFileKeyPb *wrappers.StringValue
+	//if userProfile.AvatarFileKey != nil {
+	//	avatarFileKeyPb = &wrappers.StringValue{Value: *userProfile.AvatarFileKey}
+	//}
+	//
+	//return &ssoprofilepb.GetProfileResponse{
+	//	UserId:        userProfile.UserID,
+	//	Username:      userProfile.Username,
+	//	Fio:           userProfile.FIO,
+	//	DateOfBirth:   dateOfBirthPb,
+	//	Gender:        genderPb,
+	//	AvatarFileKey: avatarFileKeyPb,
+	//}, nil
 
-		return nil, server.InternalError("failed to get user profile")
-	}
-
-	var dateOfBirthPb *timestamppb.Timestamp
-	if userProfile.DateOfBirth != nil {
-		dateOfBirthPb = timestamppb.New(*userProfile.DateOfBirth)
-	}
-
-	genderPb := ssoprofilepb.Gender_GENDER_UNSPECIFIED
-	if userProfile.Gender != nil {
-		genderPb = ssoprofilepb.Gender(*userProfile.Gender)
-	}
-
-	var avatarFileKeyPb *wrappers.StringValue
-	if userProfile.AvatarFileKey != nil {
-		avatarFileKeyPb = &wrappers.StringValue{Value: *userProfile.AvatarFileKey}
-	}
-
-	return &ssoprofilepb.GetProfileResponse{
-		UserId:        userProfile.UserID,
-		Username:      userProfile.Username,
-		Fio:           userProfile.FIO,
-		DateOfBirth:   dateOfBirthPb,
-		Gender:        genderPb,
-		AvatarFileKey: avatarFileKeyPb,
-	}, nil
+	return &ssoprofilepb.GetProfileResponse{}, nil
 }
 
 func validateGetProfileRequest(req *ssoprofilepb.GetProfileRequest) error {

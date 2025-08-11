@@ -2,10 +2,12 @@ package entity
 
 import (
 	"fmt"
+	"github.com/p1xray/pxr-sso/internal/enum"
 	"time"
 )
 
 type Session struct {
+	ID             int64
 	UserID         int64
 	RefreshTokenID string
 	UserAgent      string
@@ -13,6 +15,8 @@ type Session struct {
 	ExpiresAt      time.Time
 
 	Tokens Tokens
+
+	dataStatus enum.DataStatusEnum
 }
 
 func NewSession(data CreateNewSessionParams) (Session, error) {
@@ -41,4 +45,63 @@ func NewSession(data CreateNewSessionParams) (Session, error) {
 
 		Tokens: tokens,
 	}, nil
+}
+
+func NewExistSession(
+	id int64,
+	userID int64,
+	refreshTokenID,
+	userAgent,
+	fingerprint string,
+	expiresAt time.Time,
+) Session {
+	return Session{
+		ID:             id,
+		UserID:         userID,
+		RefreshTokenID: refreshTokenID,
+		UserAgent:      userAgent,
+		Fingerprint:    fingerprint,
+		ExpiresAt:      expiresAt,
+	}
+}
+
+func (s *Session) Validate(userAgent, fingerprint string) error {
+	const op = "entity.Session.Validate"
+
+	// Check session expiration time.
+	now := time.Now()
+	if s.ExpiresAt.Before(now) {
+		return fmt.Errorf("%s: %w", op, ErrRefreshTokenExpired)
+	}
+
+	// Check session user agent and fingerprint.
+	if s.UserAgent != userAgent && s.Fingerprint != fingerprint {
+		return fmt.Errorf("%s: %w", op, ErrInvalidSession)
+	}
+
+	return nil
+}
+
+func (s *Session) SetToCreate() {
+	s.dataStatus = enum.ToCreate
+}
+
+func (s *Session) SetToUpdate() {
+	s.dataStatus = enum.ToUpdate
+}
+
+func (s *Session) SetToRemove() {
+	s.dataStatus = enum.ToRemove
+}
+
+func (s *Session) IsToCreate() bool {
+	return s.dataStatus == enum.ToCreate
+}
+
+func (s *Session) IsToUpdate() bool {
+	return s.dataStatus == enum.ToUpdate
+}
+
+func (s *Session) IsToRemove() bool {
+	return s.dataStatus == enum.ToRemove
 }

@@ -22,13 +22,22 @@ type App struct {
 func New(
 	log *slog.Logger,
 	port int,
-	authService server.AuthService,
-	profileService server.ProfileService,
+	loginUseCase server.Login,
+	registerUseCase server.Register,
+	refreshUseCase server.RefreshTokens,
+	logoutUseCase server.Logout,
 ) *App {
 	gRPCServer := grpc.NewServer()
 
-	authserver.Register(gRPCServer, authService)
-	profileserver.Register(gRPCServer, profileService)
+	authserver.Register(
+		gRPCServer,
+		loginUseCase,
+		registerUseCase,
+		refreshUseCase,
+		logoutUseCase,
+	)
+
+	profileserver.Register(gRPCServer, nil) // TODO: implement profile use case
 
 	return &App{
 		log:        log,

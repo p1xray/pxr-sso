@@ -3,12 +3,12 @@ package app
 import (
 	grpcapp "github.com/p1xray/pxr-sso/internal/app/grpc"
 	"github.com/p1xray/pxr-sso/internal/config"
-	clientcrud "github.com/p1xray/pxr-sso/internal/logic/crud/client"
-	sessioncrud "github.com/p1xray/pxr-sso/internal/logic/crud/session"
-	usercrud "github.com/p1xray/pxr-sso/internal/logic/crud/user"
-	"github.com/p1xray/pxr-sso/internal/logic/service/auth"
-	"github.com/p1xray/pxr-sso/internal/logic/service/profile"
-	"github.com/p1xray/pxr-sso/internal/storage/sqlite"
+	"github.com/p1xray/pxr-sso/internal/infrastructure/repository"
+	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/sqlite"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/login"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/register"
 	"log/slog"
 )
 
@@ -27,22 +27,21 @@ func New(
 		panic(err)
 	}
 
-	userCRUD := usercrud.New(storage, storage, storage)
-	clientCRUD := clientcrud.New(storage)
-	sessionCRUD := sessioncrud.New(storage, storage)
+	authRepository := repository.NewAuthRepository(log, storage)
 
-	authService := auth.New(
+	loginUseCase := login.New(log, cfg.Tokens, authRepository)
+	registerUseCase := register.New(log, cfg.Tokens, authRepository)
+	refreshUseCase := refresh.New(log, cfg.Tokens, authRepository)
+	logoutUseCase := logout.New(log, cfg.Tokens, authRepository)
+
+	grpcApp := grpcapp.New(
 		log,
-		cfg.Tokens.AccessTokenTTL,
-		cfg.Tokens.RefreshTokenTTL,
-		userCRUD,
-		clientCRUD,
-		sessionCRUD,
+		cfg.GRPC.Port,
+		loginUseCase,
+		registerUseCase,
+		refreshUseCase,
+		logoutUseCase,
 	)
-
-	profileService := profile.New(log, userCRUD)
-
-	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, profileService)
 
 	return &App{
 		GRPCServer: grpcApp,

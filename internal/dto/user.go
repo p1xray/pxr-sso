@@ -1,17 +1,19 @@
 package dto
 
+import (
+	"github.com/p1xray/pxr-sso/internal/enum"
+	"time"
+)
+
 // User is information about the user.
 type User struct {
-	ID           int64
-	Username     string
-	PasswordHash string
-	Permissions  []string
-	Client       Client
-}
-
-// UserCredentials is user's credentials data.
-type UserCredentials struct {
-	ID           int64
-	Username     string
-	PasswordHash string
+	ID            int64
+	Username      string
+	PasswordHash  string
+	FullName      string
+	DateOfBirth   *time.Time
+	Gender        *enum.GenderEnum
+	AvatarFileKey *string
+	Roles         []string
+	Permissions   []string
 }

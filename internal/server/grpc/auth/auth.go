@@ -4,9 +4,13 @@ import (
 	"context"
 	"errors"
 	ssopb "github.com/p1xray/pxr-sso-protos/gen/go/sso"
-	"github.com/p1xray/pxr-sso/internal/logic/dto"
-	"github.com/p1xray/pxr-sso/internal/logic/service"
+	"github.com/p1xray/pxr-sso/internal/enum"
 	"github.com/p1xray/pxr-sso/internal/server"
+	"github.com/p1xray/pxr-sso/internal/usecase"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/login"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/register"
 	"google.golang.org/grpc"
 	"time"
 )
@@ -17,12 +21,28 @@ const (
 
 type serverAPI struct {
 	ssopb.UnimplementedSsoServer
-	auth server.AuthService
+	loginUseCase    server.Login
+	registerUseCase server.Register
+	refreshUseCase  server.RefreshTokens
+	logoutUseCase   server.Logout
 }
 
 // Register registers the implementation of the API service with the gRPC server.
-func Register(gRPC *grpc.Server, authService server.AuthService) {
-	ssopb.RegisterSsoServer(gRPC, &serverAPI{auth: authService})
+func Register(
+	gRPC *grpc.Server,
+	loginUseCase server.Login,
+	registerUseCase server.Register,
+	refreshUseCase server.RefreshTokens,
+	logoutUseCase server.Logout,
+) {
+	api := &serverAPI{
+		loginUseCase:    loginUseCase,
+		registerUseCase: registerUseCase,
+		refreshUseCase:  refreshUseCase,
+		logoutUseCase:   logoutUseCase,
+	}
+
+	ssopb.RegisterSsoServer(gRPC, api)
 }
 
 func (s *serverAPI) Login(
@@ -33,7 +53,7 @@ func (s *serverAPI) Login(
 		return nil, err
 	}
 
-	loginData := dto.LoginDTO{
+	loginData := login.Params{
 		Username:    req.GetUsername(),
 		Password:    req.GetPassword(),
 		ClientCode:  req.GetClientCode(),
@@ -42,9 +62,9 @@ func (s *serverAPI) Login(
 		Issuer:      req.GetIssuer(),
 	}
 
-	tokens, err := s.auth.Login(ctx, loginData)
+	tokens, err := s.loginUseCase.Execute(ctx, loginData)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidCredentials) {
+		if errors.Is(err, usecase.ErrInvalidCredentials) {
 			return nil, server.InvalidArgumentError("invalid username or password")
 		}
 
@@ -96,9 +116,9 @@ func (s *serverAPI) Register(
 		dateOfBirth = &dateOfBirthPbAsTime
 	}
 
-	var gender *dto.GenderEnum
+	var gender *enum.GenderEnum
 	if req.GetGender() != emptyValue {
-		genderEnum := dto.GenderEnum(req.GetGender().Number())
+		genderEnum := enum.GenderEnum(req.GetGender().Number())
 		gender = &genderEnum
 	}
 
@@ -108,7 +128,7 @@ func (s *serverAPI) Register(
 		avatarFileKey = &avatarFileKeyPbString
 	}
 
-	registerData := dto.RegisterDTO{
+	registerData := register.Params{
 		Username:      req.GetUsername(),
 		Password:      req.GetPassword(),
 		ClientCode:    req.GetClientCode(),
@@ -121,9 +141,9 @@ func (s *serverAPI) Register(
 		Issuer:        req.GetIssuer(),
 	}
 
-	tokens, err := s.auth.Register(ctx, registerData)
+	tokens, err := s.registerUseCase.Execute(ctx, registerData)
 	if err != nil {
-		if errors.Is(err, service.ErrUserExists) {
+		if errors.Is(err, usecase.ErrUserExists) {
 			return nil, server.InvalidArgumentError("user with this username already exists")
 		}
 
@@ -173,7 +193,7 @@ func (s *serverAPI) RefreshTokens(
 		return nil, err
 	}
 
-	refreshTokensData := dto.RefreshTokensDTO{
+	refreshTokensData := refresh.Params{
 		RefreshToken: req.GetRefreshToken(),
 		ClientCode:   req.GetClientCode(),
 		UserAgent:    req.GetUserAgent(),
@@ -181,7 +201,7 @@ func (s *serverAPI) RefreshTokens(
 		Issuer:       req.GetIssuer(),
 	}
 
-	tokens, err := s.auth.RefreshTokens(ctx, refreshTokensData)
+	tokens, err := s.refreshUseCase.Execute(ctx, refreshTokensData)
 	if err != nil {
 		return nil, server.InternalError("failed to refresh tokens")
 	}
@@ -221,11 +241,11 @@ func (s *serverAPI) Logout(
 		return &ssopb.LogoutResponse{Success: false}, err
 	}
 
-	logoutData := dto.LogoutDTO{
+	logoutData := logout.Params{
 		RefreshToken: req.GetRefreshToken(),
 		ClientCode:   req.GetClientCode(),
 	}
-	if err := s.auth.Logout(ctx, logoutData); err != nil {
+	if err := s.logoutUseCase.Execute(ctx, logoutData); err != nil {
 		return &ssopb.LogoutResponse{Success: false}, server.InternalError("failed to logout")
 	}
 

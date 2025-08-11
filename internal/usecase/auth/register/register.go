@@ -1,4 +1,4 @@
-package login
+package register
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 )
 
 type AuthRepository interface {
-	DataForLogin(ctx context.Context, username, clientCode string) (dto.DataForLogin, error)
+	DataForRegister(ctx context.Context, username, clientCode string) (dto.DataForRegister, error)
 	Save(ctx context.Context, auth entity.Auth) error
 }
 
@@ -33,21 +33,19 @@ func New(log *slog.Logger, cfg config.TokensConfig, repo AuthRepository) *UseCas
 }
 
 func (uc *UseCase) Execute(ctx context.Context, data Params) (entity.Tokens, error) {
-	const op = "usecase.auth.login"
+	const op = "usecase.auth.register"
 
 	log := uc.log.With(
 		slog.String("op", op),
 		slog.String("username", data.Username),
 		slog.String("client code", data.ClientCode),
 	)
-	log.Info("attempting to login user")
+	log.Info("attempting to register new user")
 
-	// Get user data from storage.
-	storageLoginData, err := uc.repo.DataForLogin(ctx, data.Username, data.ClientCode)
-	if err != nil {
-		if errors.Is(err, infrastructure.ErrEntityNotFound) {
-			return entity.Tokens{}, fmt.Errorf("%s: %w", op, usecase.ErrInvalidCredentials)
-		}
+	// Get data from storage.
+	storageData, err := uc.repo.DataForRegister(ctx, data.Username, data.ClientCode)
+	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
+		log.Error("error getting data from storage", sl.Err(err))
 
 		return entity.Tokens{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -56,26 +54,36 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (entity.Tokens, err
 	auth := entity.NewAuth(
 		uc.cfg.AccessTokenTTL,
 		uc.cfg.RefreshTokenTTL,
-		entity.WithUser(storageLoginData.User),
-		entity.WithClient(storageLoginData.Client),
-		entity.WithSession(storageLoginData.Sessions...),
+		entity.WithUser(storageData.User),
+		entity.WithClient(storageData.Client),
 	)
 
-	// Log in.
-	entityLoginParams := entity.LoginParams{
-		Password:    data.Password,
-		UserAgent:   data.UserAgent,
-		Fingerprint: data.Fingerprint,
-		Issuer:      data.Issuer,
+	// Register.
+	entityRegisterParams := entity.RegisterParams{
+		Username:      data.Username,
+		Password:      data.Password,
+		FullName:      data.FIO,
+		DateOfBirth:   data.DateOfBirth,
+		Gender:        data.Gender,
+		AvatarFileKey: data.AvatarFileKey,
+		UserAgent:     data.UserAgent,
+		Fingerprint:   data.Fingerprint,
+		Issuer:        data.Issuer,
 	}
-	tokens, err := auth.Login(entityLoginParams)
+	tokens, err := auth.Register(entityRegisterParams)
 	if err != nil {
-		log.Error("failed to login", sl.Err(err))
+		if errors.Is(err, entity.ErrUserExists) {
+			log.Warn("user already exists", sl.Err(err))
+
+			return entity.Tokens{}, fmt.Errorf("%s: %w", op, usecase.ErrUserExists)
+		}
+
+		log.Error("failed to register", sl.Err(err))
 
 		return entity.Tokens{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Save data in storage.
+	// Save data to storage.
 	err = uc.repo.Save(ctx, auth)
 	if err != nil {
 		log.Error("error saving data to storage.", sl.Err(err))
@@ -83,7 +91,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (entity.Tokens, err
 		return entity.Tokens{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	log.Info("user logged in successfully")
+	log.Info("user register successfully")
 
 	return tokens, nil
 }
