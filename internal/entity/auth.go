@@ -7,11 +7,6 @@ import (
 	"time"
 )
 
-const (
-	emptyValue      = 0
-	defaultRoleName = "member"
-)
-
 type Auth struct {
 	Sessions []Session
 	User     User
@@ -51,7 +46,7 @@ func (a *Auth) Login(data LoginParams) (Tokens, error) {
 
 func (a *Auth) Register(data RegisterParams) (Tokens, error) {
 	// Check if user with given username already exists.
-	if a.User.ID > emptyValue {
+	if a.User.ID > emptyID {
 		return Tokens{}, ErrUserExists
 	}
 

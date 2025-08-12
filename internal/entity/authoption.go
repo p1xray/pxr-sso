@@ -2,8 +2,6 @@ package entity
 
 import "github.com/p1xray/pxr-sso/internal/dto"
 
-const emptyID = 0
-
 type AuthOption func(*Auth)
 
 func WithUser(user dto.User) AuthOption {
