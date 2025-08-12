@@ -35,28 +35,24 @@ func NewAuth(accessTokenTTL, refreshTokenTTL time.Duration, setters ...AuthOptio
 }
 
 func (a *Auth) Login(data LoginParams) (Tokens, error) {
-	const op = "entity.Auth.Login"
-
 	// Check password hash.
 	if err := bcrypt.CompareHashAndPassword([]byte(a.User.PasswordHash), []byte(data.Password)); err != nil {
-		return Tokens{}, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+		return Tokens{}, fmt.Errorf("%w: %w", ErrInvalidCredentials, err)
 	}
 
 	// Create new session.
 	tokens, err := a.createNewSession(data.Issuer, data.UserAgent, data.Fingerprint)
 	if err != nil {
-		return Tokens{}, fmt.Errorf("%s: %w", op, err)
+		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateSession, err)
 	}
 
 	return tokens, nil
 }
 
 func (a *Auth) Register(data RegisterParams) (Tokens, error) {
-	const op = "entity.Auth.Register"
-
 	// Check if user with given username already exists.
 	if a.User.ID > emptyValue {
-		return Tokens{}, fmt.Errorf("%s: %w", op, ErrUserExists)
+		return Tokens{}, ErrUserExists
 	}
 
 	// Generate hash from password.
@@ -64,7 +60,7 @@ func (a *Auth) Register(data RegisterParams) (Tokens, error) {
 		[]byte(data.Password),
 		bcrypt.DefaultCost)
 	if err != nil {
-		return Tokens{}, fmt.Errorf("%s: %w", op, ErrGeneratePasswordHash)
+		return Tokens{}, fmt.Errorf("%w: %w", ErrGeneratePasswordHash, err)
 	}
 
 	// Create new user.
@@ -85,47 +81,43 @@ func (a *Auth) Register(data RegisterParams) (Tokens, error) {
 	// Create new session.
 	tokens, err := a.createNewSession(data.Issuer, data.UserAgent, data.Fingerprint)
 	if err != nil {
-		return Tokens{}, fmt.Errorf("%s: %w", op, err)
+		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateSession, err)
 	}
 
 	return tokens, nil
 }
 
 func (a *Auth) RefreshTokens(data RefreshTokensParams) (Tokens, error) {
-	const op = "entity.Auth.RefreshTokens"
-
 	// Check session data.
 	for _, session := range a.Sessions {
 		if err := session.Validate(data.UserAgent, data.Fingerprint); err != nil {
-			return Tokens{}, fmt.Errorf("%s: %w", op, err)
+			return Tokens{}, fmt.Errorf("%w: %w", ErrValidateSession, err)
 		}
 	}
 
 	// Set current session to remove.
-	for _, session := range a.Sessions {
-		session.SetToRemove()
+	for i := range a.Sessions {
+		a.Sessions[i].SetToRemove()
 	}
 
 	// Create new session.
 	tokens, err := a.createNewSession(data.Issuer, data.UserAgent, data.Fingerprint)
 	if err != nil {
-		return Tokens{}, fmt.Errorf("%s: %w", op, err)
+		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateSession, err)
 	}
 
 	return tokens, nil
 }
 
 func (a *Auth) Logout() error {
-	const op = "entity.Auth.Logout"
-
 	// Check if session exist.
 	if len(a.Sessions) == 0 {
-		return fmt.Errorf("%s: %w", op, ErrSessionNotFound)
+		return ErrSessionNotFound
 	}
 
 	// Set current session to remove.
-	for _, session := range a.Sessions {
-		session.SetToRemove()
+	for i := range a.Sessions {
+		a.Sessions[i].SetToRemove()
 	}
 
 	return nil
@@ -147,6 +139,8 @@ func (a *Auth) createNewSession(issuer, userAgent, fingerprint string) (Tokens, 
 	if err != nil {
 		return Tokens{}, err
 	}
+
+	session.SetToCreate()
 
 	a.addSession(session)
 

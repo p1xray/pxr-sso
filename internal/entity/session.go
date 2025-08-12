@@ -20,8 +20,6 @@ type Session struct {
 }
 
 func NewSession(data CreateNewSessionParams) (Session, error) {
-	const op = "entity.NewSession"
-
 	createTokensParams := CreateTokensParams{
 		UserID:          data.UserID,
 		Permissions:     data.UserPermissions,
@@ -33,7 +31,7 @@ func NewSession(data CreateNewSessionParams) (Session, error) {
 	}
 	tokens, err := NewTokens(createTokensParams)
 	if err != nil {
-		return Session{}, fmt.Errorf("%s: %w", op, err)
+		return Session{}, fmt.Errorf("%w: %w", ErrCreateTokens, err)
 	}
 
 	return Session{

@@ -2,10 +2,16 @@ package entity
 
 import "github.com/p1xray/pxr-sso/internal/dto"
 
+const emptyID = 0
+
 type AuthOption func(*Auth)
 
 func WithUser(user dto.User) AuthOption {
 	return func(a *Auth) {
+		if user.ID == emptyID {
+			return
+		}
+
 		a.User = NewUser(
 			user.ID,
 			user.Username,
@@ -22,14 +28,22 @@ func WithUser(user dto.User) AuthOption {
 
 func WithClient(client dto.Client) AuthOption {
 	return func(a *Auth) {
+		if client.ID == emptyID {
+			return
+		}
+
 		a.client = client
 	}
 }
 
 func WithSession(sessions ...dto.Session) AuthOption {
 	return func(a *Auth) {
-		sessionEntities := make([]Session, len(sessions))
-		for i, session := range sessions {
+		sessionEntities := make([]Session, 0)
+		for _, session := range sessions {
+			if session.ID == emptyID {
+				continue
+			}
+
 			sessionEntity := NewExistSession(
 				session.ID,
 				session.UserID,
@@ -39,7 +53,7 @@ func WithSession(sessions ...dto.Session) AuthOption {
 				session.ExpiresAt,
 			)
 
-			sessionEntities[i] = sessionEntity
+			sessionEntities = append(sessionEntities, sessionEntity)
 		}
 
 		a.Sessions = append(a.Sessions, sessionEntities...)

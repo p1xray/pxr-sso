@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	jwtcreator "github.com/p1xray/pxr-sso/pkg/jwt/creator"
 	"strconv"
 )
@@ -23,14 +24,14 @@ func NewTokens(data CreateTokensParams) (Tokens, error) {
 	}
 	accessToken, err := jwtcreator.NewAccessToken(createAccessTokenData)
 	if err != nil {
-		return Tokens{}, err
+		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateAccessToken, err)
 	}
 
 	// Create refresh token.
 	refreshToken, refreshTokenID, err := jwtcreator.NewRefreshToken([]byte(data.SecretKey), data.RefreshTokenTTL)
 	if err != nil {
 
-		return Tokens{}, err
+		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateRefreshToken, err)
 	}
 
 	return Tokens{
