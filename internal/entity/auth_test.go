@@ -29,7 +29,7 @@ const (
 	secretKey   = "98649a5c-2137-4a78-a63f-fbab416a7f9e"
 )
 
-func Test_Login(t *testing.T) {
+func Test_Auth_Login(t *testing.T) {
 	testCases := []struct {
 		name          string
 		data          LoginParams
@@ -127,7 +127,7 @@ func Test_Login(t *testing.T) {
 	}
 }
 
-func Test_Register(t *testing.T) {
+func Test_Auth_Register(t *testing.T) {
 	var (
 		username      = "test@mail.com"
 		fullName      = "test user"
@@ -249,7 +249,7 @@ func Test_Register(t *testing.T) {
 	}
 }
 
-func Test_RefreshTokens(t *testing.T) {
+func Test_Auth_RefreshTokens(t *testing.T) {
 	var (
 		validSessionExpires   = time.Now().Add(time.Hour)
 		invalidSessionExpires = time.Now().Add(-time.Hour)
@@ -367,7 +367,7 @@ func Test_RefreshTokens(t *testing.T) {
 	}
 }
 
-func Test_Logout(t *testing.T) {
+func Test_Auth_Logout(t *testing.T) {
 	sessionExpires := time.Now().Add(time.Hour)
 
 	testCases := []struct {

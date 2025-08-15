@@ -35,24 +35,6 @@ func NewSession(userID int64, userAgent, fingerprint string, setters ...SessionO
 	return session, nil
 }
 
-func NewExistSession(
-	id int64,
-	userID int64,
-	refreshTokenID,
-	userAgent,
-	fingerprint string,
-	expiresAt time.Time,
-) Session {
-	return Session{
-		ID:             id,
-		UserID:         userID,
-		RefreshTokenID: refreshTokenID,
-		UserAgent:      userAgent,
-		Fingerprint:    fingerprint,
-		ExpiresAt:      expiresAt,
-	}
-}
-
 func (s *Session) Validate(userAgent, fingerprint string) error {
 	const op = "entity.Session.Validate"
 
@@ -63,7 +45,7 @@ func (s *Session) Validate(userAgent, fingerprint string) error {
 	}
 
 	// Check session user agent and fingerprint.
-	if s.UserAgent != userAgent && s.Fingerprint != fingerprint {
+	if s.UserAgent != userAgent || s.Fingerprint != fingerprint {
 		return fmt.Errorf("%s: %w", op, ErrInvalidSession)
 	}
 
