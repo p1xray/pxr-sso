@@ -22,11 +22,12 @@ const (
 	sessionID      = 1
 	refreshTokenID = "6424f67d-61c3-4251-b193-f2da172f9e01"
 
-	clientID    = 1
-	userAgent   = "test user agent"
-	fingerprint = "test fingerprint"
-	issuer      = "test issuer"
-	secretKey   = "98649a5c-2137-4a78-a63f-fbab416a7f9e"
+	clientID         = 1
+	userAgent        = "test user agent"
+	fingerprint      = "test fingerprint"
+	issuer           = "test issuer"
+	secretKey        = "98649a5c-2137-4a78-a63f-fbab416a7f9e"
+	invalidSecretKey = "invalid_key"
 )
 
 func Test_Auth_Login(t *testing.T) {
