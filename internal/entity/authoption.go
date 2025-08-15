@@ -1,13 +1,16 @@
 package entity
 
-import "github.com/p1xray/pxr-sso/internal/dto"
+import (
+	"fmt"
+	"github.com/p1xray/pxr-sso/internal/dto"
+)
 
-type AuthOption func(*Auth)
+type AuthOption func(*Auth) error
 
 func WithUser(user dto.User) AuthOption {
-	return func(a *Auth) {
+	return func(a *Auth) error {
 		if user.ID == emptyID {
-			return
+			return nil
 		}
 
 		a.User = NewUser(
@@ -21,39 +24,48 @@ func WithUser(user dto.User) AuthOption {
 			user.Roles,
 			user.Permissions,
 		)
+
+		return nil
 	}
 }
 
 func WithClient(client dto.Client) AuthOption {
-	return func(a *Auth) {
+	return func(a *Auth) error {
 		if client.ID == emptyID {
-			return
+			return nil
 		}
 
 		a.client = client
+
+		return nil
 	}
 }
 
 func WithSession(sessions ...dto.Session) AuthOption {
-	return func(a *Auth) {
+	return func(a *Auth) error {
 		sessionEntities := make([]Session, 0)
 		for _, session := range sessions {
 			if session.ID == emptyID {
 				continue
 			}
 
-			sessionEntity := NewExistSession(
-				session.ID,
+			sessionEntity, err := NewSession(
 				session.UserID,
-				session.RefreshTokenID,
 				session.UserAgent,
 				session.Fingerprint,
-				session.ExpiresAt,
+				WithSessionID(session.ID),
+				WithSessionRefreshTokenID(session.RefreshTokenID),
+				WithSessionExpiresAt(session.ExpiresAt),
 			)
+			if err != nil {
+				return fmt.Errorf("%w: %w", ErrCreateSession, err)
+			}
 
 			sessionEntities = append(sessionEntities, sessionEntity)
 		}
 
 		a.Sessions = append(a.Sessions, sessionEntities...)
+
+		return nil
 	}
 }

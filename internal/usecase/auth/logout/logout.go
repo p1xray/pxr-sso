@@ -80,11 +80,14 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) error {
 	}
 
 	// Create auth entity.
-	auth := entity.NewAuth(
+	auth, err := entity.NewAuth(
 		uc.cfg.AccessTokenTTL,
 		uc.cfg.RefreshTokenTTL,
 		entity.WithSession(storageLogoutData.Session),
 	)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
 
 	// Logout.
 	if err = auth.Logout(); err != nil {

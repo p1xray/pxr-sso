@@ -53,13 +53,16 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (entity.Tokens, err
 	}
 
 	// Create auth entity.
-	auth := entity.NewAuth(
+	auth, err := entity.NewAuth(
 		uc.cfg.AccessTokenTTL,
 		uc.cfg.RefreshTokenTTL,
 		entity.WithUser(storageLoginData.User),
 		entity.WithClient(storageLoginData.Client),
 		entity.WithSession(storageLoginData.Sessions...),
 	)
+	if err != nil {
+		return entity.Tokens{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	// Log in.
 	entityLoginParams := entity.LoginParams{

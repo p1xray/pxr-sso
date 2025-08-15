@@ -16,17 +16,19 @@ type Auth struct {
 	refreshTokenTTL time.Duration
 }
 
-func NewAuth(accessTokenTTL, refreshTokenTTL time.Duration, setters ...AuthOption) Auth {
+func NewAuth(accessTokenTTL, refreshTokenTTL time.Duration, setters ...AuthOption) (Auth, error) {
 	auth := Auth{
 		accessTokenTTL:  accessTokenTTL,
 		refreshTokenTTL: refreshTokenTTL,
 	}
 
 	for _, setter := range setters {
-		setter(&auth)
+		if err := setter(&auth); err != nil {
+			return Auth{}, err
+		}
 	}
 
-	return auth
+	return auth, nil
 }
 
 func (a *Auth) Login(data LoginParams) (Tokens, error) {
@@ -119,18 +121,21 @@ func (a *Auth) Logout() error {
 }
 
 func (a *Auth) createNewSession(issuer, userAgent, fingerprint string) (Tokens, error) {
-	createNewSessionParams := CreateNewSessionParams{
-		UserID:          a.User.ID,
+	generateTokensParams := SessionWithGeneratedTokensParams{
 		UserPermissions: a.User.Permissions,
 		ClientCode:      a.client.Code,
 		ClientSecretKey: a.client.SecretKey,
 		Issuer:          issuer,
-		UserAgent:       userAgent,
-		Fingerprint:     fingerprint,
 		AccessTokenTTL:  a.accessTokenTTL,
 		RefreshTokenTTL: a.refreshTokenTTL,
 	}
-	session, err := NewSession(createNewSessionParams)
+
+	session, err := NewSession(
+		a.User.ID,
+		userAgent,
+		fingerprint,
+		WithGeneratedTokens(generateTokensParams),
+	)
 	if err != nil {
 		return Tokens{}, err
 	}

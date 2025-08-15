@@ -19,30 +19,20 @@ type Session struct {
 	dataStatus enum.DataStatusEnum
 }
 
-func NewSession(data CreateNewSessionParams) (Session, error) {
-	createTokensParams := CreateTokensParams{
-		UserID:          data.UserID,
-		Permissions:     data.UserPermissions,
-		ClientCode:      data.ClientCode,
-		SecretKey:       data.ClientSecretKey,
-		Issuer:          data.Issuer,
-		AccessTokenTTL:  data.AccessTokenTTL,
-		RefreshTokenTTL: data.RefreshTokenTTL,
-	}
-	tokens, err := NewTokens(createTokensParams)
-	if err != nil {
-		return Session{}, fmt.Errorf("%w: %w", ErrCreateTokens, err)
+func NewSession(userID int64, userAgent, fingerprint string, setters ...SessionOption) (Session, error) {
+	session := Session{
+		UserID:      userID,
+		UserAgent:   userAgent,
+		Fingerprint: fingerprint,
 	}
 
-	return Session{
-		UserID:         data.UserID,
-		RefreshTokenID: tokens.RefreshTokenID,
-		UserAgent:      data.UserAgent,
-		Fingerprint:    data.Fingerprint,
-		ExpiresAt:      time.Now().Add(data.RefreshTokenTTL),
+	for _, setter := range setters {
+		if err := setter(&session); err != nil {
+			return Session{}, err
+		}
+	}
 
-		Tokens: tokens,
-	}, nil
+	return session, nil
 }
 
 func NewExistSession(
