@@ -17,3 +17,13 @@ type User struct {
 	Roles         []string
 	Permissions   []string
 }
+
+// UserProfile is data for user profile.
+type UserProfile struct {
+	ID            int64
+	Username      string
+	FullName      string
+	DateOfBirth   *time.Time
+	Gender        *enum.GenderEnum
+	AvatarFileKey *string
+}

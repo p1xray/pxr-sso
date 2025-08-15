@@ -26,6 +26,7 @@ func New(
 	registerUseCase server.Register,
 	refreshUseCase server.RefreshTokens,
 	logoutUseCase server.Logout,
+	profileUseCase server.UserProfile,
 ) *App {
 	gRPCServer := grpc.NewServer()
 
@@ -37,7 +38,7 @@ func New(
 		logoutUseCase,
 	)
 
-	profileserver.Register(gRPCServer, nil) // TODO: implement profile use case
+	profileserver.Register(gRPCServer, profileUseCase)
 
 	return &App{
 		log:        log,

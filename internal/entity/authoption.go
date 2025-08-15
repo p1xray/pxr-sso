@@ -14,15 +14,15 @@ func WithUser(user dto.User) AuthOption {
 		}
 
 		a.User = NewUser(
-			user.ID,
 			user.Username,
-			user.PasswordHash,
 			user.FullName,
 			user.DateOfBirth,
 			user.Gender,
 			user.AvatarFileKey,
-			user.Roles,
-			user.Permissions,
+			WithUserID(user.ID),
+			WithUserPasswordHash(user.PasswordHash),
+			WithUserRoles(user.Roles),
+			WithUserPermissions(user.Permissions),
 		)
 
 		return nil

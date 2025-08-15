@@ -62,15 +62,14 @@ func (a *Auth) Register(data RegisterParams) (Tokens, error) {
 
 	// Create new user.
 	user := NewUser(
-		0,
 		data.Username,
-		string(passwordHash),
 		data.FullName,
 		data.DateOfBirth,
 		data.Gender,
 		data.AvatarFileKey,
-		[]string{defaultRoleName}, // TODO: get this from storage.
-		[]string{},                // TODO: get permissions from storage by default role.
+		WithUserPasswordHash(string(passwordHash)),
+		WithUserRoles([]string{defaultRoleName}), // TODO: get this from storage.
+		WithUserPermissions([]string{}),          // TODO: get permissions from storage by default role.
 	)
 	user.SetToCreate()
 	a.setUser(user)

@@ -32,6 +32,17 @@ func ToUserDTO(user models.User, roles []models.Role, permissions []models.Permi
 	}
 }
 
+func ToUserProfileDTO(user models.User) dto.UserProfile {
+	return dto.UserProfile{
+		ID:            user.ID,
+		Username:      user.Username,
+		FullName:      user.FullName,
+		DateOfBirth:   user.DateOfBirth.Ptr(),
+		Gender:        enum.GenderEnumFromNullInt16(user.Gender),
+		AvatarFileKey: user.AvatarFileKey.Ptr(),
+	}
+}
+
 func ToClientDTO(client models.Client) dto.Client {
 	return dto.Client{
 		ID:        client.ID,

@@ -20,27 +20,26 @@ type User struct {
 }
 
 func NewUser(
-	id int64,
 	username,
-	passwordHash,
 	fullName string,
 	dateOfBirth *time.Time,
 	gender *enum.GenderEnum,
 	avatarFileKey *string,
-	roles []string,
-	permissions []string,
+	setters ...UserOption,
 ) User {
-	return User{
-		ID:            id,
+	user := User{
 		Username:      username,
-		PasswordHash:  passwordHash,
 		FullName:      fullName,
 		DateOfBirth:   dateOfBirth,
 		Gender:        gender,
 		AvatarFileKey: avatarFileKey,
-		Roles:         roles,
-		Permissions:   permissions,
 	}
+
+	for _, setter := range setters {
+		setter(&user)
+	}
+
+	return user
 }
 
 func (u *User) SetToCreate() {

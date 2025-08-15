@@ -15,7 +15,7 @@ import (
 
 const emptyID = 0
 
-type Storage interface {
+type AuthStorage interface {
 	User(ctx context.Context, id int64) (models.User, error)
 	UserByUsername(ctx context.Context, username string) (models.User, error)
 	CreateUser(ctx context.Context, user models.User) (int64, error)
@@ -38,10 +38,10 @@ type Storage interface {
 
 type Auth struct {
 	log     *slog.Logger
-	storage Storage
+	storage AuthStorage
 }
 
-func NewAuthRepository(log *slog.Logger, storage Storage) *Auth {
+func NewAuthRepository(log *slog.Logger, storage AuthStorage) *Auth {
 	return &Auth{
 		log:     log,
 		storage: storage,

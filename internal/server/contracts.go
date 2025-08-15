@@ -25,4 +25,8 @@ type (
 	Logout interface {
 		Execute(ctx context.Context, data logout.Params) error
 	}
+
+	UserProfile interface {
+		Execute(ctx context.Context, id int64) (entity.User, error)
+	}
 )

@@ -9,6 +9,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/register"
+	"github.com/p1xray/pxr-sso/internal/usecase/profile/card"
 	"log/slog"
 )
 
@@ -28,11 +29,14 @@ func New(
 	}
 
 	authRepository := repository.NewAuthRepository(log, storage)
+	profileRepository := repository.NewProfileRepository(log, storage)
 
 	loginUseCase := login.New(log, cfg.Tokens, authRepository)
 	registerUseCase := register.New(log, cfg.Tokens, authRepository)
 	refreshUseCase := refresh.New(log, cfg.Tokens, authRepository)
 	logoutUseCase := logout.New(log, cfg.Tokens, authRepository)
+
+	profileUseCase := card.New(log, profileRepository)
 
 	grpcApp := grpcapp.New(
 		log,
@@ -41,6 +45,7 @@ func New(
 		registerUseCase,
 		refreshUseCase,
 		logoutUseCase,
+		profileUseCase,
 	)
 
 	return &App{
