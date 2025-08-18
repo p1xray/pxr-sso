@@ -7,7 +7,7 @@ import (
 
 type AuthOption func(*Auth) error
 
-func WithUser(user dto.User) AuthOption {
+func WithAuthUser(user dto.User) AuthOption {
 	return func(a *Auth) error {
 		if user.ID == emptyID {
 			return nil
@@ -29,7 +29,7 @@ func WithUser(user dto.User) AuthOption {
 	}
 }
 
-func WithClient(client dto.Client) AuthOption {
+func WithAuthClient(client dto.Client) AuthOption {
 	return func(a *Auth) error {
 		if client.ID == emptyID {
 			return nil
@@ -41,7 +41,7 @@ func WithClient(client dto.Client) AuthOption {
 	}
 }
 
-func WithSession(sessions ...dto.Session) AuthOption {
+func WithAuthSession(sessions ...dto.Session) AuthOption {
 	return func(a *Auth) error {
 		sessionEntities := make([]Session, 0)
 		for _, session := range sessions {
@@ -65,6 +65,22 @@ func WithSession(sessions ...dto.Session) AuthOption {
 		}
 
 		a.Sessions = append(a.Sessions, sessionEntities...)
+
+		return nil
+	}
+}
+
+func WithAuthDefaultRoles(roles ...dto.Role) AuthOption {
+	return func(a *Auth) error {
+		a.defaultRoles = roles
+
+		return nil
+	}
+}
+
+func WithAuthDefaultPermissionCodes(permissions ...string) AuthOption {
+	return func(a *Auth) error {
+		a.defaultPermissionCodes = permissions
 
 		return nil
 	}

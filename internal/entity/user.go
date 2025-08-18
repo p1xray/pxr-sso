@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"github.com/p1xray/pxr-sso/internal/dto"
 	"github.com/p1xray/pxr-sso/internal/enum"
 	"time"
 )
@@ -13,7 +14,7 @@ type User struct {
 	DateOfBirth   *time.Time
 	Gender        *enum.GenderEnum
 	AvatarFileKey *string
-	Roles         []string
+	Roles         []dto.Role
 	Permissions   []string
 
 	dataStatus enum.DataStatusEnum

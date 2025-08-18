@@ -9,15 +9,12 @@ import (
 )
 
 func ToUserDTO(user models.User, roles []models.Role, permissions []models.Permission) dto.User {
-	roleCodes := make([]string, len(roles))
+	rolesDTO := make([]dto.Role, len(roles))
 	for i, role := range roles {
-		roleCodes[i] = role.Code
+		rolesDTO[i] = ToRoleDTO(role)
 	}
 
-	permissionCodes := make([]string, len(permissions))
-	for i, permission := range permissions {
-		permissionCodes[i] = permission.Code
-	}
+	permissionCodes := ToPermissionCodes(permissions)
 
 	return dto.User{
 		ID:            user.ID,
@@ -27,7 +24,7 @@ func ToUserDTO(user models.User, roles []models.Role, permissions []models.Permi
 		DateOfBirth:   user.DateOfBirth.Ptr(),
 		Gender:        enum.GenderEnumFromNullInt16(user.Gender),
 		AvatarFileKey: user.AvatarFileKey.Ptr(),
-		Roles:         roleCodes,
+		Roles:         rolesDTO,
 		Permissions:   permissionCodes,
 	}
 }
@@ -95,4 +92,55 @@ func ToSessionStorage(session entity.Session, setters ...models.SessionOption) m
 	}
 
 	return sessionStorageModel
+}
+
+func ToRoleDTO(role models.Role) dto.Role {
+	return dto.Role{
+		ID:   role.ID,
+		Code: role.Code,
+	}
+}
+
+func ToRoleCodes(roles []models.Role) []string {
+	roleCodes := make([]string, len(roles))
+	for i, role := range roles {
+		roleCodes[i] = role.Code
+	}
+
+	return roleCodes
+}
+
+func ToPermissionCodes(permissions []models.Permission) []string {
+	permissionCodes := make([]string, len(permissions))
+	for i, permission := range permissions {
+		permissionCodes[i] = permission.Code
+	}
+
+	return permissionCodes
+}
+
+func ToUserClientLinkStorage(userID, clientID int64, setters ...models.UserClientLinkOption) models.UserClientLink {
+	userClientLinkModel := models.UserClientLink{
+		UserID:   userID,
+		ClientID: clientID,
+	}
+
+	for _, setter := range setters {
+		setter(&userClientLinkModel)
+	}
+
+	return userClientLinkModel
+}
+
+func ToUserRoleLinkStorage(userID, roleID int64, setters ...models.UserRoleLinkOption) models.UserRoleLink {
+	userRoleLinkModel := models.UserRoleLink{
+		UserID: userID,
+		RoleID: roleID,
+	}
+
+	for _, setter := range setters {
+		setter(&userRoleLinkModel)
+	}
+
+	return userRoleLinkModel
 }

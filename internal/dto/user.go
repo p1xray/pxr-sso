@@ -14,7 +14,7 @@ type User struct {
 	DateOfBirth   *time.Time
 	Gender        *enum.GenderEnum
 	AvatarFileKey *string
-	Roles         []string
+	Roles         []Role
 	Permissions   []string
 }
 

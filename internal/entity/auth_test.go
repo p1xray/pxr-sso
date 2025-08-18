@@ -108,7 +108,7 @@ func Test_Auth_Login(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			auth, err := NewAuth(accessTokenTTL, refreshTokenTTL, WithUser(tc.user), WithClient(tc.client))
+			auth, err := NewAuth(accessTokenTTL, refreshTokenTTL, WithAuthUser(tc.user), WithAuthClient(tc.client))
 			require.NoError(t, err)
 
 			tokens, err := auth.Login(tc.data)
@@ -223,7 +223,7 @@ func Test_Auth_Register(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			auth, err := NewAuth(accessTokenTTL, refreshTokenTTL, WithUser(tc.user), WithClient(tc.client))
+			auth, err := NewAuth(accessTokenTTL, refreshTokenTTL, WithAuthUser(tc.user), WithAuthClient(tc.client))
 			require.NoError(t, err)
 
 			tokens, err := auth.Register(tc.data)
@@ -334,9 +334,9 @@ func Test_Auth_RefreshTokens(t *testing.T) {
 			auth, err := NewAuth(
 				accessTokenTTL,
 				refreshTokenTTL,
-				WithUser(tc.user),
-				WithClient(tc.client),
-				WithSession(tc.session),
+				WithAuthUser(tc.user),
+				WithAuthClient(tc.client),
+				WithAuthSession(tc.session),
 			)
 			require.NoError(t, err)
 
@@ -398,7 +398,7 @@ func Test_Auth_Logout(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			auth, err := NewAuth(accessTokenTTL, refreshTokenTTL, WithSession(tc.session))
+			auth, err := NewAuth(accessTokenTTL, refreshTokenTTL, WithAuthSession(tc.session))
 			require.NoError(t, err)
 
 			err = auth.Logout()

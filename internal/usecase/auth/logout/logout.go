@@ -83,7 +83,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) error {
 	auth, err := entity.NewAuth(
 		uc.cfg.AccessTokenTTL,
 		uc.cfg.RefreshTokenTTL,
-		entity.WithSession(storageLogoutData.Session),
+		entity.WithAuthSession(storageLogoutData.Session),
 	)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)

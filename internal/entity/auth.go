@@ -11,9 +11,11 @@ type Auth struct {
 	Sessions []Session
 	User     User
 
-	client          dto.Client
-	accessTokenTTL  time.Duration
-	refreshTokenTTL time.Duration
+	client                 dto.Client
+	defaultRoles           []dto.Role
+	defaultPermissionCodes []string
+	accessTokenTTL         time.Duration
+	refreshTokenTTL        time.Duration
 }
 
 func NewAuth(accessTokenTTL, refreshTokenTTL time.Duration, setters ...AuthOption) (Auth, error) {
@@ -68,8 +70,8 @@ func (a *Auth) Register(data RegisterParams) (Tokens, error) {
 		data.Gender,
 		data.AvatarFileKey,
 		WithUserPasswordHash(string(passwordHash)),
-		WithUserRoles([]string{defaultRoleName}), // TODO: get this from storage.
-		WithUserPermissions([]string{}),          // TODO: get permissions from storage by default role.
+		WithUserRoles(a.defaultRoles),
+		WithUserPermissions(a.defaultPermissionCodes),
 	)
 	user.SetToCreate()
 	a.setUser(user)
@@ -152,4 +154,8 @@ func (a *Auth) addSession(session Session) {
 
 func (a *Auth) setUser(user User) {
 	a.User = user
+}
+
+func (a *Auth) ClientID() int64 {
+	return a.client.ID
 }

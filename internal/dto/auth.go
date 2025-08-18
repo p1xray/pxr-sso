@@ -7,8 +7,10 @@ type DataForLogin struct {
 }
 
 type DataForRegister struct {
-	User   User
-	Client Client
+	User                         User
+	Client                       Client
+	ClientDefaultRoles           []Role
+	ClientDefaultPermissionCodes []string
 }
 
 type DataForRefreshTokens struct {

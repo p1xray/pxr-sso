@@ -56,9 +56,9 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (entity.Tokens, err
 	auth, err := entity.NewAuth(
 		uc.cfg.AccessTokenTTL,
 		uc.cfg.RefreshTokenTTL,
-		entity.WithUser(storageLoginData.User),
-		entity.WithClient(storageLoginData.Client),
-		entity.WithSession(storageLoginData.Sessions...),
+		entity.WithAuthUser(storageLoginData.User),
+		entity.WithAuthClient(storageLoginData.Client),
+		entity.WithAuthSession(storageLoginData.Sessions...),
 	)
 	if err != nil {
 		return entity.Tokens{}, fmt.Errorf("%s: %w", op, err)

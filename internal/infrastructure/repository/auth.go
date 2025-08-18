@@ -23,8 +23,10 @@ type AuthStorage interface {
 	RemoveUser(ctx context.Context, user models.User) error
 
 	RolesByUserID(ctx context.Context, userID int64) ([]models.Role, error)
+	RolesByClientID(ctx context.Context, clientID int64) ([]models.Role, error)
 
 	PermissionsByUserID(ctx context.Context, userID int64) ([]models.Permission, error)
+	PermissionsByRoleCodes(ctx context.Context, roleCodes []string) ([]models.Permission, error)
 
 	SessionsByUserID(ctx context.Context, userID int64) ([]models.Session, error)
 	SessionByRefreshTokenID(ctx context.Context, refreshTokenID string) (models.Session, error)
@@ -34,6 +36,9 @@ type AuthStorage interface {
 
 	ClientByCodeAndUserID(ctx context.Context, code string, userID int64) (models.Client, error)
 	ClientByCode(ctx context.Context, code string) (models.Client, error)
+
+	CreateUserClientLink(ctx context.Context, userClientLink models.UserClientLink) (int64, error)
+	CreateUserRoleLink(ctx context.Context, userRoleLink models.UserRoleLink) (int64, error)
 }
 
 type Auth struct {
@@ -137,9 +142,30 @@ func (a *Auth) DataForRegister(ctx context.Context, username, clientCode string)
 		return dto.DataForRegister{}, fmt.Errorf("%s: %w", op, err)
 	}
 
+	roles, err := a.storage.RolesByClientID(ctx, clientDTO.ID)
+	if err != nil {
+		return dto.DataForRegister{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	rolesDTO := make([]dto.Role, len(roles))
+	for i, role := range roles {
+		rolesDTO[i] = converter.ToRoleDTO(role)
+	}
+
+	roleCodes := converter.ToRoleCodes(roles)
+
+	permissions, err := a.storage.PermissionsByRoleCodes(ctx, roleCodes)
+	if err != nil {
+		return dto.DataForRegister{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	permissionCodes := converter.ToPermissionCodes(permissions)
+
 	return dto.DataForRegister{
-		User:   userDTO,
-		Client: clientDTO,
+		User:                         userDTO,
+		Client:                       clientDTO,
+		ClientDefaultRoles:           rolesDTO,
+		ClientDefaultPermissionCodes: permissionCodes,
 	}, nil
 }
 
@@ -189,7 +215,7 @@ func (a *Auth) Save(ctx context.Context, auth entity.Auth) error {
 		slog.String("op", op),
 	)
 
-	if err := a.SaveUser(ctx, auth.User); err != nil {
+	if err := a.SaveUser(ctx, auth.User, auth.ClientID()); err != nil {
 		log.Error("error saving user", sl.Err(err))
 
 		return fmt.Errorf("%s: %w", op, err)
@@ -206,7 +232,7 @@ func (a *Auth) Save(ctx context.Context, auth entity.Auth) error {
 	return nil
 }
 
-func (a *Auth) SaveUser(ctx context.Context, user entity.User) error {
+func (a *Auth) SaveUser(ctx context.Context, user entity.User, clientID int64) error {
 	const op = "repository.auth.SaveUser"
 
 	log := a.log.With(
@@ -214,10 +240,24 @@ func (a *Auth) SaveUser(ctx context.Context, user entity.User) error {
 	)
 
 	if user.IsToCreate() {
-		if err := a.createUser(ctx, user); err != nil {
+		if err := a.createUser(ctx, &user); err != nil {
 			log.Error("error creating user", sl.Err(err))
 
 			return fmt.Errorf("%s: %w", op, err)
+		}
+
+		if err := a.createUserClientLink(ctx, user.ID, clientID); err != nil {
+			log.Error("error creating user client link", sl.Err(err))
+
+			return fmt.Errorf("%s: %w", op, err)
+		}
+
+		for _, role := range user.Roles {
+			if err := a.createUserRoleLink(ctx, user.ID, role.ID); err != nil {
+				log.Error("error creating user role link", sl.Err(err))
+
+				return fmt.Errorf("%s: %w", op, err)
+			}
 		}
 	}
 
@@ -240,8 +280,8 @@ func (a *Auth) SaveUser(ctx context.Context, user entity.User) error {
 	return nil
 }
 
-func (a *Auth) createUser(ctx context.Context, user entity.User) error {
-	userStorageModel := converter.ToUserStorage(user, models.UserCreated())
+func (a *Auth) createUser(ctx context.Context, user *entity.User) error {
+	userStorageModel := converter.ToUserStorage(*user, models.UserCreated())
 
 	id, err := a.storage.CreateUser(ctx, userStorageModel)
 	if err != nil {
@@ -271,6 +311,30 @@ func (a *Auth) removeUser(ctx context.Context, user entity.User) error {
 	userStorageModel := converter.ToUserStorage(user, models.UserRemoved())
 
 	return a.storage.RemoveUser(ctx, userStorageModel)
+}
+
+func (a *Auth) createUserClientLink(ctx context.Context, userID, clientID int64) error {
+	if userID == emptyID || clientID == emptyID {
+		return infrastructure.ErrRequireIDToCreateLink
+	}
+
+	userClientLinkStorageModel := converter.ToUserClientLinkStorage(userID, clientID, models.UserClientLinkCreated())
+
+	_, err := a.storage.CreateUserClientLink(ctx, userClientLinkStorageModel)
+
+	return err
+}
+
+func (a *Auth) createUserRoleLink(ctx context.Context, userID, roleID int64) error {
+	if userID == emptyID || roleID == emptyID {
+		return infrastructure.ErrRequireIDToCreateLink
+	}
+
+	userRoleLinkStorageModel := converter.ToUserRoleLinkStorage(userID, roleID, models.UserRoleLinkCreated())
+
+	_, err := a.storage.CreateUserRoleLink(ctx, userRoleLinkStorageModel)
+
+	return err
 }
 
 func (a *Auth) SaveSession(ctx context.Context, session entity.Session) error {

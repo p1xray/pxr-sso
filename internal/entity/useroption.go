@@ -1,5 +1,7 @@
 package entity
 
+import "github.com/p1xray/pxr-sso/internal/dto"
+
 type UserOption func(*User)
 
 func WithUserID(id int64) UserOption {
@@ -14,7 +16,7 @@ func WithUserPasswordHash(passwordHash string) UserOption {
 	}
 }
 
-func WithUserRoles(roles []string) UserOption {
+func WithUserRoles(roles []dto.Role) UserOption {
 	return func(u *User) {
 		u.Roles = roles
 	}
