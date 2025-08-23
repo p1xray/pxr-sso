@@ -1,11 +1,11 @@
-package profileserver
+package profile
 
 import (
 	"context"
 	"errors"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	ssoprofilepb "github.com/p1xray/pxr-sso-protos/gen/go/profile"
-	"github.com/p1xray/pxr-sso/internal/server"
+	"github.com/p1xray/pxr-sso/internal/controller"
 	"github.com/p1xray/pxr-sso/internal/usecase"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -17,11 +17,11 @@ const (
 
 type serverAPI struct {
 	ssoprofilepb.UnimplementedSsoProfileServer
-	profile server.UserProfile
+	profile controller.UserProfile
 }
 
-// Register registers the implementation of the API service with the gRPC server.
-func Register(gRPC *grpc.Server, profile server.UserProfile) {
+// Register registers the implementation of the API service with the gRPC controller.
+func Register(gRPC *grpc.Server, profile controller.UserProfile) {
 	ssoprofilepb.RegisterSsoProfileServer(gRPC, &serverAPI{profile: profile})
 }
 
@@ -36,10 +36,10 @@ func (s *serverAPI) GetProfile(
 	userProfile, err := s.profile.Execute(ctx, req.GetUserId())
 	if err != nil {
 		if errors.Is(err, usecase.ErrUserNotFound) {
-			return nil, server.NotFoundError("user not found")
+			return nil, controller.NotFoundError("user not found")
 		}
 
-		return nil, server.InternalError("failed to get user profile")
+		return nil, controller.InternalError("failed to get user profile")
 	}
 
 	var dateOfBirthPb *timestamppb.Timestamp
@@ -69,7 +69,7 @@ func (s *serverAPI) GetProfile(
 
 func validateGetProfileRequest(req *ssoprofilepb.GetProfileRequest) error {
 	if req.GetUserId() == emptyValue {
-		return server.InvalidArgumentError("user id is empty")
+		return controller.InvalidArgumentError("user id is empty")
 	}
 
 	return nil

@@ -1,11 +1,11 @@
-package authserver
+package auth
 
 import (
 	"context"
 	"errors"
 	ssopb "github.com/p1xray/pxr-sso-protos/gen/go/sso"
+	"github.com/p1xray/pxr-sso/internal/controller"
 	"github.com/p1xray/pxr-sso/internal/enum"
-	"github.com/p1xray/pxr-sso/internal/server"
 	"github.com/p1xray/pxr-sso/internal/usecase"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/login"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
@@ -21,19 +21,19 @@ const (
 
 type serverAPI struct {
 	ssopb.UnimplementedSsoServer
-	loginUseCase    server.Login
-	registerUseCase server.Register
-	refreshUseCase  server.RefreshTokens
-	logoutUseCase   server.Logout
+	loginUseCase    controller.Login
+	registerUseCase controller.Register
+	refreshUseCase  controller.RefreshTokens
+	logoutUseCase   controller.Logout
 }
 
-// Register registers the implementation of the API service with the gRPC server.
+// Register registers the implementation of the API service with the gRPC controller.
 func Register(
 	gRPC *grpc.Server,
-	loginUseCase server.Login,
-	registerUseCase server.Register,
-	refreshUseCase server.RefreshTokens,
-	logoutUseCase server.Logout,
+	loginUseCase controller.Login,
+	registerUseCase controller.Register,
+	refreshUseCase controller.RefreshTokens,
+	logoutUseCase controller.Logout,
 ) {
 	api := &serverAPI{
 		loginUseCase:    loginUseCase,
@@ -65,10 +65,10 @@ func (s *serverAPI) Login(
 	tokens, err := s.loginUseCase.Execute(ctx, loginData)
 	if err != nil {
 		if errors.Is(err, usecase.ErrInvalidCredentials) {
-			return nil, server.InvalidArgumentError("invalid username or password")
+			return nil, controller.InvalidArgumentError("invalid username or password")
 		}
 
-		return nil, server.InternalError("failed to login")
+		return nil, controller.InternalError("failed to login")
 	}
 
 	return &ssopb.LoginResponse{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken}, nil
@@ -76,27 +76,27 @@ func (s *serverAPI) Login(
 
 func validateLoginRequest(req *ssopb.LoginRequest) error {
 	if req.GetUsername() == "" {
-		return server.InvalidArgumentError("username is empty")
+		return controller.InvalidArgumentError("username is empty")
 	}
 
 	if req.GetPassword() == "" {
-		return server.InvalidArgumentError("password is empty")
+		return controller.InvalidArgumentError("password is empty")
 	}
 
 	if req.GetClientCode() == "" {
-		return server.InvalidArgumentError("client code is empty")
+		return controller.InvalidArgumentError("client code is empty")
 	}
 
 	if req.GetUserAgent() == "" {
-		return server.InvalidArgumentError("user agent is empty")
+		return controller.InvalidArgumentError("user agent is empty")
 	}
 
 	if req.GetFingerprint() == "" {
-		return server.InvalidArgumentError("fingerprint is empty")
+		return controller.InvalidArgumentError("fingerprint is empty")
 	}
 
 	if req.GetIssuer() == "" {
-		return server.InvalidArgumentError("issuer is empty")
+		return controller.InvalidArgumentError("issuer is empty")
 	}
 
 	return nil
@@ -144,10 +144,10 @@ func (s *serverAPI) Register(
 	tokens, err := s.registerUseCase.Execute(ctx, registerData)
 	if err != nil {
 		if errors.Is(err, usecase.ErrUserExists) {
-			return nil, server.InvalidArgumentError("user with this username already exists")
+			return nil, controller.InvalidArgumentError("user with this username already exists")
 		}
 
-		return nil, server.InternalError("failed to register")
+		return nil, controller.InternalError("failed to register")
 	}
 
 	return &ssopb.RegisterResponse{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken}, nil
@@ -155,31 +155,31 @@ func (s *serverAPI) Register(
 
 func validateRegisterRequest(req *ssopb.RegisterRequest) error {
 	if req.GetUsername() == "" {
-		return server.InvalidArgumentError("username is empty")
+		return controller.InvalidArgumentError("username is empty")
 	}
 
 	if req.GetPassword() == "" {
-		return server.InvalidArgumentError("password is empty")
+		return controller.InvalidArgumentError("password is empty")
 	}
 
 	if req.GetClientCode() == "" {
-		return server.InvalidArgumentError("client code is empty")
+		return controller.InvalidArgumentError("client code is empty")
 	}
 
 	if req.GetFio() == "" {
-		return server.InvalidArgumentError("FIO is empty")
+		return controller.InvalidArgumentError("FIO is empty")
 	}
 
 	if req.GetUserAgent() == "" {
-		return server.InvalidArgumentError("user agent is empty")
+		return controller.InvalidArgumentError("user agent is empty")
 	}
 
 	if req.GetFingerprint() == "" {
-		return server.InvalidArgumentError("fingerprint is empty")
+		return controller.InvalidArgumentError("fingerprint is empty")
 	}
 
 	if req.GetIssuer() == "" {
-		return server.InvalidArgumentError("issuer is empty")
+		return controller.InvalidArgumentError("issuer is empty")
 	}
 
 	return nil
@@ -203,7 +203,7 @@ func (s *serverAPI) RefreshTokens(
 
 	tokens, err := s.refreshUseCase.Execute(ctx, refreshTokensData)
 	if err != nil {
-		return nil, server.InternalError("failed to refresh tokens")
+		return nil, controller.InternalError("failed to refresh tokens")
 	}
 
 	return &ssopb.RefreshTokensResponse{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken}, nil
@@ -211,23 +211,23 @@ func (s *serverAPI) RefreshTokens(
 
 func validateRefreshTokensRequest(req *ssopb.RefreshTokensRequest) error {
 	if req.GetRefreshToken() == "" {
-		return server.InvalidArgumentError("refresh token is empty")
+		return controller.InvalidArgumentError("refresh token is empty")
 	}
 
 	if req.GetUserAgent() == "" {
-		return server.InvalidArgumentError("user agent is empty")
+		return controller.InvalidArgumentError("user agent is empty")
 	}
 
 	if req.GetFingerprint() == "" {
-		return server.InvalidArgumentError("fingerprint is empty")
+		return controller.InvalidArgumentError("fingerprint is empty")
 	}
 
 	if req.GetClientCode() == "" {
-		return server.InvalidArgumentError("client code is empty")
+		return controller.InvalidArgumentError("client code is empty")
 	}
 
 	if req.GetIssuer() == "" {
-		return server.InvalidArgumentError("issuer is empty")
+		return controller.InvalidArgumentError("issuer is empty")
 	}
 
 	return nil
@@ -246,7 +246,7 @@ func (s *serverAPI) Logout(
 		ClientCode:   req.GetClientCode(),
 	}
 	if err := s.logoutUseCase.Execute(ctx, logoutData); err != nil {
-		return &ssopb.LogoutResponse{Success: false}, server.InternalError("failed to logout")
+		return &ssopb.LogoutResponse{Success: false}, controller.InternalError("failed to logout")
 	}
 
 	return &ssopb.LogoutResponse{Success: true}, nil
@@ -254,11 +254,11 @@ func (s *serverAPI) Logout(
 
 func validateLogoutRequest(req *ssopb.LogoutRequest) error {
 	if req.GetRefreshToken() == "" {
-		return server.InvalidArgumentError("refresh token is empty")
+		return controller.InvalidArgumentError("refresh token is empty")
 	}
 
 	if req.GetClientCode() == "" {
-		return server.InvalidArgumentError("client code is empty")
+		return controller.InvalidArgumentError("client code is empty")
 	}
 
 	return nil

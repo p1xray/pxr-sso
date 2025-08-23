@@ -2,9 +2,9 @@ package grpcapp
 
 import (
 	"fmt"
-	"github.com/p1xray/pxr-sso/internal/server"
-	authserver "github.com/p1xray/pxr-sso/internal/server/grpc/auth"
-	profileserver "github.com/p1xray/pxr-sso/internal/server/grpc/profile"
+	"github.com/p1xray/pxr-sso/internal/controller"
+	authcontroller "github.com/p1xray/pxr-sso/internal/controller/grpc/auth"
+	profilecontroller "github.com/p1xray/pxr-sso/internal/controller/grpc/profile"
 	"log/slog"
 	"net"
 
@@ -18,19 +18,19 @@ type App struct {
 	port       int
 }
 
-// New creates new gRPC server application.
+// New creates new gRPC controller application.
 func New(
 	log *slog.Logger,
 	port int,
-	loginUseCase server.Login,
-	registerUseCase server.Register,
-	refreshUseCase server.RefreshTokens,
-	logoutUseCase server.Logout,
-	profileUseCase server.UserProfile,
+	loginUseCase controller.Login,
+	registerUseCase controller.Register,
+	refreshUseCase controller.RefreshTokens,
+	logoutUseCase controller.Logout,
+	profileUseCase controller.UserProfile,
 ) *App {
 	gRPCServer := grpc.NewServer()
 
-	authserver.Register(
+	authcontroller.Register(
 		gRPCServer,
 		loginUseCase,
 		registerUseCase,
@@ -38,7 +38,7 @@ func New(
 		logoutUseCase,
 	)
 
-	profileserver.Register(gRPCServer, profileUseCase)
+	profilecontroller.Register(gRPCServer, profileUseCase)
 
 	return &App{
 		log:        log,
@@ -47,14 +47,14 @@ func New(
 	}
 }
 
-// MustRun runs gRPC server and panics if any error occurs.
+// MustRun runs gRPC controller and panics if any error occurs.
 func (a *App) MustRun() {
 	if err := a.Run(); err != nil {
 		panic(err)
 	}
 }
 
-// Run runs gRPC server.
+// Run runs gRPC controller.
 func (a *App) Run() error {
 	const op = "grpcapp.Run"
 
@@ -67,7 +67,7 @@ func (a *App) Run() error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	log.Info("gRPC server is running", slog.String("addr", l.Addr().String()))
+	log.Info("gRPC controller is running", slog.String("addr", l.Addr().String()))
 
 	if err := a.gRPCServer.Serve(l); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -76,12 +76,12 @@ func (a *App) Run() error {
 	return nil
 }
 
-// Stop stops gRPC server.
+// Stop stops gRPC controller.
 func (a *App) Stop() {
 	const op = "grpcapp.Stop"
 
 	a.log.With(slog.String("op", op))
-	a.log.Info("stopping gRPC server", slog.Int("port", a.port))
+	a.log.Info("stopping gRPC controller", slog.Int("port", a.port))
 
 	a.gRPCServer.GracefulStop()
 }

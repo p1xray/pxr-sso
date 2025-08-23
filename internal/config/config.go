@@ -16,7 +16,7 @@ type Config struct {
 	StoragePath string       `yaml:"storage_path" env-required:"true"`
 }
 
-// GRPCConfig is the gRPC server configuration.
+// GRPCConfig is the gRPC controller configuration.
 type GRPCConfig struct {
 	Port    int           `yaml:"port" env-required:"true"`
 	Timeout time.Duration `yaml:"timeout" env-required:"true"`
