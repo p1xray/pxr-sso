@@ -208,21 +208,21 @@ func (a *Auth) DataForLogout(ctx context.Context, refreshTokenID string) (dto.Da
 	}, nil
 }
 
-func (a *Auth) Save(ctx context.Context, auth entity.Auth) error {
+func (a *Auth) Save(ctx context.Context, auth *entity.Auth) error {
 	const op = "repository.auth.Save"
 
 	log := a.log.With(
 		slog.String("op", op),
 	)
 
-	if err := a.SaveUser(ctx, auth.User, auth.ClientID()); err != nil {
+	if err := a.SaveUser(ctx, &auth.User, auth.ClientID()); err != nil {
 		log.Error("error saving user", sl.Err(err))
 
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	for _, session := range auth.Sessions {
-		if err := a.SaveSession(ctx, session); err != nil {
+	for i := 0; i < len(auth.Sessions); i++ {
+		if err := a.SaveSession(ctx, &auth.Sessions[i]); err != nil {
 			log.Error("error saving session", sl.Err(err))
 
 			return fmt.Errorf("%s: %w", op, err)
@@ -232,7 +232,7 @@ func (a *Auth) Save(ctx context.Context, auth entity.Auth) error {
 	return nil
 }
 
-func (a *Auth) SaveUser(ctx context.Context, user entity.User, clientID int64) error {
+func (a *Auth) SaveUser(ctx context.Context, user *entity.User, clientID int64) error {
 	const op = "repository.auth.SaveUser"
 
 	log := a.log.With(
@@ -240,7 +240,7 @@ func (a *Auth) SaveUser(ctx context.Context, user entity.User, clientID int64) e
 	)
 
 	if user.IsToCreate() {
-		if err := a.createUser(ctx, &user); err != nil {
+		if err := a.createUser(ctx, user); err != nil {
 			log.Error("error creating user", sl.Err(err))
 
 			return fmt.Errorf("%s: %w", op, err)
@@ -281,7 +281,7 @@ func (a *Auth) SaveUser(ctx context.Context, user entity.User, clientID int64) e
 }
 
 func (a *Auth) createUser(ctx context.Context, user *entity.User) error {
-	userStorageModel := converter.ToUserStorage(*user, models.UserCreated())
+	userStorageModel := converter.ToUserStorage(user, models.UserCreated())
 
 	id, err := a.storage.CreateUser(ctx, userStorageModel)
 	if err != nil {
@@ -289,28 +289,43 @@ func (a *Auth) createUser(ctx context.Context, user *entity.User) error {
 	}
 
 	user.ID = id
+	user.ResetDataStatus()
 
 	return nil
 }
 
-func (a *Auth) updateUser(ctx context.Context, user entity.User) error {
+func (a *Auth) updateUser(ctx context.Context, user *entity.User) error {
 	if user.ID == emptyID {
 		return infrastructure.ErrRequireIDToUpdate
 	}
 
 	userStorageModel := converter.ToUserStorage(user, models.UserUpdated())
 
-	return a.storage.UpdateUser(ctx, userStorageModel)
+	err := a.storage.UpdateUser(ctx, userStorageModel)
+	if err != nil {
+		return err
+	}
+
+	user.ResetDataStatus()
+
+	return nil
 }
 
-func (a *Auth) removeUser(ctx context.Context, user entity.User) error {
+func (a *Auth) removeUser(ctx context.Context, user *entity.User) error {
 	if user.ID == emptyID {
 		return infrastructure.ErrRequireIDToRemove
 	}
 
 	userStorageModel := converter.ToUserStorage(user, models.UserRemoved())
 
-	return a.storage.RemoveUser(ctx, userStorageModel)
+	err := a.storage.RemoveUser(ctx, userStorageModel)
+	if err != nil {
+		return err
+	}
+
+	user.ResetDataStatus()
+
+	return nil
 }
 
 func (a *Auth) createUserClientLink(ctx context.Context, userID, clientID int64) error {
@@ -337,7 +352,7 @@ func (a *Auth) createUserRoleLink(ctx context.Context, userID, roleID int64) err
 	return err
 }
 
-func (a *Auth) SaveSession(ctx context.Context, session entity.Session) error {
+func (a *Auth) SaveSession(ctx context.Context, session *entity.Session) error {
 	const op = "repository.auth.SaveSession"
 
 	log := a.log.With(
@@ -371,7 +386,7 @@ func (a *Auth) SaveSession(ctx context.Context, session entity.Session) error {
 	return nil
 }
 
-func (a *Auth) createSession(ctx context.Context, session entity.Session) error {
+func (a *Auth) createSession(ctx context.Context, session *entity.Session) error {
 	sessionStorageModel := converter.ToSessionStorage(session, models.SessionCreated())
 
 	id, err := a.storage.CreateSession(ctx, sessionStorageModel)
@@ -380,26 +395,41 @@ func (a *Auth) createSession(ctx context.Context, session entity.Session) error 
 	}
 
 	session.ID = id
+	session.ResetDataStatus()
 
 	return nil
 }
 
-func (a *Auth) updateSession(ctx context.Context, session entity.Session) error {
+func (a *Auth) updateSession(ctx context.Context, session *entity.Session) error {
 	if session.ID == emptyID {
 		return infrastructure.ErrRequireIDToUpdate
 	}
 
 	sessionStorageModel := converter.ToSessionStorage(session, models.SessionUpdated())
 
-	return a.storage.UpdateSession(ctx, sessionStorageModel)
+	err := a.storage.UpdateSession(ctx, sessionStorageModel)
+	if err != nil {
+		return err
+	}
+
+	session.ResetDataStatus()
+
+	return nil
 }
 
-func (a *Auth) removeSession(ctx context.Context, session entity.Session) error {
+func (a *Auth) removeSession(ctx context.Context, session *entity.Session) error {
 	if session.ID == emptyID {
 		return infrastructure.ErrRequireIDToRemove
 	}
 
-	return a.storage.RemoveSession(ctx, session.ID)
+	err := a.storage.RemoveSession(ctx, session.ID)
+	if err != nil {
+		return err
+	}
+
+	session.ResetDataStatus()
+
+	return nil
 }
 
 func (a *Auth) user(ctx context.Context, log *slog.Logger, id int64) (dto.User, error) {

@@ -59,7 +59,7 @@ func ToSessionDTO(session models.Session) dto.Session {
 	}
 }
 
-func ToUserStorage(user entity.User, setters ...models.UserOption) models.User {
+func ToUserStorage(user *entity.User, setters ...models.UserOption) models.User {
 	userStorageModel := models.User{
 		ID:            user.ID,
 		Username:      user.Username,
@@ -77,7 +77,7 @@ func ToUserStorage(user entity.User, setters ...models.UserOption) models.User {
 	return userStorageModel
 }
 
-func ToSessionStorage(session entity.Session, setters ...models.SessionOption) models.Session {
+func ToSessionStorage(session *entity.Session, setters ...models.SessionOption) models.Session {
 	sessionStorageModel := models.Session{
 		ID:           session.ID,
 		UserID:       session.UserID,

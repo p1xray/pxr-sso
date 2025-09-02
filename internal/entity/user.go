@@ -66,3 +66,7 @@ func (u *User) IsToUpdate() bool {
 func (u *User) IsToRemove() bool {
 	return u.dataStatus == enum.ToRemove
 }
+
+func (u *User) ResetDataStatus() {
+	u.dataStatus = enum.None
+}

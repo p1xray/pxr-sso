@@ -15,7 +15,7 @@ import (
 
 type AuthRepository interface {
 	DataForRegister(ctx context.Context, username, clientCode string) (dto.DataForRegister, error)
-	Save(ctx context.Context, auth entity.Auth) error
+	Save(ctx context.Context, auth *entity.Auth) error
 }
 
 type UseCase struct {
@@ -75,7 +75,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (entity.Tokens, err
 		Fingerprint:   data.Fingerprint,
 		Issuer:        data.Issuer,
 	}
-	tokens, err := auth.Register(entityRegisterParams)
+	err = auth.Register(entityRegisterParams)
 	if err != nil {
 		if errors.Is(err, entity.ErrUserExists) {
 			log.Warn("user already exists", sl.Err(err))
@@ -88,10 +88,26 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (entity.Tokens, err
 		return entity.Tokens{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Save data to storage.
-	err = uc.repo.Save(ctx, auth)
+	// Save user data to storage.
+	err = uc.repo.Save(ctx, &auth)
 	if err != nil {
-		log.Error("error saving data to storage.", sl.Err(err))
+		log.Error("error saving user data to storage.", sl.Err(err))
+
+		return entity.Tokens{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Create new session for saved user.
+	tokens, err := auth.CreateNewSession(data.Issuer, data.UserAgent, data.Fingerprint)
+	if err != nil {
+		log.Error("error creating new session for registered user.", sl.Err(err))
+
+		return entity.Tokens{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Save session data to storage.
+	err = uc.repo.Save(ctx, &auth)
+	if err != nil {
+		log.Error("error saving session data to storage.", sl.Err(err))
 
 		return entity.Tokens{}, fmt.Errorf("%s: %w", op, err)
 	}

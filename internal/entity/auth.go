@@ -40,18 +40,18 @@ func (a *Auth) Login(data LoginParams) (Tokens, error) {
 	}
 
 	// Create new session.
-	tokens, err := a.createNewSession(data.Issuer, data.UserAgent, data.Fingerprint)
+	tokens, err := a.CreateNewSession(data.Issuer, data.UserAgent, data.Fingerprint)
 	if err != nil {
-		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateSession, err)
+		return Tokens{}, err
 	}
 
 	return tokens, nil
 }
 
-func (a *Auth) Register(data RegisterParams) (Tokens, error) {
+func (a *Auth) Register(data RegisterParams) error {
 	// Check if user with given username already exists.
 	if a.User.ID > emptyID {
-		return Tokens{}, ErrUserExists
+		return ErrUserExists
 	}
 
 	// Generate hash from password.
@@ -59,7 +59,7 @@ func (a *Auth) Register(data RegisterParams) (Tokens, error) {
 		[]byte(data.Password),
 		bcrypt.DefaultCost)
 	if err != nil {
-		return Tokens{}, fmt.Errorf("%w: %w", ErrGeneratePasswordHash, err)
+		return fmt.Errorf("%w: %w", ErrGeneratePasswordHash, err)
 	}
 
 	// Create new user.
@@ -76,13 +76,7 @@ func (a *Auth) Register(data RegisterParams) (Tokens, error) {
 	user.SetToCreate()
 	a.setUser(user)
 
-	// Create new session.
-	tokens, err := a.createNewSession(data.Issuer, data.UserAgent, data.Fingerprint)
-	if err != nil {
-		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateSession, err)
-	}
-
-	return tokens, nil
+	return nil
 }
 
 func (a *Auth) RefreshTokens(data RefreshTokensParams) (Tokens, error) {
@@ -99,9 +93,9 @@ func (a *Auth) RefreshTokens(data RefreshTokensParams) (Tokens, error) {
 	}
 
 	// Create new session.
-	tokens, err := a.createNewSession(data.Issuer, data.UserAgent, data.Fingerprint)
+	tokens, err := a.CreateNewSession(data.Issuer, data.UserAgent, data.Fingerprint)
 	if err != nil {
-		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateSession, err)
+		return Tokens{}, err
 	}
 
 	return tokens, nil
@@ -121,7 +115,7 @@ func (a *Auth) Logout() error {
 	return nil
 }
 
-func (a *Auth) createNewSession(issuer, userAgent, fingerprint string) (Tokens, error) {
+func (a *Auth) CreateNewSession(issuer, userAgent, fingerprint string) (Tokens, error) {
 	generateTokensParams := SessionWithGeneratedTokensParams{
 		UserPermissions: a.User.Permissions,
 		ClientCode:      a.client.Code,
@@ -138,7 +132,7 @@ func (a *Auth) createNewSession(issuer, userAgent, fingerprint string) (Tokens, 
 		WithGeneratedTokens(generateTokensParams),
 	)
 	if err != nil {
-		return Tokens{}, err
+		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateSession, err)
 	}
 
 	session.SetToCreate()

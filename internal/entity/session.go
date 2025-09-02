@@ -75,3 +75,7 @@ func (s *Session) IsToUpdate() bool {
 func (s *Session) IsToRemove() bool {
 	return s.dataStatus == enum.ToRemove
 }
+
+func (s *Session) ResetDataStatus() {
+	s.dataStatus = enum.None
+}

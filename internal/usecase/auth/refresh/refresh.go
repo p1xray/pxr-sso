@@ -18,7 +18,7 @@ type AuthRepository interface {
 	ClientByCode(ctx context.Context, code string) (dto.Client, error)
 	DataForRefreshTokens(ctx context.Context, refreshTokenID string) (dto.DataForRefreshTokens, error)
 
-	Save(ctx context.Context, auth entity.Auth) error
+	Save(ctx context.Context, auth *entity.Auth) error
 }
 
 type UseCase struct {
@@ -105,7 +105,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (entity.Tokens, err
 	}
 
 	// Save data to storage.
-	err = uc.repo.Save(ctx, auth)
+	err = uc.repo.Save(ctx, &auth)
 	if err != nil {
 		log.Error("error saving data to storage.", sl.Err(err))
 
