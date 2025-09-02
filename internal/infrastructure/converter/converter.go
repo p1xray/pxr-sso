@@ -40,11 +40,17 @@ func ToUserProfileDTO(user models.User) dto.UserProfile {
 	}
 }
 
-func ToClientDTO(client models.Client) dto.Client {
+func ToClientDTO(client models.Client, audiences []models.Audience) dto.Client {
+	audienceURLs := make([]string, len(audiences))
+	for i, audience := range audiences {
+		audienceURLs[i] = audience.URL
+	}
+
 	return dto.Client{
 		ID:        client.ID,
 		Code:      client.Code,
 		SecretKey: client.SecretKey,
+		Audiences: audienceURLs,
 	}
 }
 

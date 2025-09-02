@@ -15,12 +15,12 @@ type Tokens struct {
 func NewTokens(data CreateTokensParams) (Tokens, error) {
 	// Create access token.
 	createAccessTokenData := jwtcreator.AccessTokenCreateData{
-		Subject:  strconv.FormatInt(data.UserID, 10),
-		Audience: data.ClientCode,
-		Scopes:   data.Permissions,
-		Issuer:   data.Issuer,
-		TTL:      data.AccessTokenTTL,
-		Key:      []byte(data.SecretKey),
+		Subject:   strconv.FormatInt(data.UserID, 10),
+		Audiences: data.Audiences,
+		Scopes:    data.Permissions,
+		Issuer:    data.Issuer,
+		TTL:       data.AccessTokenTTL,
+		Key:       []byte(data.SecretKey),
 	}
 	accessToken, err := jwtcreator.NewAccessToken(createAccessTokenData)
 	if err != nil {

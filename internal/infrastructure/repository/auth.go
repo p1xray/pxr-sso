@@ -36,6 +36,7 @@ type AuthStorage interface {
 
 	ClientByCodeAndUserID(ctx context.Context, code string, userID int64) (models.Client, error)
 	ClientByCode(ctx context.Context, code string) (models.Client, error)
+	ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error)
 
 	CreateUserClientLink(ctx context.Context, userClientLink models.UserClientLink) (int64, error)
 	CreateUserRoleLink(ctx context.Context, userRoleLink models.UserRoleLink) (int64, error)
@@ -72,7 +73,14 @@ func (a *Auth) ClientByCode(ctx context.Context, code string) (dto.Client, error
 		return dto.Client{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	clientDTO := converter.ToClientDTO(client)
+	clientAudiences, err := a.storage.ClientAudiences(ctx, client.ID)
+	if err != nil {
+		log.Error("error getting client audiences", sl.Err(err))
+
+		return dto.Client{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	clientDTO := converter.ToClientDTO(client, clientAudiences)
 
 	return clientDTO, nil
 }
@@ -102,7 +110,14 @@ func (a *Auth) DataForLogin(ctx context.Context, username, clientCode string) (d
 		}
 	}
 
-	clientDTO := converter.ToClientDTO(client)
+	clientAudiences, err := a.storage.ClientAudiences(ctx, client.ID)
+	if err != nil {
+		log.Error("error getting client audiences", sl.Err(err))
+
+		return dto.DataForLogin{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	clientDTO := converter.ToClientDTO(client, clientAudiences)
 
 	userSessions, err := a.storage.SessionsByUserID(ctx, userDTO.ID)
 	if err != nil {

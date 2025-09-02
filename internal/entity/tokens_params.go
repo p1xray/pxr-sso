@@ -5,7 +5,7 @@ import "time"
 type CreateTokensParams struct {
 	UserID          int64
 	Permissions     []string
-	ClientCode      string
+	Audiences       []string
 	SecretKey       string
 	Issuer          string
 	AccessTokenTTL  time.Duration

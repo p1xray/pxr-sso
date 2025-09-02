@@ -720,6 +720,49 @@ func (s *Storage) ClientByCode(ctx context.Context, code string) (models.Client,
 	return client, nil
 }
 
+func (s *Storage) ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error) {
+	const op = "sqlite.ClientAudiences"
+
+	stmt, err := s.db.PrepareContext(ctx,
+		`select
+			 ca.id,
+			 ca.client_id,
+			 ca.url,
+			 ca.created_at,
+			 ca.updated_at
+		 from client_audiences ca
+		 where ca.client_id = ?;`)
+	if err != nil {
+		return []models.Audience{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	rows, err := stmt.QueryContext(ctx, clientID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	audiences := make([]models.Audience, 0)
+	for rows.Next() {
+		audience := models.Audience{}
+		err = rows.Scan(
+			&audience.ID,
+			&audience.ClientID,
+			&audience.URL,
+			&audience.CreatedAt,
+			&audience.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		audiences = append(audiences, audience)
+	}
+
+	return audiences, nil
+}
+
 func (s *Storage) CreateUserClientLink(ctx context.Context, userClientLink models.UserClientLink) (int64, error) {
 	const op = "sqlite.CreateUserClientLink"
 

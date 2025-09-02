@@ -118,7 +118,7 @@ func (a *Auth) Logout() error {
 func (a *Auth) CreateNewSession(issuer, userAgent, fingerprint string) (Tokens, error) {
 	generateTokensParams := SessionWithGeneratedTokensParams{
 		UserPermissions: a.User.Permissions,
-		ClientCode:      a.client.Code,
+		Audiences:       a.client.Audiences,
 		ClientSecretKey: a.client.SecretKey,
 		Issuer:          issuer,
 		AccessTokenTTL:  a.accessTokenTTL,

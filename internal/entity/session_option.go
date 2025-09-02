@@ -36,7 +36,7 @@ func WithGeneratedTokens(data SessionWithGeneratedTokensParams) SessionOption {
 		createTokensParams := CreateTokensParams{
 			UserID:          s.UserID,
 			Permissions:     data.UserPermissions,
-			ClientCode:      data.ClientCode,
+			Audiences:       data.Audiences,
 			SecretKey:       data.ClientSecretKey,
 			Issuer:          data.Issuer,
 			AccessTokenTTL:  data.AccessTokenTTL,
