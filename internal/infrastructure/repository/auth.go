@@ -236,7 +236,7 @@ func (a *Auth) Save(ctx context.Context, auth *entity.Auth) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	for i := 0; i < len(auth.Sessions); i++ {
+	for i := range auth.Sessions {
 		if err := a.SaveSession(ctx, &auth.Sessions[i]); err != nil {
 			log.Error("error saving session", sl.Err(err))
 

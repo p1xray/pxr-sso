@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const maxUserSessionsCount int = 5
+
 type Auth struct {
 	Sessions []Session
 	User     User
@@ -37,6 +39,14 @@ func (a *Auth) Login(data LoginParams) (Tokens, error) {
 	// Check password hash.
 	if err := bcrypt.CompareHashAndPassword([]byte(a.User.PasswordHash), []byte(data.Password)); err != nil {
 		return Tokens{}, fmt.Errorf("%w: %w", ErrInvalidCredentials, err)
+	}
+
+	// Check user sessions count.
+	if len(a.Sessions) >= maxUserSessionsCount {
+		// Set all sessions to remove.
+		for i := range a.Sessions {
+			a.Sessions[i].SetToRemove()
+		}
 	}
 
 	// Create new session.
