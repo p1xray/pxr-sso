@@ -9,7 +9,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/converter"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/models"
-	"github.com/p1xray/pxr-sso/internal/lib/logger/sl"
+	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 )
 

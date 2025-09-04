@@ -8,8 +8,8 @@ import (
 	"github.com/p1xray/pxr-sso/internal/dto"
 	"github.com/p1xray/pxr-sso/internal/entity"
 	"github.com/p1xray/pxr-sso/internal/infrastructure"
-	"github.com/p1xray/pxr-sso/internal/lib/logger/sl"
 	"github.com/p1xray/pxr-sso/internal/usecase"
+	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 )
 
