@@ -17,10 +17,6 @@ const (
 	lineBreak  = "\n"
 )
 
-type PrettyHandlerOptions struct {
-	SlogOpts *slog.HandlerOptions
-}
-
 type PrettyHandler struct {
 	slog.Handler
 	replaceAttr func(groups []string, a slog.Attr) slog.Attr
