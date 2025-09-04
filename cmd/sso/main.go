@@ -6,8 +6,6 @@ import (
 	"github.com/p1xray/pxr-sso/internal/lib/logger/handlers/slogpretty"
 	"log/slog"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 const (
@@ -26,16 +24,10 @@ func main() {
 	application := app.New(log, cfg)
 
 	go func() {
-		application.GRPCServer.MustRun()
+		application.Start()
 	}()
 
-	// Graceful shutdown
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
-
-	<-stop
-
-	application.GRPCServer.Stop()
+	application.GracefulStop()
 	log.Info("application stopped")
 }
 

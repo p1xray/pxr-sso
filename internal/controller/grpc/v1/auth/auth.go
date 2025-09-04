@@ -27,9 +27,9 @@ type serverAPI struct {
 	logoutUseCase   controller.Logout
 }
 
-// Register registers the implementation of the API service with the gRPC controller.
-func Register(
-	gRPC *grpc.Server,
+// RegisterAuthServer registers the implementation of the API service with the gRPC server.
+func RegisterAuthServer(
+	server *grpc.Server,
 	loginUseCase controller.Login,
 	registerUseCase controller.Register,
 	refreshUseCase controller.RefreshTokens,
@@ -42,7 +42,7 @@ func Register(
 		logoutUseCase:   logoutUseCase,
 	}
 
-	ssopb.RegisterSsoServer(gRPC, api)
+	ssopb.RegisterSsoServer(server, api)
 }
 
 func (s *serverAPI) Login(

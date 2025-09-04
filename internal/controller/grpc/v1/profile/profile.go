@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	emptyValue = 0
+	emptyID = 0
 )
 
 type serverAPI struct {
@@ -20,8 +20,8 @@ type serverAPI struct {
 	profile controller.UserProfile
 }
 
-// Register registers the implementation of the API service with the gRPC controller.
-func Register(gRPC *grpc.Server, profile controller.UserProfile) {
+// RegisterProfileServer registers the implementation of the API service with the gRPC server.
+func RegisterProfileServer(gRPC *grpc.Server, profile controller.UserProfile) {
 	ssoprofilepb.RegisterSsoProfileServer(gRPC, &serverAPI{profile: profile})
 }
 
@@ -68,7 +68,7 @@ func (s *serverAPI) GetProfile(
 }
 
 func validateGetProfileRequest(req *ssoprofilepb.GetProfileRequest) error {
-	if req.GetUserId() == emptyValue {
+	if req.GetUserId() == emptyID {
 		return controller.InvalidArgumentError("user id is empty")
 	}
 

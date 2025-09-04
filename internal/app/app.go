@@ -5,17 +5,22 @@ import (
 	"github.com/p1xray/pxr-sso/internal/config"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/sqlite"
+	"github.com/p1xray/pxr-sso/internal/lib/logger/sl"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/login"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/register"
 	"github.com/p1xray/pxr-sso/internal/usecase/profile/card"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 // App is an application.
 type App struct {
-	GRPCServer *grpcapp.App
+	log     *slog.Logger
+	grpcApp *grpcapp.App
 }
 
 // New creates a new application.
@@ -49,6 +54,38 @@ func New(
 	)
 
 	return &App{
-		GRPCServer: grpcApp,
+		log:     log,
+		grpcApp: grpcApp,
 	}
+}
+
+// Start - starts the application.
+func (a *App) Start() {
+	const op = "app.Start"
+
+	log := a.log.With(slog.String("op", op))
+	log.Info("starting application")
+
+	a.grpcApp.Start()
+}
+
+// GracefulStop - gracefully stops the application.
+func (a *App) GracefulStop() {
+	const op = "app.GracefulStop"
+
+	log := a.log.With(slog.String("op", op))
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+
+	select {
+	case s := <-stop:
+		log.Info("signal received from OS", slog.String("signal:", s.String()))
+	case err := <-a.grpcApp.Notify():
+		log.Error("received an error from the gRPC server:", sl.Err(err))
+	}
+
+	log.Info("stopping application")
+
+	a.grpcApp.Stop()
 }
