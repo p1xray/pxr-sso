@@ -226,16 +226,12 @@ func Test_Auth_Register(t *testing.T) {
 			auth, err := NewAuth(accessTokenTTL, refreshTokenTTL, WithAuthUser(tc.user), WithAuthClient(tc.client))
 			require.NoError(t, err)
 
-			tokens, err := auth.Register(tc.data)
+			err = auth.Register(tc.data)
 
 			if tc.expectedError != nil {
 				assert.ErrorIs(t, err, tc.expectedError)
 			} else {
 				require.NoError(t, err)
-
-				assert.NotEmpty(t, tokens.AccessToken)
-				assert.NotEmpty(t, tokens.RefreshToken)
-				assert.NotEmpty(t, tokens.RefreshTokenID)
 
 				assert.Equal(t, tc.expectedUser.ID, auth.User.ID)
 				assert.Equal(t, tc.expectedUser.Username, auth.User.Username)
@@ -244,7 +240,6 @@ func Test_Auth_Register(t *testing.T) {
 				assert.Equal(t, tc.expectedUser.Gender, auth.User.Gender)
 				assert.Equal(t, tc.expectedUser.AvatarFileKey, auth.User.AvatarFileKey)
 				assert.True(t, auth.User.IsToCreate())
-				assert.True(t, auth.Sessions[0].IsToCreate())
 			}
 		})
 	}
