@@ -1,77 +1,73 @@
 package grpcapp
 
 import (
-	"fmt"
-	"github.com/p1xray/pxr-sso/internal/server"
-	authserver "github.com/p1xray/pxr-sso/internal/server/grpc/auth"
-	profileserver "github.com/p1xray/pxr-sso/internal/server/grpc/profile"
+	"github.com/p1xray/pxr-sso/internal/controller"
+	"github.com/p1xray/pxr-sso/internal/controller/grpc"
+	"github.com/p1xray/pxr-sso/pkg/grpcserver"
 	"log/slog"
-	"net"
-
-	"google.golang.org/grpc"
 )
 
-// App is an gRPC application.
+// App is an gRPC controller application.
 type App struct {
 	log        *slog.Logger
-	gRPCServer *grpc.Server
-	port       int
+	port       string
+	gRPCServer *grpcserver.Server
 }
 
-// New creates new gRPC server application.
+// New creates new gRPC controller application.
 func New(
 	log *slog.Logger,
-	port int,
-	authService server.AuthService,
-	profileService server.ProfileService,
+	port string,
+	loginUseCase controller.Login,
+	registerUseCase controller.Register,
+	refreshUseCase controller.RefreshTokens,
+	logoutUseCase controller.Logout,
+	profileUseCase controller.UserProfile,
 ) *App {
-	gRPCServer := grpc.NewServer()
+	gRPCServer := grpcserver.New(grpcserver.WithPort(port))
 
-	authserver.Register(gRPCServer, authService)
-	profileserver.Register(gRPCServer, profileService)
+	grpc.NewRouter(
+		gRPCServer.App,
+		loginUseCase,
+		registerUseCase,
+		refreshUseCase,
+		logoutUseCase,
+		profileUseCase)
 
 	return &App{
 		log:        log,
-		gRPCServer: gRPCServer,
 		port:       port,
+		gRPCServer: gRPCServer,
 	}
 }
 
-// MustRun runs gRPC server and panics if any error occurs.
-func (a *App) MustRun() {
-	if err := a.Run(); err != nil {
-		panic(err)
-	}
-}
-
-// Run runs gRPC server.
-func (a *App) Run() error {
-	const op = "grpcapp.Run"
+// Start - starts the gRPC controller application.
+func (a *App) Start() {
+	const op = "grpcapp.Start"
 
 	log := a.log.With(
 		slog.String("op", op),
-		slog.Int("port", a.port))
+		slog.String("port", a.port),
+	)
+	log.Info("running gRPC server")
 
-	l, err := net.Listen("tcp", fmt.Sprintf((":%d"), a.port))
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	log.Info("gRPC server is running", slog.String("addr", l.Addr().String()))
-
-	if err := a.gRPCServer.Serve(l); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	return nil
+	a.gRPCServer.Start()
 }
 
-// Stop stops gRPC server.
+// Stop - stops the gRPC controller application.
 func (a *App) Stop() {
 	const op = "grpcapp.Stop"
 
-	a.log.With(slog.String("op", op))
-	a.log.Info("stopping gRPC server", slog.Int("port", a.port))
+	log := a.log.With(
+		slog.String("op", op),
+		slog.String("port", a.port),
+	)
+	log.Info("stopping gRPC server")
 
-	a.gRPCServer.GracefulStop()
+	a.gRPCServer.Stop()
+}
+
+// Notify - notifies about gRPC controller application errors.
+func (a *App) Notify() <-chan error {
+	return a.gRPCServer.Notify()
 }

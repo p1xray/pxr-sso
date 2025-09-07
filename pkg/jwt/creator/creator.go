@@ -19,7 +19,7 @@ var (
 // AccessTokenCreateData is data to create new access token.
 type AccessTokenCreateData struct {
 	Subject      string
-	Audience     string
+	Audiences    []string
 	Scopes       []string
 	Issuer       string
 	CustomClaims map[string]interface{}
@@ -35,7 +35,7 @@ func NewAccessToken(data AccessTokenCreateData) (string, error) {
 			ID:        uuid.New().String(),
 			Subject:   data.Subject,
 			Issuer:    data.Issuer,
-			Audience:  []string{data.Audience},
+			Audience:  data.Audiences,
 			Expiry:    jwt.NewNumericDate(now.Add(data.TTL)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
