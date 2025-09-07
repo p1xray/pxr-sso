@@ -6,6 +6,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	ssoprofilepb "github.com/p1xray/pxr-sso-protos/gen/go/profile"
 	"github.com/p1xray/pxr-sso/internal/controller"
+	"github.com/p1xray/pxr-sso/internal/controller/grpc/response"
 	"github.com/p1xray/pxr-sso/internal/usecase"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -36,10 +37,10 @@ func (s *serverAPI) GetProfile(
 	userProfile, err := s.profile.Execute(ctx, req.GetUserId())
 	if err != nil {
 		if errors.Is(err, usecase.ErrUserNotFound) {
-			return nil, controller.NotFoundError("user not found")
+			return nil, response.NotFoundError("user not found")
 		}
 
-		return nil, controller.InternalError("failed to get user profile")
+		return nil, response.InternalError("failed to get user profile")
 	}
 
 	var dateOfBirthPb *timestamppb.Timestamp
@@ -69,7 +70,7 @@ func (s *serverAPI) GetProfile(
 
 func validateGetProfileRequest(req *ssoprofilepb.GetProfileRequest) error {
 	if req.GetUserId() == emptyID {
-		return controller.InvalidArgumentError("user id is empty")
+		return response.InvalidArgumentError("user id is empty")
 	}
 
 	return nil
