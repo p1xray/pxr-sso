@@ -7,8 +7,11 @@ import (
 	"time"
 )
 
+// maxUserSessionsCount specifies how many sessions a user can have at the same time.
+// If the number of sessions exceeds this value, all previous user sessions are removed from the storage.
 const maxUserSessionsCount int = 5
 
+// Auth is the user authentication entity.
 type Auth struct {
 	Sessions []Session
 	User     User
@@ -20,6 +23,7 @@ type Auth struct {
 	refreshTokenTTL        time.Duration
 }
 
+// NewAuth returns a new auth entity.
 func NewAuth(accessTokenTTL, refreshTokenTTL time.Duration, setters ...AuthOption) (Auth, error) {
 	auth := Auth{
 		accessTokenTTL:  accessTokenTTL,
@@ -35,6 +39,7 @@ func NewAuth(accessTokenTTL, refreshTokenTTL time.Duration, setters ...AuthOptio
 	return auth, nil
 }
 
+// Login verifies the user's login data, and if successful, creates a new user session.
 func (a *Auth) Login(data LoginParams) (Tokens, error) {
 	// Check password hash.
 	if err := bcrypt.CompareHashAndPassword([]byte(a.User.PasswordHash), []byte(data.Password)); err != nil {
@@ -58,6 +63,7 @@ func (a *Auth) Login(data LoginParams) (Tokens, error) {
 	return tokens, nil
 }
 
+// Register creates a new user in the system.
 func (a *Auth) Register(data RegisterParams) error {
 	// Check if user with given username already exists.
 	if a.User.ID > emptyID {
@@ -89,6 +95,7 @@ func (a *Auth) Register(data RegisterParams) error {
 	return nil
 }
 
+// RefreshTokens refreshes the user's tokens, and if successful creates a new user session.
 func (a *Auth) RefreshTokens(data RefreshTokensParams) (Tokens, error) {
 	// Check session data.
 	for _, session := range a.Sessions {
@@ -111,6 +118,7 @@ func (a *Auth) RefreshTokens(data RefreshTokensParams) (Tokens, error) {
 	return tokens, nil
 }
 
+// Logout deletes the current user session.
 func (a *Auth) Logout() error {
 	// Check if session exist.
 	if len(a.Sessions) == 0 {
@@ -125,6 +133,7 @@ func (a *Auth) Logout() error {
 	return nil
 }
 
+// CreateNewSession creates a new user session.
 func (a *Auth) CreateNewSession(issuer, userAgent, fingerprint string) (Tokens, error) {
 	generateTokensParams := SessionWithGeneratedTokensParams{
 		UserPermissions: a.User.Permissions,

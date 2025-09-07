@@ -6,12 +6,14 @@ import (
 	"strconv"
 )
 
+// Tokens is the user session tokens entity.
 type Tokens struct {
 	AccessToken    string
 	RefreshToken   string
 	RefreshTokenID string
 }
 
+// NewTokens returns new user session tokens entity.
 func NewTokens(data CreateTokensParams) (Tokens, error) {
 	// Create access token.
 	createAccessTokenData := jwtcreator.AccessTokenCreateData{

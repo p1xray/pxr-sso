@@ -13,18 +13,21 @@ import (
 	"log/slog"
 )
 
-type AuthRepository interface {
+// Repository is a repository for register a new user use-case.
+type Repository interface {
 	DataForRegister(ctx context.Context, username, clientCode string) (dto.DataForRegister, error)
 	Save(ctx context.Context, auth *entity.Auth) error
 }
 
+// UseCase is a use-case for registering a new user.
 type UseCase struct {
 	log  *slog.Logger
 	cfg  config.TokensConfig
-	repo AuthRepository
+	repo Repository
 }
 
-func New(log *slog.Logger, cfg config.TokensConfig, repo AuthRepository) *UseCase {
+// New returns new register a new user use-case.
+func New(log *slog.Logger, cfg config.TokensConfig, repo Repository) *UseCase {
 	return &UseCase{
 		log:  log,
 		cfg:  cfg,
@@ -32,6 +35,7 @@ func New(log *slog.Logger, cfg config.TokensConfig, repo AuthRepository) *UseCas
 	}
 }
 
+// Execute executes the use-case for registering a new user. If successful, new tokens are returned.
 func (uc *UseCase) Execute(ctx context.Context, data Params) (entity.Tokens, error) {
 	const op = "usecase.auth.register"
 

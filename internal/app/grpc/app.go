@@ -67,6 +67,7 @@ func (a *App) Stop() {
 	a.gRPCServer.Stop()
 }
 
+// Notify - notifies about gRPC controller application errors.
 func (a *App) Notify() <-chan error {
 	return a.gRPCServer.Notify()
 }

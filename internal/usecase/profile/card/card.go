@@ -12,22 +12,26 @@ import (
 	"log/slog"
 )
 
-type ProfileRepository interface {
+// Repository is a repository for user profile card use-case.
+type Repository interface {
 	UserProfile(ctx context.Context, id int64) (dto.UserProfile, error)
 }
 
+// UseCase is a use-case for getting user profile data.
 type UseCase struct {
 	log  *slog.Logger
-	repo ProfileRepository
+	repo Repository
 }
 
-func New(log *slog.Logger, repo ProfileRepository) *UseCase {
+// New returns new user profile card use-case.
+func New(log *slog.Logger, repo Repository) *UseCase {
 	return &UseCase{
 		log:  log,
 		repo: repo,
 	}
 }
 
+// Execute executes the use-case for getting user profile data.
 func (uc *UseCase) Execute(ctx context.Context, id int64) (entity.User, error) {
 	const op = "usecase.profile.card"
 

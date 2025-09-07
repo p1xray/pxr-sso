@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// User is information about the user.
+// User is a DTO with user data.
 type User struct {
 	ID            int64
 	Username      string
@@ -18,7 +18,7 @@ type User struct {
 	Permissions   []string
 }
 
-// UserProfile is data for user profile.
+// UserProfile is a DTO with user profile data.
 type UserProfile struct {
 	ID            int64
 	Username      string

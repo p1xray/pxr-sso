@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// User is the user entity.
 type User struct {
 	ID            int64
 	Username      string
@@ -20,6 +21,7 @@ type User struct {
 	dataStatus enum.DataStatusEnum
 }
 
+// NewUser returns new user entity.
 func NewUser(
 	username,
 	fullName string,

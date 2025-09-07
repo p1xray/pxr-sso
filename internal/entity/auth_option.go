@@ -5,8 +5,10 @@ import (
 	"github.com/p1xray/pxr-sso/internal/dto"
 )
 
+// AuthOption is how options for the Auth are set up.
 type AuthOption func(*Auth) error
 
+// WithAuthUser is an option which sets up the user data for the user authentication entity.
 func WithAuthUser(user dto.User) AuthOption {
 	return func(a *Auth) error {
 		if user.ID == emptyID {
@@ -29,6 +31,7 @@ func WithAuthUser(user dto.User) AuthOption {
 	}
 }
 
+// WithAuthClient is an option which sets up the client data for the user authentication entity.
 func WithAuthClient(client dto.Client) AuthOption {
 	return func(a *Auth) error {
 		if client.ID == emptyID {
@@ -41,6 +44,7 @@ func WithAuthClient(client dto.Client) AuthOption {
 	}
 }
 
+// WithAuthSession is an option which sets up the sessions data for the user authentication entity.
 func WithAuthSession(sessions ...dto.Session) AuthOption {
 	return func(a *Auth) error {
 		sessionEntities := make([]Session, 0)
@@ -70,6 +74,7 @@ func WithAuthSession(sessions ...dto.Session) AuthOption {
 	}
 }
 
+// WithAuthDefaultRoles is an option which sets up the default roles for the user authentication entity.
 func WithAuthDefaultRoles(roles ...dto.Role) AuthOption {
 	return func(a *Auth) error {
 		a.defaultRoles = roles
@@ -78,6 +83,8 @@ func WithAuthDefaultRoles(roles ...dto.Role) AuthOption {
 	}
 }
 
+// WithAuthDefaultPermissionCodes is an option which sets up the default permission codes
+// for the user authentication entity.
 func WithAuthDefaultPermissionCodes(permissions ...string) AuthOption {
 	return func(a *Auth) error {
 		a.defaultPermissionCodes = permissions

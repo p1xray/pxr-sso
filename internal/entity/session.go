@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Session is the user session entity.
 type Session struct {
 	ID             int64
 	UserID         int64
@@ -19,6 +20,7 @@ type Session struct {
 	dataStatus enum.DataStatusEnum
 }
 
+// NewSession returns a new user session entity.
 func NewSession(userID int64, userAgent, fingerprint string, setters ...SessionOption) (Session, error) {
 	session := Session{
 		UserID:      userID,
@@ -35,6 +37,7 @@ func NewSession(userID int64, userAgent, fingerprint string, setters ...SessionO
 	return session, nil
 }
 
+// Validate validates user session.
 func (s *Session) Validate(userAgent, fingerprint string) error {
 	const op = "entity.Session.Validate"
 

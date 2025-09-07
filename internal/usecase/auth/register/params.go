@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Params is a data for register use-case.
 type Params struct {
 	Username      string
 	Password      string

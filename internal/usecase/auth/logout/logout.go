@@ -14,20 +14,23 @@ import (
 	"log/slog"
 )
 
-type AuthRepository interface {
+// Repository is a repository for log out use-case.
+type Repository interface {
 	ClientByCode(ctx context.Context, code string) (dto.Client, error)
 	DataForLogout(ctx context.Context, refreshTokenID string) (dto.DataForLogout, error)
 
 	Save(ctx context.Context, auth *entity.Auth) error
 }
 
+// UseCase is a use-case for logging out a user.
 type UseCase struct {
 	log  *slog.Logger
 	cfg  config.TokensConfig
-	repo AuthRepository
+	repo Repository
 }
 
-func New(log *slog.Logger, cfg config.TokensConfig, repo AuthRepository) *UseCase {
+// New returns new log out use-case.
+func New(log *slog.Logger, cfg config.TokensConfig, repo Repository) *UseCase {
 	return &UseCase{
 		log:  log,
 		cfg:  cfg,
@@ -35,6 +38,7 @@ func New(log *slog.Logger, cfg config.TokensConfig, repo AuthRepository) *UseCas
 	}
 }
 
+// Execute executes the use-case for logging out a user.
 func (uc *UseCase) Execute(ctx context.Context, data Params) error {
 	const op = "usecase.auth.logout"
 

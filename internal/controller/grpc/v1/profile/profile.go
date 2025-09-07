@@ -26,6 +26,7 @@ func RegisterProfileServer(gRPC *grpc.Server, profile controller.UserProfile) {
 	ssoprofilepb.RegisterSsoProfileServer(gRPC, &serverAPI{profile: profile})
 }
 
+// GetProfile is a gRPC handler for getting user profile data.
 func (s *serverAPI) GetProfile(
 	ctx context.Context,
 	req *ssoprofilepb.GetProfileRequest,

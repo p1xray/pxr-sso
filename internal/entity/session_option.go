@@ -5,8 +5,10 @@ import (
 	"time"
 )
 
+// SessionOption is how options for the Session are set up.
 type SessionOption func(*Session) error
 
+// WithSessionID is an option which sets up the session ID for the user session entity.
 func WithSessionID(id int64) SessionOption {
 	return func(s *Session) error {
 		s.ID = id
@@ -15,6 +17,7 @@ func WithSessionID(id int64) SessionOption {
 	}
 }
 
+// WithSessionRefreshTokenID is an option which sets up the refresh token ID for the user session entity.
 func WithSessionRefreshTokenID(refreshTokenID string) SessionOption {
 	return func(s *Session) error {
 		s.RefreshTokenID = refreshTokenID
@@ -23,6 +26,7 @@ func WithSessionRefreshTokenID(refreshTokenID string) SessionOption {
 	}
 }
 
+// WithSessionExpiresAt is an option which sets up the time of expires session for the user session entity.
 func WithSessionExpiresAt(expiresAt time.Time) SessionOption {
 	return func(s *Session) error {
 		s.ExpiresAt = expiresAt
@@ -31,6 +35,7 @@ func WithSessionExpiresAt(expiresAt time.Time) SessionOption {
 	}
 }
 
+// WithGeneratedTokens is an option which sets up the generated tokens for the user session entity.
 func WithGeneratedTokens(data SessionWithGeneratedTokensParams) SessionOption {
 	return func(s *Session) error {
 		createTokensParams := CreateTokensParams{

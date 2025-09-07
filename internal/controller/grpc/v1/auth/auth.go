@@ -46,6 +46,7 @@ func RegisterAuthServer(
 	ssopb.RegisterSsoServer(server, api)
 }
 
+// Login is a gRPC handler for logging in a user.
 func (s *serverAPI) Login(
 	ctx context.Context,
 	req *ssopb.LoginRequest,
@@ -103,6 +104,7 @@ func validateLoginRequest(req *ssopb.LoginRequest) error {
 	return nil
 }
 
+// Register is a gRPC handler for registering a new user.
 func (s *serverAPI) Register(
 	ctx context.Context,
 	req *ssopb.RegisterRequest,
@@ -186,6 +188,7 @@ func validateRegisterRequest(req *ssopb.RegisterRequest) error {
 	return nil
 }
 
+// RefreshTokens is a gRPC handler for refreshing user tokens.
 func (s *serverAPI) RefreshTokens(
 	ctx context.Context,
 	req *ssopb.RefreshTokensRequest,
@@ -234,6 +237,7 @@ func validateRefreshTokensRequest(req *ssopb.RefreshTokensRequest) error {
 	return nil
 }
 
+// Logout is a gRPC handler for logging out a user.
 func (s *serverAPI) Logout(
 	ctx context.Context,
 	req *ssopb.LogoutRequest,
