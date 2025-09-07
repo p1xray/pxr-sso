@@ -3,18 +3,24 @@ package app
 import (
 	grpcapp "github.com/p1xray/pxr-sso/internal/app/grpc"
 	"github.com/p1xray/pxr-sso/internal/config"
-	clientcrud "github.com/p1xray/pxr-sso/internal/logic/crud/client"
-	sessioncrud "github.com/p1xray/pxr-sso/internal/logic/crud/session"
-	usercrud "github.com/p1xray/pxr-sso/internal/logic/crud/user"
-	"github.com/p1xray/pxr-sso/internal/logic/service/auth"
-	"github.com/p1xray/pxr-sso/internal/logic/service/profile"
-	"github.com/p1xray/pxr-sso/internal/storage/sqlite"
+	"github.com/p1xray/pxr-sso/internal/infrastructure/repository"
+	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/sqlite"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/login"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
+	"github.com/p1xray/pxr-sso/internal/usecase/auth/register"
+	"github.com/p1xray/pxr-sso/internal/usecase/profile/card"
+	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 // App is an application.
 type App struct {
-	GRPCServer *grpcapp.App
+	log     *slog.Logger
+	grpcApp *grpcapp.App
 }
 
 // New creates a new application.
@@ -27,24 +33,59 @@ func New(
 		panic(err)
 	}
 
-	userCRUD := usercrud.New(storage, storage, storage)
-	clientCRUD := clientcrud.New(storage)
-	sessionCRUD := sessioncrud.New(storage, storage)
+	authRepository := repository.NewAuthRepository(log, storage)
+	profileRepository := repository.NewProfileRepository(log, storage)
 
-	authService := auth.New(
+	loginUseCase := login.New(log, cfg.Tokens, authRepository)
+	registerUseCase := register.New(log, cfg.Tokens, authRepository)
+	refreshUseCase := refresh.New(log, cfg.Tokens, authRepository)
+	logoutUseCase := logout.New(log, cfg.Tokens, authRepository)
+
+	profileUseCase := card.New(log, profileRepository)
+
+	grpcApp := grpcapp.New(
 		log,
-		cfg.Tokens.AccessTokenTTL,
-		cfg.Tokens.RefreshTokenTTL,
-		userCRUD,
-		clientCRUD,
-		sessionCRUD,
+		cfg.GRPC.Port,
+		loginUseCase,
+		registerUseCase,
+		refreshUseCase,
+		logoutUseCase,
+		profileUseCase,
 	)
 
-	profileService := profile.New(log, userCRUD)
-
-	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, profileService)
-
 	return &App{
-		GRPCServer: grpcApp,
+		log:     log,
+		grpcApp: grpcApp,
 	}
+}
+
+// Start - starts the application.
+func (a *App) Start() {
+	const op = "app.Start"
+
+	log := a.log.With(slog.String("op", op))
+	log.Info("starting application")
+
+	a.grpcApp.Start()
+}
+
+// GracefulStop - gracefully stops the application.
+func (a *App) GracefulStop() {
+	const op = "app.GracefulStop"
+
+	log := a.log.With(slog.String("op", op))
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+
+	select {
+	case s := <-stop:
+		log.Info("signal received from OS", slog.String("signal:", s.String()))
+	case err := <-a.grpcApp.Notify():
+		log.Error("received an error from the gRPC server:", sl.Err(err))
+	}
+
+	log.Info("stopping application")
+
+	a.grpcApp.Stop()
 }

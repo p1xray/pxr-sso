@@ -32,21 +32,21 @@ func Test_NewAccessToken(t *testing.T) {
 		{
 			name: "successfully creates a new token with data",
 			data: AccessTokenCreateData{
-				Subject:  "1",
-				Audience: "testAudience",
-				Issuer:   "testIssuer",
-				Scopes:   []string{"test.read", "test.write"},
-				TTL:      time.Duration(30) * time.Minute,
-				Key:      []byte(validKey),
+				Subject:   "1",
+				Audiences: []string{"testAudience"},
+				Issuer:    "testIssuer",
+				Scopes:    []string{"test.read", "test.write"},
+				TTL:       time.Duration(30) * time.Minute,
+				Key:       []byte(validKey),
 			},
 		},
 		{
 			name: "successfully creates a new token with custom claims",
 			data: AccessTokenCreateData{
-				Subject:  "1",
-				Audience: "testAudience",
-				Issuer:   "testIssuer",
-				Scopes:   []string{"test.read", "test.write"},
+				Subject:   "1",
+				Audiences: []string{"testAudience"},
+				Issuer:    "testIssuer",
+				Scopes:    []string{"test.read", "test.write"},
 				CustomClaims: map[string]interface{}{
 					"custom1": "value1",
 					"custom2": "value2",
@@ -136,7 +136,7 @@ func checkAccessTokenClaims(t *testing.T, claims map[string]interface{}, expecte
 	checkJtiClaim(t, claims)
 	checkSubClaim(t, claims, expectedData.Subject)
 	checkIssClaim(t, claims, expectedData.Issuer)
-	checkAudClaim(t, claims, expectedData.Audience)
+	checkAudClaim(t, claims, expectedData.Audiences)
 	checkExpClaim(t, claims)
 	checkNbfClaim(t, claims)
 	checkIatClaim(t, claims)
@@ -184,15 +184,30 @@ func checkIssClaim(t *testing.T, claims map[string]interface{}, expectedIssuer s
 	assert.Equal(t, expectedIssuer, iss.(string))
 }
 
-func checkAudClaim(t *testing.T, claims map[string]interface{}, expectedAudience string) {
-	if expectedAudience == "" {
+func checkAudClaim(t *testing.T, claims map[string]interface{}, expectedAudiences []string) {
+	if len(expectedAudiences) == 0 {
 		return
 	}
 
 	aud, ok := claims["aud"]
 	require.True(t, ok)
 
-	assert.Equal(t, expectedAudience, aud.(string))
+	audiences := make([]string, 0)
+	switch audValue := aud.(type) {
+	case string:
+		audiences = []string{audValue}
+	case []interface{}:
+		audiences = make([]string, len(audValue))
+		for i, v := range audValue {
+			audValueStr, ok := v.(string)
+			require.True(t, ok)
+			audiences[i] = audValueStr
+		}
+	default:
+		t.Error("invalid type of aud claim")
+	}
+	
+	assert.Equal(t, expectedAudiences, audiences)
 }
 
 func checkExpClaim(t *testing.T, claims map[string]interface{}) {

@@ -16,9 +16,9 @@ type Config struct {
 	StoragePath string       `yaml:"storage_path" env-required:"true"`
 }
 
-// GRPCConfig is the gRPC server configuration.
+// GRPCConfig is the gRPC controller configuration.
 type GRPCConfig struct {
-	Port    int           `yaml:"port" env-required:"true"`
+	Port    string        `yaml:"port" env-required:"true"`
 	Timeout time.Duration `yaml:"timeout" env-required:"true"`
 }
 
@@ -28,7 +28,7 @@ type TokensConfig struct {
 	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl" env-required:"true"`
 }
 
-// MustRun loads config and panics if any error occurs.
+// MustLoad loads config and panics if any error occurs.
 func MustLoad() *Config {
 	path := fetchConfigPath()
 	if path == "" {
@@ -38,7 +38,7 @@ func MustLoad() *Config {
 	return MustLoadByPath(path)
 }
 
-// MustRun loads config by path and panics if any error occurs.
+// MustLoadByPath loads config by path and panics if any error occurs.
 func MustLoadByPath(configPath string) *Config {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		panic("config file does not exist: " + configPath)
