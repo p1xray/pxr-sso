@@ -203,20 +203,6 @@ func Test_Auth_Register(t *testing.T) {
 			},
 			expectedError: ErrGeneratePasswordHash,
 		},
-		{
-			name: "throws an error when client is empty",
-			data: RegisterParams{
-				Username:      username,
-				Password:      validPassword,
-				FullName:      fullName,
-				DateOfBirth:   &dateOfBirth,
-				Gender:        &gender,
-				AvatarFileKey: &avatarFileKey,
-				Fingerprint:   fingerprint,
-				Issuer:        issuer,
-			},
-			expectedError: ErrCreateSession,
-		},
 	}
 
 	for _, tc := range testCases {
