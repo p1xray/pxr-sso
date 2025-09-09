@@ -172,3 +172,7 @@ func (a *Auth) setUser(user User) {
 func (a *Auth) ClientID() int64 {
 	return a.client.ID
 }
+
+func (a *Auth) ClientCode() string {
+	return a.client.Code
+}

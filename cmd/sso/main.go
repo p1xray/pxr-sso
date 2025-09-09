@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/p1xray/pxr-sso/internal/app"
 	"github.com/p1xray/pxr-sso/internal/config"
 	"github.com/p1xray/pxr-sso/pkg/logger"
@@ -17,7 +18,7 @@ func main() {
 	application := app.New(log, cfg)
 
 	go func() {
-		application.Start()
+		application.Start(context.Background())
 	}()
 
 	application.GracefulStop()

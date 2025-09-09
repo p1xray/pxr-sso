@@ -5,6 +5,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/dto"
 	"github.com/p1xray/pxr-sso/internal/entity"
 	"github.com/p1xray/pxr-sso/internal/enum"
+	"github.com/p1xray/pxr-sso/internal/infrastructure/kafka/data"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/models"
 )
 
@@ -149,4 +150,14 @@ func ToUserRoleLinkStorage(userID, roleID int64, setters ...models.UserRoleLinkO
 	}
 
 	return userRoleLinkModel
+}
+
+func ToRegisteredUserKafkaData(user entity.User) data.RegisteredUser {
+	return data.RegisteredUser{
+		ID:            user.ID,
+		FullName:      user.FullName,
+		DateOfBirth:   user.DateOfBirth,
+		Gender:        user.Gender,
+		AvatarFileKey: user.AvatarFileKey,
+	}
 }
