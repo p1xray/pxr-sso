@@ -56,5 +56,7 @@ func (s *Server) Notify() <-chan error {
 
 // Stop - stops the gRPC server.
 func (s *Server) Stop() {
+	defer close(s.notify)
+
 	s.App.GracefulStop()
 }

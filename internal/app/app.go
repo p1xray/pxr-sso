@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	grpcapp "github.com/p1xray/pxr-sso/internal/app/grpc"
 	kafkaapp "github.com/p1xray/pxr-sso/internal/app/kafka"
 	"github.com/p1xray/pxr-sso/internal/config"
@@ -74,13 +73,13 @@ func New(
 }
 
 // Start - starts the application.
-func (a *App) Start(ctx context.Context) {
+func (a *App) Start() {
 	const op = "app.Start"
 
 	log := a.log.With(slog.String("op", op))
 	log.Info("starting application")
 
-	a.kafkaApp.Start(ctx)
+	a.kafkaApp.Start()
 	a.grpcApp.Start()
 }
 
@@ -98,8 +97,6 @@ func (a *App) GracefulStop() {
 		log.Info("signal received from OS", slog.String("signal:", s.String()))
 	case err := <-a.grpcApp.Notify():
 		log.Error("received an error from the gRPC server:", sl.Err(err))
-	case err := <-a.kafkaApp.Notify():
-		log.Error("received an error from the kafka:", sl.Err(err))
 	}
 
 	log.Info("stopping application")

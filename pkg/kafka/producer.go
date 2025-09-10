@@ -2,40 +2,55 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"github.com/segmentio/kafka-go"
 )
 
 type Producer struct {
 	writer *kafka.Writer
+	notify chan error
 }
 
-func NewProducer(address []string) *Producer {
+func NewAsyncProducer(address []string) *Producer {
+	notify := make(chan error)
+
 	writer := &kafka.Writer{
-		Addr:     kafka.TCP(address...),
-		Balancer: &kafka.Hash{},
+		Addr:                   kafka.TCP(address...),
+		Balancer:               &kafka.Hash{},
+		AllowAutoTopicCreation: false,
+		Async:                  true,
+		Completion: func(messages []kafka.Message, err error) {
+			if err != nil {
+				notify <- err
+			}
+		},
 	}
 
-	return &Producer{writer: writer}
+	return &Producer{
+		writer: writer,
+		notify: notify,
+	}
 }
 
-func (p *Producer) Produce(ctx context.Context, topic string, key, message []byte) error {
+func (p *Producer) ProduceAsync(topic string, key, message []byte) {
 	kafkaMessage := kafka.Message{
 		Topic: topic,
 		Key:   key,
 		Value: message,
 	}
 
-	err := p.writer.WriteMessages(ctx, kafkaMessage)
-	if err != nil {
-		return err // TODO: wrap to own error
-	}
+	_ = p.writer.WriteMessages(context.Background(), kafkaMessage)
+}
 
-	return nil
+func (p *Producer) Notify() <-chan error {
+	return p.notify
 }
 
 func (p *Producer) Close() error {
+	defer close(p.notify)
+
 	if err := p.writer.Close(); err != nil {
-		return err // TODO: wrap to own error
+		return fmt.Errorf("%w: %w", ErrKafkaWriterClose, err)
 	}
 
 	return nil

@@ -1,10 +1,10 @@
 package kafkaapp
 
 import (
-	"context"
 	"fmt"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/kafka/data"
 	"github.com/p1xray/pxr-sso/pkg/kafka"
+	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"hash/fnv"
 	"log/slog"
 )
@@ -15,13 +15,12 @@ type App struct {
 	producer       *kafka.Producer
 	numberOfTopics int
 	input          chan data.KafkaMessage
-	notify         chan error
 }
 
 func New(log *slog.Logger, numberOfTopics int) *App {
 	address := []string{"localhost:9092"} // TODO: get this from config
 
-	producer := kafka.NewProducer(address)
+	producer := kafka.NewAsyncProducer(address)
 
 	return &App{
 		log:            log,
@@ -31,7 +30,7 @@ func New(log *slog.Logger, numberOfTopics int) *App {
 	}
 }
 
-func (a *App) Start(ctx context.Context) {
+func (a *App) Start() {
 	const op = "kafkaapp.Start"
 
 	log := a.log.With(
@@ -48,20 +47,16 @@ func (a *App) Start(ctx context.Context) {
 					key = []byte(d.Key)
 				}
 
-				if err := a.producer.Produce(ctx, d.Topic, key, d.Value); err != nil {
-					a.notifyError(err)
-				}
+				a.producer.ProduceAsync(d.Topic, key, d.Value)
 			}
 		}()
 	}
+
+	a.handleAsyncProducerErrors()
 }
 
 func (a *App) Input() chan<- data.KafkaMessage {
 	return a.input
-}
-
-func (a *App) Notify() <-chan error {
-	return a.notify
 }
 
 func (a *App) Stop() {
@@ -72,18 +67,18 @@ func (a *App) Stop() {
 	)
 	log.Info("stopping kafka producers")
 
-	close(a.input)
+	defer close(a.input)
 
 	if err := a.producer.Close(); err != nil {
-		a.notifyError(err)
+		log.Error("error closing kafka producer", sl.Err(err))
 	}
 }
 
-func (a *App) notifyError(err error) {
-	a.notify <- err
-}
-
 func (a *App) fanOut() []<-chan data.KafkaMessage {
+	const op = "kafkaapp.fanOut"
+
+	log := a.log.With(slog.String("op", op))
+
 	out := make([]chan data.KafkaMessage, a.numberOfTopics)
 	for i := range a.numberOfTopics {
 		out[i] = make(chan data.KafkaMessage)
@@ -99,7 +94,7 @@ func (a *App) fanOut() []<-chan data.KafkaMessage {
 		for receiveData := range a.input {
 			idx, err := a.topicIndex(receiveData.Topic)
 			if err != nil {
-				a.notifyError(err)
+				log.Error("error calculation index of topic", sl.Err(err))
 				continue
 			}
 			out[idx] <- receiveData
@@ -124,4 +119,17 @@ func (a *App) topicIndex(value string) (uint32, error) {
 	idx := h.Sum32() % uint32(a.numberOfTopics)
 
 	return idx, nil
+}
+
+func (a *App) handleAsyncProducerErrors() {
+	const op = "kafkaapp.handleAsyncProducerErrors"
+
+	log := a.log.With(slog.String("op", op))
+
+	go func() {
+		err := <-a.producer.Notify()
+		if err != nil {
+			log.Error("error writing message to kafka", sl.Err(err))
+		}
+	}()
 }
