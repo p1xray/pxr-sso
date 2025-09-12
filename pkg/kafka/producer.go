@@ -6,11 +6,13 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// Producer provides access to the kafka writer.
 type Producer struct {
 	writer *kafka.Writer
 	notify chan error
 }
 
+// NewAsyncProducer returns new instance of Producer which configured to be used asynchronously.
 func NewAsyncProducer(address []string) *Producer {
 	notify := make(chan error)
 
@@ -32,6 +34,7 @@ func NewAsyncProducer(address []string) *Producer {
 	}
 }
 
+// ProduceAsync writes message to kafka asynchronously.
 func (p *Producer) ProduceAsync(topic string, key, message []byte) {
 	kafkaMessage := kafka.Message{
 		Topic: topic,
@@ -42,10 +45,12 @@ func (p *Producer) ProduceAsync(topic string, key, message []byte) {
 	_ = p.writer.WriteMessages(context.Background(), kafkaMessage)
 }
 
+// Notify - notifies about kafka writer errors.
 func (p *Producer) Notify() <-chan error {
 	return p.notify
 }
 
+// Close - closes connection to kafka writer.
 func (p *Producer) Close() error {
 	defer close(p.notify)
 

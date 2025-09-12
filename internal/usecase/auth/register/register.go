@@ -19,7 +19,9 @@ type Repository interface {
 	Save(ctx context.Context, auth *entity.Auth) error
 }
 
+// Handler is a register new user handler.
 type Handler interface {
+	// SendToKafka sends registered new user data to kafka.
 	SendToKafka(clientCode string, user entity.User) error
 }
 

@@ -19,6 +19,7 @@ type App struct {
 	input          chan data.KafkaMessage
 }
 
+// New returns new instance of kafka queue application.
 func New(log *slog.Logger, cfg config.KafkaConfig) *App {
 	address := strings.Split(cfg.Address, ",")
 
@@ -32,6 +33,7 @@ func New(log *slog.Logger, cfg config.KafkaConfig) *App {
 	}
 }
 
+// Start - starts the kafka queue application.
 func (a *App) Start() {
 	const op = "kafkaapp.Start"
 
@@ -57,10 +59,12 @@ func (a *App) Start() {
 	a.handleAsyncProducerErrors()
 }
 
+// Input is the input channel for the user to write messages to that they wish to send.
 func (a *App) Input() chan<- data.KafkaMessage {
 	return a.input
 }
 
+// Stop - stops the kafka queue application.
 func (a *App) Stop() {
 	const op = "kafkaapp.Stop"
 

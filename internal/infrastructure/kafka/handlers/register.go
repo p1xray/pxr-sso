@@ -14,11 +14,13 @@ import (
 
 const event = "register"
 
+// UserHasRegistered is a register new user handler.
 type UserHasRegistered struct {
 	log                *slog.Logger
 	receiveDataChannel chan<- data.KafkaMessage
 }
 
+// NewUserHasRegistered returns new instance of UserHasRegistered handler.
 func NewUserHasRegistered(log *slog.Logger, receiveDataChannel chan<- data.KafkaMessage) *UserHasRegistered {
 	return &UserHasRegistered{
 		log:                log,
@@ -26,6 +28,7 @@ func NewUserHasRegistered(log *slog.Logger, receiveDataChannel chan<- data.Kafka
 	}
 }
 
+// SendToKafka sends registered new user data to kafka.
 func (uhr *UserHasRegistered) SendToKafka(clientCode string, user entity.User) error {
 	const op = "handlers.register.SendToKafka"
 
