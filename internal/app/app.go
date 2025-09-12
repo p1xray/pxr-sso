@@ -37,8 +37,7 @@ func New(
 		panic(err)
 	}
 
-	numberOfTopics := 1 // TODO: get this from config.
-	kafkaApp := kafkaapp.New(log, numberOfTopics)
+	kafkaApp := kafkaapp.New(log, cfg.Kafka)
 
 	// Handlers.
 	registerHandler := handlers.NewUserHasRegistered(log, kafkaApp.Input())

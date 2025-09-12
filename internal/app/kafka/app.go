@@ -2,11 +2,13 @@ package kafkaapp
 
 import (
 	"fmt"
+	"github.com/p1xray/pxr-sso/internal/config"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/kafka/data"
 	"github.com/p1xray/pxr-sso/pkg/kafka"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"hash/fnv"
 	"log/slog"
+	"strings"
 )
 
 // App is a kafka queue application.
@@ -17,15 +19,15 @@ type App struct {
 	input          chan data.KafkaMessage
 }
 
-func New(log *slog.Logger, numberOfTopics int) *App {
-	address := []string{"localhost:9092"} // TODO: get this from config
+func New(log *slog.Logger, cfg config.KafkaConfig) *App {
+	address := strings.Split(cfg.Address, ",")
 
 	producer := kafka.NewAsyncProducer(address)
 
 	return &App{
 		log:            log,
 		producer:       producer,
-		numberOfTopics: numberOfTopics,
+		numberOfTopics: cfg.NumberOfTopics,
 		input:          make(chan data.KafkaMessage),
 	}
 }
