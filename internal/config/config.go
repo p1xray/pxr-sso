@@ -14,6 +14,7 @@ type Config struct {
 	GRPC        GRPCConfig   `yaml:"grpc" env-required:"true"`
 	Tokens      TokensConfig `yaml:"tokens" env-required:"true"`
 	StoragePath string       `yaml:"storage_path" env-required:"true"`
+	Kafka       KafkaConfig  `yaml:"kafka" env-required:"true"`
 }
 
 // GRPCConfig is the gRPC controller configuration.
@@ -26,6 +27,12 @@ type GRPCConfig struct {
 type TokensConfig struct {
 	AccessTokenTTL  time.Duration `yaml:"access_token_ttl" env-required:"true"`
 	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl" env-required:"true"`
+}
+
+// KafkaConfig is the kafka configuration.
+type KafkaConfig struct {
+	Address        string `yaml:"address" env-required:"true"`
+	NumberOfTopics int    `yaml:"number_of_topics" env-required:"true"`
 }
 
 // MustLoad loads config and panics if any error occurs.

@@ -2,7 +2,9 @@ package app
 
 import (
 	grpcapp "github.com/p1xray/pxr-sso/internal/app/grpc"
+	kafkaapp "github.com/p1xray/pxr-sso/internal/app/kafka"
 	"github.com/p1xray/pxr-sso/internal/config"
+	"github.com/p1xray/pxr-sso/internal/infrastructure/kafka/handlers"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/sqlite"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/login"
@@ -19,8 +21,9 @@ import (
 
 // App is an application.
 type App struct {
-	log     *slog.Logger
-	grpcApp *grpcapp.App
+	log      *slog.Logger
+	grpcApp  *grpcapp.App
+	kafkaApp *kafkaapp.App
 }
 
 // New creates a new application.
@@ -28,16 +31,24 @@ func New(
 	log *slog.Logger,
 	cfg *config.Config,
 ) *App {
+	// Storages.
 	storage, err := sqlite.New(cfg.StoragePath)
 	if err != nil {
 		panic(err)
 	}
 
+	kafkaApp := kafkaapp.New(log, cfg.Kafka)
+
+	// Handlers.
+	registerHandler := handlers.NewUserHasRegistered(log, kafkaApp.Input())
+
+	// Repositories.
 	authRepository := repository.NewAuthRepository(log, storage)
 	profileRepository := repository.NewProfileRepository(log, storage)
 
+	// Use-cases.
 	loginUseCase := login.New(log, cfg.Tokens, authRepository)
-	registerUseCase := register.New(log, cfg.Tokens, authRepository)
+	registerUseCase := register.New(log, cfg.Tokens, authRepository, registerHandler)
 	refreshUseCase := refresh.New(log, cfg.Tokens, authRepository)
 	logoutUseCase := logout.New(log, cfg.Tokens, authRepository)
 
@@ -54,8 +65,9 @@ func New(
 	)
 
 	return &App{
-		log:     log,
-		grpcApp: grpcApp,
+		log:      log,
+		grpcApp:  grpcApp,
+		kafkaApp: kafkaApp,
 	}
 }
 
@@ -66,6 +78,7 @@ func (a *App) Start() {
 	log := a.log.With(slog.String("op", op))
 	log.Info("starting application")
 
+	a.kafkaApp.Start()
 	a.grpcApp.Start()
 }
 
@@ -88,4 +101,5 @@ func (a *App) GracefulStop() {
 	log.Info("stopping application")
 
 	a.grpcApp.Stop()
+	a.kafkaApp.Stop()
 }

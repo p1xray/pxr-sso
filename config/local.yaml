@@ -6,3 +6,6 @@ tokens:
   access_token_ttl: 1h
   refresh_token_ttl: 24h
 storage_path: './storage/sso.db'
+kafka:
+  address: 'localhost:29092,localhost:29093,localhost:29094'
+  number_of_topics: 1

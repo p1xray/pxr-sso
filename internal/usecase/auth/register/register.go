@@ -19,19 +19,27 @@ type Repository interface {
 	Save(ctx context.Context, auth *entity.Auth) error
 }
 
+// Handler is a register new user handler.
+type Handler interface {
+	// SendToKafka sends registered new user data to kafka.
+	SendToKafka(clientCode string, user entity.User) error
+}
+
 // UseCase is a use-case for registering a new user.
 type UseCase struct {
-	log  *slog.Logger
-	cfg  config.TokensConfig
-	repo Repository
+	log     *slog.Logger
+	cfg     config.TokensConfig
+	repo    Repository
+	handler Handler
 }
 
 // New returns new register a new user use-case.
-func New(log *slog.Logger, cfg config.TokensConfig, repo Repository) *UseCase {
+func New(log *slog.Logger, cfg config.TokensConfig, repo Repository, handler Handler) *UseCase {
 	return &UseCase{
-		log:  log,
-		cfg:  cfg,
-		repo: repo,
+		log:     log,
+		cfg:     cfg,
+		repo:    repo,
+		handler: handler,
 	}
 }
 
@@ -117,6 +125,12 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (entity.Tokens, err
 	}
 
 	log.Info("user register successfully")
+
+	if err = uc.handler.SendToKafka(auth.ClientCode(), auth.User); err != nil {
+		log.Error("error sending registered new user data to kafka", sl.Err(err))
+
+		return entity.Tokens{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	return tokens, nil
 }
