@@ -133,9 +133,14 @@ func (a *App) handleAsyncProducerErrors() {
 	log := a.log.With(slog.String("op", op))
 
 	go func() {
-		err := <-a.producer.Notify()
-		if err != nil {
-			log.Error("error writing message to kafka", sl.Err(err))
+		for {
+			select {
+			case err := <-a.producer.Notify():
+				if err != nil {
+					log.Error("error writing message to kafka", sl.Err(err))
+				}
+			default:
+			}
 		}
 	}()
 }
