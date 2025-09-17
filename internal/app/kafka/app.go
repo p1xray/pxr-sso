@@ -6,7 +6,6 @@ import (
 	"github.com/p1xray/pxr-sso/internal/infrastructure/kafka/data"
 	"github.com/p1xray/pxr-sso/pkg/kafka"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
-	"hash/fnv"
 	"log/slog"
 	"strings"
 )
@@ -81,14 +80,13 @@ func (a *App) Stop() {
 }
 
 func (a *App) fanOut() []<-chan data.KafkaMessage {
-	const op = "kafkaapp.fanOut"
-
-	log := a.log.With(slog.String("op", op))
-
 	out := make([]chan data.KafkaMessage, a.numberOfTopics)
 	for i := range a.numberOfTopics {
 		out[i] = make(chan data.KafkaMessage)
 	}
+
+	maxIdx := -1
+	topicIndexMap := make(map[string]int)
 
 	go func() {
 		defer func() {
@@ -98,11 +96,18 @@ func (a *App) fanOut() []<-chan data.KafkaMessage {
 		}()
 
 		for receiveData := range a.input {
-			idx, err := a.topicIndex(receiveData.Topic)
-			if err != nil {
-				log.Error("error calculation index of topic", sl.Err(err))
-				continue
+			idx, ok := topicIndexMap[receiveData.Topic]
+			if !ok {
+				maxIdx++
+				if maxIdx == a.numberOfTopics {
+					maxIdx = 0
+				}
+
+				idx = maxIdx
+
+				topicIndexMap[receiveData.Topic] = idx
 			}
+
 			out[idx] <- receiveData
 		}
 
@@ -116,26 +121,20 @@ func (a *App) fanOut() []<-chan data.KafkaMessage {
 	return res
 }
 
-func (a *App) topicIndex(value string) (uint32, error) {
-	h := fnv.New32a()
-	if _, err := h.Write([]byte(value)); err != nil {
-		return 0, err
-	}
-
-	idx := h.Sum32() % uint32(a.numberOfTopics)
-
-	return idx, nil
-}
-
 func (a *App) handleAsyncProducerErrors() {
 	const op = "kafkaapp.handleAsyncProducerErrors"
 
 	log := a.log.With(slog.String("op", op))
 
 	go func() {
-		err := <-a.producer.Notify()
-		if err != nil {
-			log.Error("error writing message to kafka", sl.Err(err))
+		for {
+			select {
+			case err := <-a.producer.Notify():
+				if err != nil {
+					log.Error("error writing message to kafka", sl.Err(err))
+				}
+			default:
+			}
 		}
 	}()
 }
