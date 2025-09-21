@@ -22,7 +22,7 @@ type App struct {
 func New(log *slog.Logger, cfg config.KafkaConfig) *App {
 	address := strings.Split(cfg.Address, ",")
 
-	producer := kafka.NewAsyncProducer(address)
+	producer := kafka.NewAsyncProducer(address, kafka.AcksRequireAll())
 
 	return &App{
 		log:            log,

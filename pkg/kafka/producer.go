@@ -13,13 +13,14 @@ type Producer struct {
 }
 
 // NewAsyncProducer returns new instance of Producer which configured to be used asynchronously.
-func NewAsyncProducer(address []string) *Producer {
+func NewAsyncProducer(address []string, setters ...ProducerOption) *Producer {
 	notify := make(chan error)
 
 	writer := &kafka.Writer{
 		Addr:                   kafka.TCP(address...),
 		Balancer:               &kafka.Hash{},
 		AllowAutoTopicCreation: false,
+		RequiredAcks:           kafka.RequireAll,
 		Async:                  true,
 		Completion: func(messages []kafka.Message, err error) {
 			if err != nil {
@@ -28,10 +29,16 @@ func NewAsyncProducer(address []string) *Producer {
 		},
 	}
 
-	return &Producer{
+	producer := &Producer{
 		writer: writer,
 		notify: notify,
 	}
+
+	for _, setter := range setters {
+		setter(producer)
+	}
+
+	return producer
 }
 
 // ProduceAsync writes message to kafka asynchronously.
