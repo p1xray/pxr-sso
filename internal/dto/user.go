@@ -22,6 +22,7 @@ type User struct {
 type UserProfile struct {
 	ID            int64
 	Username      string
+	PasswordHash  string
 	FullName      string
 	DateOfBirth   *time.Time
 	Gender        *enum.GenderEnum

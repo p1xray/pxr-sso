@@ -45,6 +45,15 @@ func NewUser(
 	return user
 }
 
+func (u *User) UpdateProfile(data UserUpdateProfileParams) {
+	u.FullName = data.FullName
+	u.DateOfBirth = data.DateOfBirth
+	u.Gender = data.Gender
+	u.AvatarFileKey = data.AvatarFileKey
+
+	u.SetToUpdate()
+}
+
 func (u *User) SetToCreate() {
 	u.dataStatus = enum.ToCreate
 }

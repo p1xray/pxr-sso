@@ -15,13 +15,15 @@ func NewRoutes(
 	refreshUseCase controller.RefreshTokens,
 	logoutUseCase controller.Logout,
 	profileUseCase controller.UserProfile,
+	editProfileUseCase controller.EditProfile,
 ) {
 	auth.RegisterAuthServer(
 		server,
 		loginUseCase,
 		registerUseCase,
 		refreshUseCase,
-		logoutUseCase)
+		logoutUseCase,
+	)
 
-	profile.RegisterProfileServer(server, profileUseCase)
+	profile.RegisterProfileServer(server, profileUseCase, editProfileUseCase)
 }

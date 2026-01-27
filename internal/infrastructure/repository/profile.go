@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/p1xray/pxr-sso/internal/dto"
+	"github.com/p1xray/pxr-sso/internal/entity"
 	"github.com/p1xray/pxr-sso/internal/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/converter"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/models"
@@ -19,6 +20,7 @@ type Profile struct {
 
 type ProfileStorage interface {
 	User(ctx context.Context, id int64) (models.User, error)
+	UpdateUser(ctx context.Context, user models.User) error
 }
 
 func NewProfileRepository(log *slog.Logger, storage ProfileStorage) *Profile {
@@ -50,4 +52,49 @@ func (p *Profile) UserProfile(ctx context.Context, id int64) (dto.UserProfile, e
 	userDTO := converter.ToUserProfileDTO(user)
 
 	return userDTO, nil
+}
+
+func (p *Profile) Save(ctx context.Context, user *entity.User) error {
+	const op = "repository.profile.Save"
+
+	log := p.log.With(
+		slog.String("op", op),
+	)
+
+	if user.IsToCreate() || user.IsToRemove() {
+		log.Warn("Attempt to create or delete a user from the profile card")
+
+		return fmt.Errorf("%s: %w", op, infrastructure.ErrCreateOrRemoveUserFromProfileCard)
+	}
+
+	if user.IsToUpdate() {
+		if err := p.updateUser(ctx, user); err != nil {
+			log.Error("error updating user", sl.Err(err))
+
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	return nil
+}
+
+func (p *Profile) updateUser(ctx context.Context, user *entity.User) error {
+	if user.ID == emptyID {
+		return infrastructure.ErrRequireIDToUpdate
+	}
+
+	userStorageModel, err := p.storage.User(ctx, user.ID)
+	if err != nil {
+		return err
+	}
+
+	userStorageModel = converter.ToUserStorage(userStorageModel, user, models.UserUpdated())
+
+	if err = p.storage.UpdateUser(ctx, userStorageModel); err != nil {
+		return err
+	}
+
+	user.ResetDataStatus()
+
+	return nil
 }
