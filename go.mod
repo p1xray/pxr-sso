@@ -11,7 +11,7 @@ require (
 	github.com/guregu/null/v6 v6.0.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/mattn/go-sqlite3 v1.14.28
-	github.com/p1xray/pxr-sso-protos v0.0.3
+	github.com/p1xray/pxr-sso-protos v0.0.4
 	github.com/segmentio/kafka-go v0.4.49
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.37.0

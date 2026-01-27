@@ -34,6 +34,7 @@ func ToUserProfileDTO(user models.User) dto.UserProfile {
 	return dto.UserProfile{
 		ID:            user.ID,
 		Username:      user.Username,
+		PasswordHash:  user.PasswordHash,
 		FullName:      user.FullName,
 		DateOfBirth:   user.DateOfBirth.Ptr(),
 		Gender:        enum.GenderEnumFromNullInt16(user.Gender),
@@ -66,22 +67,20 @@ func ToSessionDTO(session models.Session) dto.Session {
 	}
 }
 
-func ToUserStorage(user *entity.User, setters ...models.UserOption) models.User {
-	userStorageModel := models.User{
-		ID:            user.ID,
-		Username:      user.Username,
-		PasswordHash:  user.PasswordHash,
-		FullName:      user.FullName,
-		DateOfBirth:   null.TimeFromPtr(user.DateOfBirth),
-		Gender:        user.Gender.ToNullInt16(),
-		AvatarFileKey: null.StringFromPtr(user.AvatarFileKey),
-	}
+func ToUserStorage(dst models.User, src *entity.User, setters ...models.UserOption) models.User {
+	dst.ID = src.ID
+	dst.Username = src.Username
+	dst.PasswordHash = src.PasswordHash
+	dst.FullName = src.FullName
+	dst.DateOfBirth = null.TimeFromPtr(src.DateOfBirth)
+	dst.Gender = src.Gender.ToNullInt16()
+	dst.AvatarFileKey = null.StringFromPtr(src.AvatarFileKey)
 
 	for _, setter := range setters {
-		setter(&userStorageModel)
+		setter(&dst)
 	}
 
-	return userStorageModel
+	return dst
 }
 
 func ToSessionStorage(session *entity.Session, setters ...models.SessionOption) models.Session {

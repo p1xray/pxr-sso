@@ -296,7 +296,7 @@ func (a *Auth) SaveUser(ctx context.Context, user *entity.User, clientID int64) 
 }
 
 func (a *Auth) createUser(ctx context.Context, user *entity.User) error {
-	userStorageModel := converter.ToUserStorage(user, models.UserCreated())
+	userStorageModel := converter.ToUserStorage(models.User{}, user, models.UserCreated())
 
 	id, err := a.storage.CreateUser(ctx, userStorageModel)
 	if err != nil {
@@ -314,10 +314,14 @@ func (a *Auth) updateUser(ctx context.Context, user *entity.User) error {
 		return infrastructure.ErrRequireIDToUpdate
 	}
 
-	userStorageModel := converter.ToUserStorage(user, models.UserUpdated())
-
-	err := a.storage.UpdateUser(ctx, userStorageModel)
+	userStorageModel, err := a.storage.User(ctx, user.ID)
 	if err != nil {
+		return err
+	}
+
+	userStorageModel = converter.ToUserStorage(userStorageModel, user, models.UserUpdated())
+
+	if err = a.storage.UpdateUser(ctx, userStorageModel); err != nil {
 		return err
 	}
 
@@ -331,10 +335,14 @@ func (a *Auth) removeUser(ctx context.Context, user *entity.User) error {
 		return infrastructure.ErrRequireIDToRemove
 	}
 
-	userStorageModel := converter.ToUserStorage(user, models.UserRemoved())
-
-	err := a.storage.RemoveUser(ctx, userStorageModel)
+	userStorageModel, err := a.storage.User(ctx, user.ID)
 	if err != nil {
+		return err
+	}
+
+	userStorageModel = converter.ToUserStorage(userStorageModel, user, models.UserRemoved())
+
+	if err = a.storage.RemoveUser(ctx, userStorageModel); err != nil {
 		return err
 	}
 

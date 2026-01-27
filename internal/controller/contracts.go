@@ -7,6 +7,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/register"
+	"github.com/p1xray/pxr-sso/internal/usecase/profile/edit"
 )
 
 type (
@@ -38,5 +39,10 @@ type (
 	UserProfile interface {
 		// Execute executes the use-case for getting user profile data.
 		Execute(ctx context.Context, id int64) (entity.User, error)
+	}
+
+	// EditProfile is a use-case for editing user profile data.
+	EditProfile interface {
+		Execute(ctx context.Context, data edit.Params) error
 	}
 )

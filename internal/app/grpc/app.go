@@ -23,6 +23,7 @@ func New(
 	refreshUseCase controller.RefreshTokens,
 	logoutUseCase controller.Logout,
 	profileUseCase controller.UserProfile,
+	editProfileUseCase controller.EditProfile,
 ) *App {
 	gRPCServer := grpcserver.New(grpcserver.WithPort(port))
 
@@ -32,7 +33,9 @@ func New(
 		registerUseCase,
 		refreshUseCase,
 		logoutUseCase,
-		profileUseCase)
+		profileUseCase,
+		editProfileUseCase,
+	)
 
 	return &App{
 		log:        log,
