@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"github.com/p1xray/pxr-sso/internal/entity"
+	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/login"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
@@ -44,5 +45,10 @@ type (
 	// EditProfile is a use-case for editing user profile data.
 	EditProfile interface {
 		Execute(ctx context.Context, data edit.Params) error
+	}
+
+	// Authorize is a use-case for OAuth authorize.
+	Authorize interface {
+		Execute(ctx context.Context, data authorize.Params) string
 	}
 )

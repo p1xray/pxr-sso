@@ -15,6 +15,7 @@ func NewRouter(
 	logoutUseCase controller.Logout,
 	profileUseCase controller.UserProfile,
 	editProfileUseCase controller.EditProfile,
+	authorizeUseCase controller.Authorize,
 ) {
 	v1.NewRoutes(
 		server,
@@ -24,5 +25,6 @@ func NewRouter(
 		logoutUseCase,
 		profileUseCase,
 		editProfileUseCase,
+		authorizeUseCase,
 	)
 }

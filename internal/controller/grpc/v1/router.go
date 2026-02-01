@@ -3,6 +3,7 @@ package v1
 import (
 	"github.com/p1xray/pxr-sso/internal/controller"
 	"github.com/p1xray/pxr-sso/internal/controller/grpc/v1/auth"
+	"github.com/p1xray/pxr-sso/internal/controller/grpc/v1/oauth"
 	"github.com/p1xray/pxr-sso/internal/controller/grpc/v1/profile"
 	"google.golang.org/grpc"
 )
@@ -16,6 +17,7 @@ func NewRoutes(
 	logoutUseCase controller.Logout,
 	profileUseCase controller.UserProfile,
 	editProfileUseCase controller.EditProfile,
+	authorizeUseCase controller.Authorize,
 ) {
 	auth.RegisterAuthServer(
 		server,
@@ -26,4 +28,6 @@ func NewRoutes(
 	)
 
 	profile.RegisterProfileServer(server, profileUseCase, editProfileUseCase)
+
+	oauth.RegisterOAuthServer(server, authorizeUseCase)
 }
