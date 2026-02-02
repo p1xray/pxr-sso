@@ -1,9 +1,7 @@
 package login
 
-import "github.com/google/uuid"
-
 type Params struct {
-	FlowID       uuid.UUID
+	FlowID       string
 	ResponseType string
 	ClientID     string
 	RedirectURI  string

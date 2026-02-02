@@ -6,6 +6,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/generator"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/login"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
@@ -68,13 +69,19 @@ func (o *OAuth) Login(data dto.Login) *domain.DisplayableError {
 		return err
 	}
 
-	// TODO: generate authorization code
-	authorizationCode := "SplxlOBeZQQYbYS6WxSbIA"
+	// generate authorization code
+	authorizationCode := generator.NewAuthorizationCode()
 
-	// TODO: update flow data
+	// update flow data
+	if err := o.updateFlow(authorizationCode); err != nil {
+		return domain.InternalError(err)
+	}
 
-	// TODO: build redirect URI to client with code and state
-	redirectURIWithParams := fmt.Sprintf("%s?code=%s&state=%s", redirectURI, authorizationCode, state)
+	// build callback redirect URI
+	callbackRedirectURI := o.uriBuilder.BuildCallbackRedirectURI(data.RedirectURI(), authorizationCode, data.State())
+	o.setRedirectURI(callbackRedirectURI)
+
+	return nil
 }
 
 func (o *OAuth) validateRequestParams(validator *authorize.Validator) error {
@@ -139,6 +146,30 @@ func (o *OAuth) RedirectURI() string {
 
 func (o *OAuth) setFlow(flow dto.Flow) {
 	o.flow = nullable.Some(flow)
+}
+
+func (o *OAuth) updateFlow(code string) error {
+	if o.flow.IsNone() {
+		return fmt.Errorf("update flow: flow not initialized")
+	}
+
+	flow, err := o.Flow()
+	if err != nil {
+		return fmt.Errorf("update flow: %w", err)
+	}
+
+	updatedFlow := dto.NewFlow(
+		flow.ID(),
+		flow.ClientID(),
+		flow.RedirectURI(),
+		flow.CodeChallenge(),
+		flow.CodeChallengeMethod(),
+		flow.State(),
+		dto.WithAuthorizationCode(code),
+	)
+	o.setFlow(updatedFlow)
+
+	return nil
 }
 
 func (o *OAuth) Flow() (dto.Flow, error) {

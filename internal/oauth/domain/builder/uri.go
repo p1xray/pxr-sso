@@ -29,13 +29,22 @@ func (u *URI) BuildLoginRedirectURI(flow dto.Flow) string {
 	}
 
 	redirectURI := u.buildRedirectURI(u.loginRedirectURI, queryValues)
-
 	return redirectURI
 }
 
-func (u *URI) BuildErrorRedirectURI(paramRedirectURI string, oauthErr *domain.OAuthError) string {
+func (u *URI) BuildCallbackRedirectURI(rawURL, code, state string) string {
+	queryValues := map[string]string{
+		oauth.RequestParameterNameAuthorizationCode: code,
+		oauth.RequestParameterNameState:             state,
+	}
+
+	redirectURI := u.buildRedirectURI(rawURL, queryValues)
+	return redirectURI
+}
+
+func (u *URI) BuildErrorRedirectURI(rawURL string, oauthErr *domain.OAuthError) string {
 	// build error redirect URI on redirect URI from request parameters
-	errorRedirectURI := u.buildErrorRedirectURIByOAuthError(paramRedirectURI, oauthErr)
+	errorRedirectURI := u.buildErrorRedirectURIByOAuthError(rawURL, oauthErr)
 
 	if errorRedirectURI == "" {
 		// otherwise build error redirect URI on authorize service default error page
@@ -45,17 +54,17 @@ func (u *URI) BuildErrorRedirectURI(paramRedirectURI string, oauthErr *domain.OA
 	return errorRedirectURI
 }
 
-func (u *URI) buildErrorRedirectURIByOAuthError(redirectURI string, oauthErr *domain.OAuthError) string {
-	if redirectURI == "" {
+func (u *URI) buildErrorRedirectURIByOAuthError(rawURL string, oauthErr *domain.OAuthError) string {
+	if rawURL == "" {
 		return ""
 	}
 
 	if oauthErr == nil {
 		// build redirect URI with internal server error
-		return u.buildErrorRedirectURI(redirectURI, domain.ErrorCodeServerError, domain.ErrorDescriptionInternalServerError, "")
+		return u.buildErrorRedirectURI(rawURL, domain.ErrorCodeServerError, domain.ErrorDescriptionInternalServerError, "")
 	}
 
-	return u.buildErrorRedirectURI(redirectURI, oauthErr.Code, oauthErr.Description, oauthErr.URI)
+	return u.buildErrorRedirectURI(rawURL, oauthErr.Code, oauthErr.Description, oauthErr.URI)
 }
 
 func (u *URI) buildErrorRedirectURI(rawURL, code, description, errURI string) string {
@@ -66,7 +75,6 @@ func (u *URI) buildErrorRedirectURI(rawURL, code, description, errURI string) st
 	}
 
 	redirectURI := u.buildRedirectURI(rawURL, queryValues)
-
 	return redirectURI
 }
 

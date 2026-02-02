@@ -11,6 +11,7 @@ const (
 	RequestParameterNameFlowID              = "flow_id"
 	RequestParameterNameUsername            = "username"
 	RequestParameterNamePassword            = "password"
+	RequestParameterNameAuthorizationCode   = "code"
 
 	RequestParameterNameError            = "error"
 	RequestParameterNameErrorDescription = "error_description"
