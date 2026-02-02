@@ -185,12 +185,29 @@ func (v *Validator) validateRedirectURI() *domain.DisplayableError {
 		return domain.InternalError(err)
 	}
 
+	if err := v.validateRedirectURIEqualsFlowRedirectURI(); err != nil {
+		return domain.InternalError(err)
+	}
+
 	return nil
 }
 
 func (v *Validator) validateRedirectURIRequired() error {
 	if v.params.RedirectURI() == "" {
 		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameRedirectURI)
+	}
+
+	return nil
+}
+
+func (v *Validator) validateRedirectURIEqualsFlowRedirectURI() error {
+	if v.flow.IsNone() {
+		return domain.ErrOAuthFlowNotExists
+	}
+
+	flow := v.flow.Unwrap()
+	if v.params.RedirectURI() != flow.RedirectURI() {
+		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameRedirectURI)
 	}
 
 	return nil
@@ -224,12 +241,29 @@ func (v *Validator) validateState() *domain.DisplayableError {
 		return domain.InternalError(err)
 	}
 
+	if err := v.validateStateEqualsFlowState(); err != nil {
+		return domain.InternalError(err)
+	}
+
 	return nil
 }
 
 func (v *Validator) validateStateRequired() error {
 	if v.params.State() == "" {
 		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameState)
+	}
+
+	return nil
+}
+
+func (v *Validator) validateStateEqualsFlowState() error {
+	if v.flow.IsNone() {
+		return domain.ErrOAuthFlowNotExists
+	}
+
+	flow := v.flow.Unwrap()
+	if v.params.State() != flow.State() {
+		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameState)
 	}
 
 	return nil

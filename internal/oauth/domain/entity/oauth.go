@@ -68,14 +68,6 @@ func (o *OAuth) Login(data dto.Login) *domain.DisplayableError {
 		return err
 	}
 
-	// TODO: get redirect URI from flow and compare
-	redirectURI := "http://localhost:3000"
-
-	// TODO: get state from flow and compare
-	state := "xyz"
-
-	// TODO: check user's credentials
-
 	// TODO: generate authorization code
 	authorizationCode := "SplxlOBeZQQYbYS6WxSbIA"
 
