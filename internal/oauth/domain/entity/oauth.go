@@ -7,6 +7,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/authorize"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/login"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 )
 
@@ -58,6 +59,30 @@ func (o *OAuth) Authorize(data dto.Authorize) error {
 	o.setRedirectURI(loginRedirectURI)
 
 	return nil
+}
+
+func (o *OAuth) Login(data dto.Login) *domain.DisplayableError {
+	// validate request parameters
+	validator := login.NewValidator(data, o.client, o.flow, o.user)
+	if err := validator.Validate(); err != nil {
+		return err
+	}
+
+	// TODO: get redirect URI from flow and compare
+	redirectURI := "http://localhost:3000"
+
+	// TODO: get state from flow and compare
+	state := "xyz"
+
+	// TODO: check user's credentials
+
+	// TODO: generate authorization code
+	authorizationCode := "SplxlOBeZQQYbYS6WxSbIA"
+
+	// TODO: update flow data
+
+	// TODO: build redirect URI to client with code and state
+	redirectURIWithParams := fmt.Sprintf("%s?code=%s&state=%s", redirectURI, authorizationCode, state)
 }
 
 func (o *OAuth) validateRequestParams(validator *authorize.Validator) error {

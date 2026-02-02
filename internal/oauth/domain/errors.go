@@ -12,6 +12,8 @@ var (
 	ErrOAuthParameterInvalidValue             = errors.New("the parameter have an invalid value")
 	ErrOAuthRedirectURINotRegisteredForClient = errors.New("the redirect_uri used in the request is not registered for the client being used")
 	ErrOAuthClientNotRegistered               = errors.New("the client with the provided client_id is not registered")
+	ErrOAuthFlowNotExists                     = errors.New("the flow with the provided flow_id is not exists")
+	ErrOAuthInvalidUserCredentials            = errors.New("user with the provided credentials is not exists")
 )
 
 // OAuthError wraps OAuth errors with additional context.
@@ -67,6 +69,42 @@ func ServerErrorOAuthError(err error) *OAuthError {
 	return newOAuthErrorError(ErrorCodeServerError, ErrorDescriptionInternalServerError, "", err)
 }
 
+// DisplayableError wraps errors with additional context for display.
+type DisplayableError struct {
+	// DisplayMessage is a human-readable error message for display.
+	DisplayMessage string
+
+	// InternalMessage is a human-readable error message for debug.
+	InternalMessage string
+
+	// details contains the underlying error
+	details error
+}
+
+func newDisplayableError(displayMessage, internalMessage string, details error) *DisplayableError {
+	return &DisplayableError{
+		DisplayMessage:  displayMessage,
+		InternalMessage: internalMessage,
+		details:         details,
+	}
+}
+
+func (e *DisplayableError) Error() string {
+	return e.InternalMessage
+}
+
+func (e *DisplayableError) Unwrap() error {
+	return e.details
+}
+
+func DisplayError(message string, err error) *DisplayableError {
+	return newDisplayableError(message, err.Error(), err)
+}
+
+func InternalError(err error) *DisplayableError {
+	return newDisplayableError("", err.Error(), err)
+}
+
 // Common error codes
 const (
 	ErrorCodeInvalidRequest          = "invalid_request"
@@ -77,7 +115,10 @@ const (
 	ErrorCodeServerError             = "server_error"
 )
 
-// Common error descriprions
+// Common error descriptions
 const (
-	ErrorDescriptionInternalServerError = "internal server error"
+	ErrorDescriptionInternalServerError    = "internal server error"
+	ErrorDescriptionUsernameRequired       = "username is required"
+	ErrorDescriptionPasswordRequired       = "password is required"
+	ErrorDescriptionInvalidUserCredentials = "invalid username or password"
 )
