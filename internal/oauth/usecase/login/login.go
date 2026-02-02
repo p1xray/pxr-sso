@@ -2,6 +2,7 @@ package login
 
 import (
 	"context"
+	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
@@ -80,10 +81,26 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		data.Password,
 	)
 	if err := oauthEntity.Login(loginParams); err != nil {
+		if err.IsInternal() {
+			log.Error(err.Error())
+		}
+
 		return "", err
 	}
 
-	// TODO: update flow data in redis
+	// update flow data in redis
+	flow, err := oauthEntity.Flow()
+	if err != nil {
+		log.Error(err.Error())
+
+		return "", domain.InternalError(err)
+	}
+
+	if err = uc.redis.SaveFlow(ctx, flow, oauth.RedisAuthorizationCodeTTL*time.Minute); err != nil {
+		log.Error(err.Error())
+
+		return "", domain.InternalError(err)
+	}
 
 	log.Info("user logged in successfully")
 

@@ -97,6 +97,10 @@ func (e *DisplayableError) Unwrap() error {
 	return e.details
 }
 
+func (e *DisplayableError) IsInternal() bool {
+	return e.DisplayMessage == ""
+}
+
 func DisplayError(message string, err error) *DisplayableError {
 	return newDisplayableError(message, err.Error(), err)
 }
