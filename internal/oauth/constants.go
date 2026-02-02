@@ -9,6 +9,8 @@ const (
 	RequestParameterNameCodeChallengeMethod = "code_challenge_method"
 	RequestParameterNameState               = "state"
 	RequestParameterNameFlowID              = "flow_id"
+	RequestParameterNameUsername            = "username"
+	RequestParameterNamePassword            = "password"
 
 	RequestParameterNameError            = "error"
 	RequestParameterNameErrorDescription = "error_description"
@@ -27,6 +29,9 @@ const (
 )
 
 const (
-	// RedisFlowKeepTTL is a redis record keep TTL for flow (in minutes)
-	RedisFlowKeepTTL = 15
+	// RedisFlowTTL is a redis record TTL for flow (in minutes)
+	RedisFlowTTL = 15
+
+	// RedisAuthorizationCodeTTL is a redis record TTL for authorization code (in minutes)
+	RedisAuthorizationCodeTTL = 10
 )

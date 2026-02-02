@@ -15,17 +15,25 @@ type OAuth struct {
 
 	client nullable.Nullable[dto.Client]
 	flow   nullable.Nullable[dto.Flow]
+	user   nullable.Nullable[dto.User]
 
 	err         *domain.OAuthError
 	redirectURI string
 }
 
-func NewOAuth(uriBuilder *builder.URI, client nullable.Nullable[dto.Client]) *OAuth {
-	return &OAuth{
+func NewOAuth(uriBuilder *builder.URI, setters ...OAuthOption) *OAuth {
+	oauth := &OAuth{
 		uriBuilder: uriBuilder,
-		client:     client,
+		client:     nullable.None[dto.Client](),
 		flow:       nullable.None[dto.Flow](),
+		user:       nullable.None[dto.User](),
 	}
+
+	for _, setter := range setters {
+		setter(oauth)
+	}
+
+	return oauth
 }
 
 func (o *OAuth) Authorize(data dto.Authorize) error {

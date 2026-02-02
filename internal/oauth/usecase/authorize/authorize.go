@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/p1xray/pxr-sso/internal/infrastructure"
+	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
@@ -11,6 +12,7 @@ import (
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 	"log/slog"
+	"time"
 )
 
 // Repository is a repository for OAuth authorize use-case.
@@ -19,7 +21,7 @@ type Repository interface {
 }
 
 type Redis interface {
-	SaveFlow(ctx context.Context, flow dto.Flow) error
+	SaveFlow(ctx context.Context, flow dto.Flow, ttl time.Duration) error
 }
 
 // UseCase is a use-case for OAuth authorize.
@@ -75,7 +77,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 	}
 
 	// authorize logic
-	oauth := entity.NewOAuth(uriBuilder, nullableClient)
+	oauthEntity := entity.NewOAuth(uriBuilder, entity.WithClient(nullableClient))
 
 	authorizeParams := dto.NewAuthorize(
 		data.ResponseType,
@@ -85,28 +87,28 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		data.CodeChallengeMethod,
 		data.State,
 	)
-	err := oauth.Authorize(authorizeParams)
+	err := oauthEntity.Authorize(authorizeParams)
 	if err != nil {
 		log.Warn("%s: %s", "initiate user authorization", err.Error())
 
-		return oauth.RedirectURI()
+		return oauthEntity.RedirectURI()
 	}
 
 	// save flow data to redis
-	flow, err := oauth.Flow()
+	flow, err := oauthEntity.Flow()
 	if err != nil {
 		log.Error(err.Error())
 
-		oauth.HandleError(domain.ServerErrorOAuthError(err), "")
-		return oauth.RedirectURI()
+		oauthEntity.HandleError(domain.ServerErrorOAuthError(err), "")
+		return oauthEntity.RedirectURI()
 	}
 
-	if err = uc.redis.SaveFlow(ctx, flow); err != nil {
+	if err = uc.redis.SaveFlow(ctx, flow, oauth.RedisFlowTTL*time.Minute); err != nil {
 		log.Error(err.Error())
 
-		oauth.HandleError(domain.ServerErrorOAuthError(err), "")
-		return oauth.RedirectURI()
+		oauthEntity.HandleError(domain.ServerErrorOAuthError(err), "")
+		return oauthEntity.RedirectURI()
 	}
 
-	return oauth.RedirectURI()
+	return oauthEntity.RedirectURI()
 }
