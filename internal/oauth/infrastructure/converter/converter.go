@@ -1,11 +1,12 @@
 package converter
 
 import (
-	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/models"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
+	redisModels "github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis/models"
+	storageModels "github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/models"
 )
 
-func ToClientDTO(client models.Client, audiences []models.Audience) dto.Client {
+func ToClientDTO(client storageModels.Client, audiences []storageModels.Audience) dto.Client {
 	audienceURLs := make([]string, len(audiences))
 	for i, audience := range audiences {
 		audienceURLs[i] = audience.URL

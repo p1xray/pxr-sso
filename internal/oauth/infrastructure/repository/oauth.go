@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/models"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/converter"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/models"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 )
