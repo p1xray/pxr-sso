@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"github.com/p1xray/pxr-sso/internal/infrastructure"
-	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 	"log/slog"
@@ -65,7 +65,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 			} else {
 				log.Error(err.Error())
 
-				redirectURI := uriBuilder.BuildErrorRedirectURI("", oauth.ServerErrorOAuthError(err))
+				redirectURI := uriBuilder.BuildErrorRedirectURI("", domain.ServerErrorOAuthError(err))
 
 				return redirectURI
 			}
@@ -75,7 +75,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 	}
 
 	// authorize logic
-	entity := domain.NewOAuth(uriBuilder, nullableClient)
+	oauth := entity.NewOAuth(uriBuilder, nullableClient)
 
 	authorizeParams := dto.NewAuthorize(
 		data.ResponseType,
@@ -85,28 +85,28 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		data.CodeChallengeMethod,
 		data.State,
 	)
-	err := entity.Authorize(authorizeParams)
+	err := oauth.Authorize(authorizeParams)
 	if err != nil {
 		log.Warn("%s: %s", "initiate user authorization", err.Error())
 
-		return entity.RedirectURI()
+		return oauth.RedirectURI()
 	}
 
 	// save flow data to redis
-	flow, err := entity.Flow()
+	flow, err := oauth.Flow()
 	if err != nil {
 		log.Error(err.Error())
 
-		entity.HandleError(oauth.ServerErrorOAuthError(err), "")
-		return entity.RedirectURI()
+		oauth.HandleError(domain.ServerErrorOAuthError(err), "")
+		return oauth.RedirectURI()
 	}
 
 	if err = uc.redis.SaveFlow(ctx, flow); err != nil {
 		log.Error(err.Error())
 
-		entity.HandleError(oauth.ServerErrorOAuthError(err), "")
-		return entity.RedirectURI()
+		oauth.HandleError(domain.ServerErrorOAuthError(err), "")
+		return oauth.RedirectURI()
 	}
 
-	return entity.RedirectURI()
+	return oauth.RedirectURI()
 }

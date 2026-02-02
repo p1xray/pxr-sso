@@ -2,6 +2,7 @@ package builder
 
 import (
 	"github.com/p1xray/pxr-sso/internal/oauth"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"net/url"
 )
@@ -32,7 +33,7 @@ func (u *URI) BuildLoginRedirectURI(flow dto.Flow) string {
 	return redirectURI
 }
 
-func (u *URI) BuildErrorRedirectURI(paramRedirectURI string, oauthErr *oauth.OAuthError) string {
+func (u *URI) BuildErrorRedirectURI(paramRedirectURI string, oauthErr *domain.OAuthError) string {
 	// build error redirect URI on redirect URI from request parameters
 	errorRedirectURI := u.buildErrorRedirectURIByOAuthError(paramRedirectURI, oauthErr)
 
@@ -44,14 +45,14 @@ func (u *URI) BuildErrorRedirectURI(paramRedirectURI string, oauthErr *oauth.OAu
 	return errorRedirectURI
 }
 
-func (u *URI) buildErrorRedirectURIByOAuthError(redirectURI string, oauthErr *oauth.OAuthError) string {
+func (u *URI) buildErrorRedirectURIByOAuthError(redirectURI string, oauthErr *domain.OAuthError) string {
 	if redirectURI == "" {
 		return ""
 	}
 
 	if oauthErr == nil {
 		// build redirect URI with internal server error
-		return u.buildErrorRedirectURI(redirectURI, oauth.ErrorCodeServerError, oauth.ErrorDescriptionInternalServerError, "")
+		return u.buildErrorRedirectURI(redirectURI, domain.ErrorCodeServerError, domain.ErrorDescriptionInternalServerError, "")
 	}
 
 	return u.buildErrorRedirectURI(redirectURI, oauthErr.Code, oauthErr.Description, oauthErr.URI)

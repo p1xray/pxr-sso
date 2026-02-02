@@ -1,9 +1,9 @@
-package domain
+package entity
 
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/p1xray/pxr-sso/internal/oauth"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/authorize"
@@ -16,7 +16,7 @@ type OAuth struct {
 	client nullable.Nullable[dto.Client]
 	flow   nullable.Nullable[dto.Flow]
 
-	err         *oauth.OAuthError
+	err         *domain.OAuthError
 	redirectURI string
 }
 
@@ -66,7 +66,7 @@ func (o *OAuth) validateRequestParams(validator *authorize.Validator) error {
 func (o *OAuth) createFlow(validatedData dto.ValidatedAuthorize) (dto.Flow, error) {
 	id, err := o.generateFlowID()
 	if err != nil {
-		oauthErr := oauth.ServerErrorOAuthError(err)
+		oauthErr := domain.ServerErrorOAuthError(err)
 		o.HandleError(oauthErr, validatedData.RedirectURI())
 
 		return dto.Flow{}, fmt.Errorf("%s: %w", "create flow", err)
@@ -93,14 +93,14 @@ func (o *OAuth) generateFlowID() (uuid.UUID, error) {
 	return id, nil
 }
 
-func (o *OAuth) HandleError(err *oauth.OAuthError, redirectURI string) {
+func (o *OAuth) HandleError(err *domain.OAuthError, redirectURI string) {
 	o.setError(err)
 
 	errorRedirectURI := o.uriBuilder.BuildErrorRedirectURI(redirectURI, o.err)
 	o.setRedirectURI(errorRedirectURI)
 }
 
-func (o *OAuth) setError(err *oauth.OAuthError) {
+func (o *OAuth) setError(err *domain.OAuthError) {
 	o.err = err
 }
 
