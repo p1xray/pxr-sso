@@ -21,3 +21,15 @@ func ToClientDTO(client storageModels.Client, audiences []storageModels.Audience
 		RedirectURI: []string{"http://localhost:3000"},
 	}
 }
+
+func ToFlowRedis(flow dto.Flow) redisModels.Flow {
+	return redisModels.Flow{
+		ID:                  flow.ID().String(),
+		ClientID:            flow.ClientID(),
+		RedirectURI:         flow.RedirectURI(),
+		CodeChallenge:       flow.CodeChallenge(),
+		CodeChallengeMethod: flow.CodeChallengeMethod(),
+		State:               flow.State(),
+		AuthorizationCode:   flow.AuthorizationCode(),
+	}
+}

@@ -2,63 +2,44 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"github.com/p1xray/pxr-sso/internal/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/converter"
+	"github.com/redis/go-redis/v9"
+	"time"
 )
 
 type Redis struct {
-	data map[string][]byte
+	client *redis.Client
 }
 
-func New() *Redis {
-	return &Redis{
-		data: make(map[string][]byte),
+func New(connectionURL string) (*Redis, error) {
+	opt, err := redis.ParseURL(connectionURL)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", "parse redis connection URL", err)
 	}
+	client := redis.NewClient(opt)
+
+	return &Redis{
+		client: client,
+	}, nil
 }
 
 func (r *Redis) SaveFlow(ctx context.Context, flow dto.Flow) error {
-	redisFlow := Flow{
-		ID:                  flow.ID().String(),
-		ClientID:            flow.ClientID(),
-		RedirectURI:         flow.RedirectURI(),
-		CodeChallenge:       flow.CodeChallenge(),
-		CodeChallengeMethod: flow.CodeChallengeMethod(),
-		State:               flow.State(),
-		AuthorizationCode:   flow.AuthorizationCode(),
-	}
+	redisFlow := converter.ToFlowRedis(flow)
 
 	redisFlowKey := redisFlow.RedisKey()
 
 	redisFlowBinary, err := redisFlow.MarshalBinary()
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", infrastructure.ErrMarshalData, err)
 	}
 
-	r.data[redisFlowKey] = redisFlowBinary
+	if err = r.client.Set(ctx, redisFlowKey, redisFlowBinary, oauth.RedisFlowKeepTTL*time.Minute).Err(); err != nil {
+		return fmt.Errorf("%s: %w", "set flow to redis", err)
+	}
+
 	return nil
-}
-
-type Flow struct {
-	ID                  string `json:"id"`
-	ClientID            string `json:"client_id" required:"true"`
-	RedirectURI         string `json:"redirect_uri" required:"true"`
-	CodeChallenge       string `json:"code_challenge" required:"true"`
-	CodeChallengeMethod string `json:"code_challenge_method" required:"true"`
-	State               string `json:"state" required:"true"`
-	AuthorizationCode   string `json:"authorization_code"`
-}
-
-func (f *Flow) RedisKey() string {
-	key := fmt.Sprintf("%s:%s", oauth.RedisObjectTypeNameFlow, f.ID)
-	return key
-}
-
-func (f *Flow) MarshalBinary() ([]byte, error) {
-	return json.Marshal(f)
-}
-
-func (f *Flow) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, &f)
 }

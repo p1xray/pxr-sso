@@ -25,3 +25,8 @@ const (
 const (
 	RedisObjectTypeNameFlow = "flow"
 )
+
+const (
+	// RedisFlowKeepTTL is a redis record keep TTL for flow (in minutes)
+	RedisFlowKeepTTL = 15
+)

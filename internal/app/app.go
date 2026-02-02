@@ -6,9 +6,10 @@ import (
 	"github.com/p1xray/pxr-sso/internal/config"
 	"github.com/p1xray/pxr-sso/internal/infrastructure/kafka/handlers"
 	oldRepository "github.com/p1xray/pxr-sso/internal/infrastructure/repository"
-	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/sqlite"
+	oldSqlite "github.com/p1xray/pxr-sso/internal/infrastructure/storage/sqlite"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/sqlite"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/login"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
@@ -36,12 +37,21 @@ func New(
 	cfg *config.Config,
 ) *App {
 	// Storages.
+	oldDbStorage, err := oldSqlite.New(cfg.StoragePath)
+	if err != nil {
+		panic(err)
+	}
+
 	dbStorage, err := sqlite.New(cfg.StoragePath)
 	if err != nil {
 		panic(err)
 	}
 
-	redisStorage := redis.New()
+	// TODO: get redis connection URL from config
+	redisStorage, err := redis.New("redis://test_redis_user:test_redis_user_pass@localhost:6380/0")
+	if err != nil {
+		panic(err)
+	}
 
 	kafkaApp := kafkaapp.New(log, cfg.Kafka)
 
@@ -49,8 +59,9 @@ func New(
 	registerHandler := handlers.NewUserHasRegistered(log, kafkaApp.Input())
 
 	// Repositories.
-	authRepository := oldRepository.NewAuthRepository(log, dbStorage)
-	profileRepository := oldRepository.NewProfileRepository(log, dbStorage)
+	authRepository := oldRepository.NewAuthRepository(log, oldDbStorage)
+	profileRepository := oldRepository.NewProfileRepository(log, oldDbStorage)
+
 	oauthRepository := repository.NewOAuthRepository(log, dbStorage)
 
 	// Use-cases.
