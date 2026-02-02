@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/p1xray/pxr-sso/internal/infrastructure"
-	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/converter"
 	"github.com/redis/go-redis/v9"
@@ -27,7 +26,7 @@ func New(connectionURL string) (*Redis, error) {
 	}, nil
 }
 
-func (r *Redis) SaveFlow(ctx context.Context, flow dto.Flow) error {
+func (r *Redis) SaveFlow(ctx context.Context, flow dto.Flow, ttl time.Duration) error {
 	redisFlow := converter.ToFlowRedis(flow)
 
 	redisFlowKey := redisFlow.RedisKey()
@@ -37,7 +36,7 @@ func (r *Redis) SaveFlow(ctx context.Context, flow dto.Flow) error {
 		return fmt.Errorf("%w: %w", infrastructure.ErrMarshalData, err)
 	}
 
-	if err = r.client.Set(ctx, redisFlowKey, redisFlowBinary, oauth.RedisFlowKeepTTL*time.Minute).Err(); err != nil {
+	if err = r.client.Set(ctx, redisFlowKey, redisFlowBinary, ttl).Err(); err != nil {
 		return fmt.Errorf("%s: %w", "set flow to redis", err)
 	}
 
