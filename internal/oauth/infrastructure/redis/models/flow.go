@@ -2,8 +2,7 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/p1xray/pxr-sso/internal/oauth"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis/builder"
 )
 
 type Flow struct {
@@ -17,7 +16,7 @@ type Flow struct {
 }
 
 func (f *Flow) RedisKey() string {
-	key := fmt.Sprintf("%s:%s", oauth.RedisObjectTypeNameFlow, f.ID)
+	key := builder.BuildRedisFlowKey(f.ID)
 	return key
 }
 

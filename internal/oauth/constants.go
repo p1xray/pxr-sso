@@ -24,11 +24,6 @@ const (
 	RequestParameterAllowValueCodeChallengeMethod = "S256"
 )
 
-// Redis object type names
-const (
-	RedisObjectTypeNameFlow = "flow"
-)
-
 const (
 	// RedisFlowTTL is a redis record TTL for flow (in minutes)
 	RedisFlowTTL = 15

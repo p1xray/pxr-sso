@@ -3,9 +3,10 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/p1xray/pxr-sso/internal/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/converter"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis/builder"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis/models"
 	"github.com/redis/go-redis/v9"
 	"time"
 )
@@ -26,17 +27,27 @@ func New(connectionURL string) (*Redis, error) {
 	}, nil
 }
 
+func (r *Redis) Flow(ctx context.Context, id string) (dto.Flow, error) {
+	redisFlow := models.Flow{}
+
+	redisFlowKey := builder.BuildRedisFlowKey(id)
+	if err := r.client.Get(ctx, redisFlowKey).Scan(&redisFlow); err != nil {
+		return dto.Flow{}, fmt.Errorf("%s: %w", "get flow from redis", err)
+	}
+
+	flow, err := converter.ToFlowDTO(redisFlow)
+	if err != nil {
+		return dto.Flow{}, fmt.Errorf("%s: %w", "convert flow to dto", err)
+	}
+
+	return flow, nil
+}
+
 func (r *Redis) SaveFlow(ctx context.Context, flow dto.Flow, ttl time.Duration) error {
 	redisFlow := converter.ToFlowRedis(flow)
 
 	redisFlowKey := redisFlow.RedisKey()
-
-	redisFlowBinary, err := redisFlow.MarshalBinary()
-	if err != nil {
-		return fmt.Errorf("%w: %w", infrastructure.ErrMarshalData, err)
-	}
-
-	if err = r.client.Set(ctx, redisFlowKey, redisFlowBinary, ttl).Err(); err != nil {
+	if err := r.client.Set(ctx, redisFlowKey, redisFlow, ttl).Err(); err != nil {
 		return fmt.Errorf("%s: %w", "set flow to redis", err)
 	}
 

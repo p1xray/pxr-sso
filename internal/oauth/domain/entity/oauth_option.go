@@ -16,9 +16,9 @@ func WithClient(client nullable.Nullable[dto.Client]) OAuthOption {
 }
 
 // WithFlow is an option which sets up the flow for the OAuth.
-func WithFlow(flow nullable.Nullable[dto.Flow]) OAuthOption {
+func WithFlow(flow dto.Flow) OAuthOption {
 	return func(a *OAuth) {
-		a.flow = flow
+		a.flow = nullable.Some(flow)
 	}
 }
 

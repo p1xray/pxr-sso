@@ -17,6 +17,7 @@ type Repository interface {
 }
 
 type Redis interface {
+	Flow(ctx context.Context, id string) (dto.Flow, error)
 	SaveFlow(ctx context.Context, flow dto.Flow, ttl time.Duration) error
 }
 
@@ -42,6 +43,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 
 	log := uc.log.With(
 		slog.String("op", op),
+		slog.String("flow_id", data.FlowID),
 		slog.String("response_type", data.ResponseType),
 		slog.String("client_id", data.ClientID),
 		slog.String("redirect_uri", data.RedirectURI),
@@ -54,8 +56,13 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 
 	uriBuilder := builder.NewURI()
 
-	// TODO: get flow from redis
-	nullableFlow := nullable.None[dto.Flow]()
+	// get flow from redis
+	flow, err := uc.redis.Flow(ctx, data.FlowID)
+	if err != nil {
+		log.Error(err.Error())
+
+		return "", domain.InternalError(err)
+	}
 
 	// TODO: get client from storage
 	nullableClient := nullable.None[dto.Client]()
@@ -66,7 +73,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 	// login logic
 	oauthEntity := entity.NewOAuth(
 		uriBuilder,
-		entity.WithFlow(nullableFlow),
+		entity.WithFlow(flow),
 		entity.WithClient(nullableClient),
 		entity.WithUser(nullableUser),
 	)
@@ -80,16 +87,16 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		data.Username,
 		data.Password,
 	)
-	if err := oauthEntity.Login(loginParams); err != nil {
-		if err.IsInternal() {
-			log.Error(err.Error())
+	if oauthErr := oauthEntity.Login(loginParams); oauthErr != nil {
+		if oauthErr.IsInternal() {
+			log.Error(oauthErr.Error())
 		}
 
-		return "", err
+		return "", oauthErr
 	}
 
 	// update flow data in redis
-	flow, err := oauthEntity.Flow()
+	flow, err = oauthEntity.Flow()
 	if err != nil {
 		log.Error(err.Error())
 
