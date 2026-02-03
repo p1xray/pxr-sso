@@ -14,6 +14,7 @@ import (
 // Repository is a repository for exchange token use-case.
 type Repository interface {
 	ClientByCode(ctx context.Context, code string) (dto.Client, error)
+	User(ctx context.Context, id int64) (dto.User, error)
 }
 
 type Redis interface {
@@ -64,6 +65,18 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) 
 		}
 	}
 
+	// get user from storage.
+	user, err := uc.repo.User(ctx, flow.UserID())
+	if err != nil {
+		if errors.Is(err, infrastructure.ErrEntityNotFound) {
+			log.Warn(err.Error())
+		} else {
+			log.Error(err.Error())
+
+			return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
 	// get client from storage.
 	client, err := uc.repo.ClientByCode(ctx, data.ClientID)
 	if err != nil {
@@ -79,6 +92,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) 
 	// exchange token logic.
 	oauthEntity := entity.NewOAuth(
 		entity.WithFlow(flow),
+		entity.WithUser(user),
 		entity.WithClient(client),
 	)
 
