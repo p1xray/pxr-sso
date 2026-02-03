@@ -12,6 +12,8 @@ const (
 	RequestParameterNameUsername            = "username"
 	RequestParameterNamePassword            = "password"
 	RequestParameterNameAuthorizationCode   = "code"
+	RequestParameterNameGrantType           = "grant_type"
+	RequestParameterNameCodeVerifier        = "code_verifier"
 
 	RequestParameterNameError            = "error"
 	RequestParameterNameErrorDescription = "error_description"
@@ -20,8 +22,9 @@ const (
 
 // Request parameter allowed values
 const (
-	RequestParameterAllowValueResponseTypeCode    = "code"
-	RequestParameterAllowValueCodeChallengeMethod = "S256"
+	RequestParameterAllowValueResponseTypeCode           = "code"
+	RequestParameterAllowValueCodeChallengeMethod        = "S256"
+	RequestParameterAllowValueGrantTypeAuthorizationCode = "authorization_code"
 )
 
 const (

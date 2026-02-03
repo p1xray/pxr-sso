@@ -9,6 +9,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/generator"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/login"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/token"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 )
 
@@ -23,12 +24,11 @@ type OAuth struct {
 	redirectURI string
 }
 
-func NewOAuth(uriBuilder *builder.URI, setters ...OAuthOption) *OAuth {
+func NewOAuth(setters ...OAuthOption) *OAuth {
 	oauth := &OAuth{
-		uriBuilder: uriBuilder,
-		client:     nullable.None[dto.Client](),
-		flow:       nullable.None[dto.Flow](),
-		user:       nullable.None[dto.User](),
+		client: nullable.None[dto.Client](),
+		flow:   nullable.None[dto.Flow](),
+		user:   nullable.None[dto.User](),
 	}
 
 	for _, setter := range setters {
@@ -82,6 +82,16 @@ func (o *OAuth) Login(data dto.Login) *domain.DisplayableError {
 	o.setRedirectURI(callbackRedirectURI)
 
 	return nil
+}
+
+func (o *OAuth) ExchangeToken(data dto.ExchangeToken) (dto.Token, error) {
+	// validate request parameters
+	validator := token.NewValidator(data, o.client, o.flow)
+	if err := validator.Validate(); err != nil {
+		return dto.Token{}, err
+	}
+
+	// TODO: generate tokens (access, ID, refresh)
 }
 
 func (o *OAuth) validateRequestParams(validator *authorize.Validator) error {

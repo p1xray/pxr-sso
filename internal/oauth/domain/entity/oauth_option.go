@@ -1,12 +1,20 @@
 package entity
 
 import (
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 )
 
 // OAuthOption is how options for the OAuth are set up.
 type OAuthOption func(*OAuth)
+
+// WithBuilderURI is an option which sets up the URI builder for the OAuth.
+func WithBuilderURI(uriBuilder *builder.URI) OAuthOption {
+	return func(a *OAuth) {
+		a.uriBuilder = uriBuilder
+	}
+}
 
 // WithNullableClient is an option which sets up the nullable client for the OAuth.
 func WithNullableClient(client nullable.Nullable[dto.Client]) OAuthOption {

@@ -97,7 +97,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 
 	// login logic
 	oauthEntity := entity.NewOAuth(
-		uriBuilder,
+		entity.WithBuilderURI(uriBuilder),
 		entity.WithFlow(flow),
 		entity.WithClient(client),
 		entity.WithUser(user),
@@ -112,12 +112,12 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		data.Username,
 		data.Password,
 	)
-	if oauthErr := oauthEntity.Login(loginParams); oauthErr != nil {
-		if oauthErr.IsInternal() {
-			log.Error(oauthErr.Error())
+	if displayableErr := oauthEntity.Login(loginParams); displayableErr != nil {
+		if displayableErr.IsInternal() {
+			log.Error(displayableErr.Error())
 		}
 
-		return "", oauthErr
+		return "", displayableErr
 	}
 
 	// update flow data in redis
