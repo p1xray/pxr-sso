@@ -43,6 +43,8 @@ func (r *Redis) Flow(ctx context.Context, id string) (dto.Flow, error) {
 		return dto.Flow{}, fmt.Errorf("%s: %w", op, err)
 	}
 
+	fmt.Printf("redis flow: %v", redisFlow)
+
 	flow, err := converter.ToFlowDTO(redisFlow)
 	if err != nil {
 		return dto.Flow{}, fmt.Errorf("%s: %w", op, err)
@@ -56,7 +58,7 @@ func (r *Redis) SaveFlow(ctx context.Context, flow dto.Flow, ttl time.Duration) 
 
 	redisFlow := converter.ToFlowRedis(flow)
 
-	redisFlowKey := redisFlow.RedisKey()
+	redisFlowKey := builder.BuildRedisFlowKey(redisFlow.ID)
 	if err := r.client.Set(ctx, redisFlowKey, redisFlow, ttl).Err(); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

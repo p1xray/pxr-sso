@@ -53,7 +53,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		sl.Strings("code_challenge_method", data.CodeChallengeMethod),
 		sl.Strings("state", data.State),
 	)
-	log.Info("attempt to initiate user authorization")
+	log.Info("attempting to initiate user authorization")
 
 	uriBuilder := builder.NewURI()
 
@@ -109,6 +109,8 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		oauthEntity.HandleError(domain.ServerErrorOAuthError(err), "")
 		return oauthEntity.RedirectURI()
 	}
+
+	log.Info("initiate user authorization successfully")
 
 	return oauthEntity.RedirectURI()
 }
