@@ -107,6 +107,7 @@ func (o *OAuth) createFlow(validatedData dto.ValidatedAuthorize) (dto.Flow, erro
 	flow := dto.NewFlow(
 		id,
 		validatedData.ClientID(),
+		validatedData.ResponseType(),
 		validatedData.RedirectURI(),
 		validatedData.CodeChallenge(),
 		validatedData.CodeChallengeMethod(),
@@ -161,6 +162,7 @@ func (o *OAuth) updateFlow(code string) error {
 	updatedFlow := dto.NewFlow(
 		flow.ID(),
 		flow.ClientID(),
+		flow.ResponseType(),
 		flow.RedirectURI(),
 		flow.CodeChallenge(),
 		flow.CodeChallengeMethod(),

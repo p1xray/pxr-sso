@@ -123,6 +123,10 @@ func (v *Validator) validateResponseType() *domain.DisplayableError {
 		return domain.InternalError(err)
 	}
 
+	if err := v.validateResponseTypeEqualsFlowResponseType(); err != nil {
+		return domain.InternalError(err)
+	}
+
 	return nil
 }
 
@@ -136,6 +140,19 @@ func (v *Validator) validateResponseTypeRequired() error {
 
 func (v *Validator) validateResponseTypeValue() error {
 	if v.params.ResponseType() != oauth.RequestParameterAllowValueResponseTypeCode {
+		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameResponseType)
+	}
+
+	return nil
+}
+
+func (v *Validator) validateResponseTypeEqualsFlowResponseType() error {
+	if v.flow.IsNone() {
+		return domain.ErrOAuthFlowNotExists
+	}
+
+	flow := v.flow.Unwrap()
+	if v.params.ResponseType() != flow.ResponseType() {
 		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameResponseType)
 	}
 

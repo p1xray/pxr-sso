@@ -22,10 +22,11 @@ func NewURI() *URI {
 
 func (u *URI) BuildLoginRedirectURI(flow dto.Flow) string {
 	queryValues := map[string]string{
-		oauth.RequestParameterNameFlowID:      flow.ID().String(),
-		oauth.RequestParameterNameClientID:    flow.ClientID(),
-		oauth.RequestParameterNameRedirectURI: flow.RedirectURI(),
-		oauth.RequestParameterNameState:       flow.State(),
+		oauth.RequestParameterNameFlowID:       flow.ID().String(),
+		oauth.RequestParameterNameResponseType: flow.ResponseType(),
+		oauth.RequestParameterNameClientID:     flow.ClientID(),
+		oauth.RequestParameterNameRedirectURI:  flow.RedirectURI(),
+		oauth.RequestParameterNameState:        flow.State(),
 	}
 
 	redirectURI := u.buildRedirectURI(u.loginRedirectURI, queryValues)

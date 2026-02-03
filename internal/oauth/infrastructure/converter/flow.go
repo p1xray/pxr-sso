@@ -11,6 +11,7 @@ func ToFlowRedis(flow dto.Flow) models.Flow {
 	return models.Flow{
 		ID:                  flow.ID().String(),
 		ClientID:            flow.ClientID(),
+		ResponseType:        flow.ResponseType(),
 		RedirectURI:         flow.RedirectURI(),
 		CodeChallenge:       flow.CodeChallenge(),
 		CodeChallengeMethod: flow.CodeChallengeMethod(),
@@ -30,6 +31,7 @@ func ToFlowDTO(flow models.Flow) (dto.Flow, error) {
 	return dto.NewFlow(
 		id,
 		flow.ClientID,
+		flow.ResponseType,
 		flow.RedirectURI,
 		flow.CodeChallenge,
 		flow.CodeChallengeMethod,

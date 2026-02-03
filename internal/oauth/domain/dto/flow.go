@@ -7,6 +7,7 @@ import (
 type Flow struct {
 	id                  uuid.UUID
 	clientID            string
+	responseType        string
 	redirectURI         string
 	codeChallenge       string
 	codeChallengeMethod string
@@ -17,6 +18,7 @@ type Flow struct {
 func NewFlow(
 	id uuid.UUID,
 	clientID,
+	responseType,
 	redirectURI,
 	codeChallenge,
 	codeChallengeMethod,
@@ -26,6 +28,7 @@ func NewFlow(
 	flow := Flow{
 		id:                  id,
 		clientID:            clientID,
+		responseType:        responseType,
 		redirectURI:         redirectURI,
 		codeChallenge:       codeChallenge,
 		codeChallengeMethod: codeChallengeMethod,
@@ -45,6 +48,10 @@ func (f *Flow) ID() uuid.UUID {
 
 func (f *Flow) ClientID() string {
 	return f.clientID
+}
+
+func (f *Flow) ResponseType() string {
+	return f.responseType
 }
 
 func (f *Flow) RedirectURI() string {
