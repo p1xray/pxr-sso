@@ -4,8 +4,10 @@ import (
 	"context"
 	"github.com/p1xray/pxr-sso/internal/entity"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
+	"github.com/p1xray/pxr-sso/internal/oauth/usecase/token"
 	oldLogin "github.com/p1xray/pxr-sso/internal/usecase/auth/login"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
 	"github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
@@ -57,5 +59,10 @@ type (
 	// Login is a use-case for logging in a user.
 	Login interface {
 		Execute(ctx context.Context, data login.Params) (string, *domain.DisplayableError)
+	}
+
+	// Token is a use-case for exchange token.
+	Token interface {
+		Execute(ctx context.Context, data token.Params) (dto.Token, error)
 	}
 )
