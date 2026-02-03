@@ -17,6 +17,7 @@ func ToFlowRedis(flow dto.Flow) models.Flow {
 		CodeChallengeMethod: flow.CodeChallengeMethod(),
 		State:               flow.State(),
 		AuthorizationCode:   flow.AuthorizationCode(),
+		UserID:              flow.UserID(),
 	}
 }
 
@@ -37,5 +38,6 @@ func ToFlowDTO(flow models.Flow) (dto.Flow, error) {
 		flow.CodeChallengeMethod,
 		flow.State,
 		dto.WithAuthorizationCode(flow.AuthorizationCode),
+		dto.WithUserID(flow.UserID),
 	), nil
 }

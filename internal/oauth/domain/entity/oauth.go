@@ -160,11 +160,12 @@ func (o *OAuth) setFlow(flow dto.Flow) {
 }
 
 func (o *OAuth) updateFlow(code string) error {
-	if o.flow.IsNone() {
-		return fmt.Errorf("update flow: flow not initialized")
+	flow, err := o.Flow()
+	if err != nil {
+		return fmt.Errorf("update flow: %w", err)
 	}
 
-	flow, err := o.Flow()
+	user, err := o.User()
 	if err != nil {
 		return fmt.Errorf("update flow: %w", err)
 	}
@@ -178,6 +179,7 @@ func (o *OAuth) updateFlow(code string) error {
 		flow.CodeChallengeMethod(),
 		flow.State(),
 		dto.WithAuthorizationCode(code),
+		dto.WithUserID(user.ID()),
 	)
 	o.setFlow(updatedFlow)
 
@@ -190,4 +192,12 @@ func (o *OAuth) Flow() (dto.Flow, error) {
 	}
 
 	return o.flow.Unwrap(), nil
+}
+
+func (o *OAuth) User() (dto.User, error) {
+	if o.user.IsNone() {
+		return dto.User{}, fmt.Errorf("get user: user not initialized")
+	}
+
+	return o.user.Unwrap(), nil
 }
