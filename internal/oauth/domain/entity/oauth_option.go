@@ -8,10 +8,17 @@ import (
 // OAuthOption is how options for the OAuth are set up.
 type OAuthOption func(*OAuth)
 
-// WithClient is an option which sets up the client for the OAuth.
-func WithClient(client nullable.Nullable[dto.Client]) OAuthOption {
+// WithNullableClient is an option which sets up the nullable client for the OAuth.
+func WithNullableClient(client nullable.Nullable[dto.Client]) OAuthOption {
 	return func(a *OAuth) {
 		a.client = client
+	}
+}
+
+// WithClient is an option which sets up the client for the OAuth.
+func WithClient(client dto.Client) OAuthOption {
+	return func(a *OAuth) {
+		a.client = nullable.Some(client)
 	}
 }
 
@@ -23,8 +30,8 @@ func WithFlow(flow dto.Flow) OAuthOption {
 }
 
 // WithUser is an option which sets up the user for the OAuth.
-func WithUser(user nullable.Nullable[dto.User]) OAuthOption {
+func WithUser(user dto.User) OAuthOption {
 	return func(a *OAuth) {
-		a.user = user
+		a.user = nullable.Some(user)
 	}
 }

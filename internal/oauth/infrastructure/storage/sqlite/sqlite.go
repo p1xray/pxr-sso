@@ -16,7 +16,7 @@ type Storage struct {
 
 // New creates a new instance of the SQLite store.
 func New(storagePath string) (*Storage, error) {
-	const op = "sqlite.New"
+	const op = "infrastructure.storage.sqlite.New"
 
 	db, err := sql.Open("sqlite3", storagePath)
 	if err != nil {
@@ -27,7 +27,7 @@ func New(storagePath string) (*Storage, error) {
 }
 
 func (s *Storage) ClientByCode(ctx context.Context, code string) (models.Client, error) {
-	const op = "sqlite.ClientByCode"
+	const op = "infrastructure.storage.sqlite.ClientByCode"
 
 	stmt, err := s.db.PrepareContext(ctx,
 		`select
@@ -68,7 +68,7 @@ func (s *Storage) ClientByCode(ctx context.Context, code string) (models.Client,
 }
 
 func (s *Storage) ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error) {
-	const op = "sqlite.ClientAudiences"
+	const op = "infrastructure.storage.sqlite.ClientAudiences"
 
 	stmt, err := s.db.PrepareContext(ctx,
 		`select
@@ -108,4 +108,51 @@ func (s *Storage) ClientAudiences(ctx context.Context, clientID int64) ([]models
 	}
 
 	return audiences, nil
+}
+
+func (s *Storage) UserByUsername(ctx context.Context, username string) (models.User, error) {
+	const op = "infrastructure.storage.sqlite.UserByUsername"
+
+	stmt, err := s.db.PrepareContext(ctx,
+		`select
+    		u.id,
+    		u.username,
+    		u.password_hash,
+    		u.fio,
+    		u.date_of_birth,
+    		u.gender,
+    		u.avatar_file_key,
+    		u.deleted,
+    		u.created_at,
+    		u.updated_at
+		from users u
+		where u.username = ?;`)
+	if err != nil {
+		return models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	row := stmt.QueryRowContext(ctx, username)
+
+	var user models.User
+	err = row.Scan(
+		&user.ID,
+		&user.Username,
+		&user.PasswordHash,
+		&user.FullName,
+		&user.DateOfBirth,
+		&user.Gender,
+		&user.AvatarFileKey,
+		&user.Deleted,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.User{}, fmt.Errorf("%s: %w", op, infrastructure.ErrEntityNotFound)
+		}
+
+		return models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return user, nil
 }

@@ -2,18 +2,21 @@ package login
 
 import (
 	"context"
+	"errors"
 	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
-	"github.com/p1xray/pxr-sso/pkg/nullable"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"log/slog"
 	"time"
 )
 
 // Repository is a repository for log in use-case.
 type Repository interface {
+	ClientByCode(ctx context.Context, code string) (dto.Client, error)
+	UserByUsername(ctx context.Context, username string) (dto.User, error)
 }
 
 type Redis interface {
@@ -59,23 +62,45 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 	// get flow from redis
 	flow, err := uc.redis.Flow(ctx, data.FlowID)
 	if err != nil {
-		log.Error(err.Error())
+		if errors.Is(err, infrastructure.ErrEntityNotFound) {
+			log.Warn(err.Error())
+		} else {
+			log.Error(err.Error())
 
-		return "", domain.InternalError(err)
+			return "", domain.InternalError(err)
+		}
 	}
 
-	// TODO: get client from storage
-	nullableClient := nullable.None[dto.Client]()
+	// get client from storage
+	client, err := uc.repo.ClientByCode(ctx, data.ClientID)
+	if err != nil {
+		if errors.Is(err, infrastructure.ErrEntityNotFound) {
+			log.Warn(err.Error())
+		} else {
+			log.Error(err.Error())
 
-	// TODO: get user from storage
-	nullableUser := nullable.None[dto.User]()
+			return "", domain.InternalError(err)
+		}
+	}
+
+	// get user from storage
+	user, err := uc.repo.UserByUsername(ctx, data.Username)
+	if err != nil {
+		if errors.Is(err, infrastructure.ErrEntityNotFound) {
+			log.Warn(err.Error())
+		} else {
+			log.Error(err.Error())
+
+			return "", domain.InternalError(err)
+		}
+	}
 
 	// login logic
 	oauthEntity := entity.NewOAuth(
 		uriBuilder,
 		entity.WithFlow(flow),
-		entity.WithClient(nullableClient),
-		entity.WithUser(nullableUser),
+		entity.WithClient(client),
+		entity.WithUser(user),
 	)
 
 	loginParams := dto.NewLogin(

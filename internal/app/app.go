@@ -62,7 +62,7 @@ func New(
 	authRepository := oldRepository.NewAuthRepository(log, oldDbStorage)
 	profileRepository := oldRepository.NewProfileRepository(log, oldDbStorage)
 
-	oauthRepository := repository.NewOAuthRepository(log, dbStorage)
+	oauthRepository := repository.NewOAuthRepository(dbStorage)
 
 	// Use-cases.
 	loginUseCase := login.New(log, cfg.Tokens, authRepository)
