@@ -9,22 +9,24 @@ import (
 // NewRouter creates a new router for the gRPC server controller.
 func NewRouter(
 	server *grpc.Server,
-	loginUseCase controller.Login,
-	registerUseCase controller.Register,
-	refreshUseCase controller.RefreshTokens,
-	logoutUseCase controller.Logout,
+	oldLoginUseCase controller.OldLogin,
+	oldRegisterUseCase controller.OldRegister,
+	oldRefreshUseCase controller.OldRefreshTokens,
+	oldLogoutUseCase controller.OldLogout,
 	profileUseCase controller.UserProfile,
 	editProfileUseCase controller.EditProfile,
 	authorizeUseCase controller.Authorize,
+	loginUseCase controller.Login,
 ) {
 	v1.NewRoutes(
 		server,
-		loginUseCase,
-		registerUseCase,
-		refreshUseCase,
-		logoutUseCase,
+		oldLoginUseCase,
+		oldRegisterUseCase,
+		oldRefreshUseCase,
+		oldLogoutUseCase,
 		profileUseCase,
 		editProfileUseCase,
 		authorizeUseCase,
+		loginUseCase,
 	)
 }

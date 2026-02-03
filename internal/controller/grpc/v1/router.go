@@ -11,23 +11,24 @@ import (
 // NewRoutes creates a new routes for the gRPC server controller of version 1.
 func NewRoutes(
 	server *grpc.Server,
-	loginUseCase controller.Login,
-	registerUseCase controller.Register,
-	refreshUseCase controller.RefreshTokens,
-	logoutUseCase controller.Logout,
+	oldLoginUseCase controller.OldLogin,
+	oldRegisterUseCase controller.OldRegister,
+	oldRefreshUseCase controller.OldRefreshTokens,
+	oldLogoutUseCase controller.OldLogout,
 	profileUseCase controller.UserProfile,
 	editProfileUseCase controller.EditProfile,
 	authorizeUseCase controller.Authorize,
+	loginUseCase controller.Login,
 ) {
 	auth.RegisterAuthServer(
 		server,
-		loginUseCase,
-		registerUseCase,
-		refreshUseCase,
-		logoutUseCase,
+		oldLoginUseCase,
+		oldRegisterUseCase,
+		oldRefreshUseCase,
+		oldLogoutUseCase,
 	)
 
 	profile.RegisterProfileServer(server, profileUseCase, editProfileUseCase)
 
-	oauth.RegisterOAuthServer(server, authorizeUseCase)
+	oauth.RegisterOAuthServer(server, authorizeUseCase, loginUseCase)
 }

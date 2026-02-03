@@ -22,19 +22,19 @@ const (
 
 type serverAPI struct {
 	ssopb.UnimplementedSsoServer
-	loginUseCase    controller.Login
-	registerUseCase controller.Register
-	refreshUseCase  controller.RefreshTokens
-	logoutUseCase   controller.Logout
+	loginUseCase    controller.OldLogin
+	registerUseCase controller.OldRegister
+	refreshUseCase  controller.OldRefreshTokens
+	logoutUseCase   controller.OldLogout
 }
 
 // RegisterAuthServer registers the implementation of the API service with the gRPC server.
 func RegisterAuthServer(
 	server *grpc.Server,
-	loginUseCase controller.Login,
-	registerUseCase controller.Register,
-	refreshUseCase controller.RefreshTokens,
-	logoutUseCase controller.Logout,
+	loginUseCase controller.OldLogin,
+	registerUseCase controller.OldRegister,
+	refreshUseCase controller.OldRefreshTokens,
+	logoutUseCase controller.OldLogout,
 ) {
 	api := &serverAPI{
 		loginUseCase:    loginUseCase,

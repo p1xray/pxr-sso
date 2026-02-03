@@ -11,10 +11,11 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/sqlite"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
-	"github.com/p1xray/pxr-sso/internal/usecase/auth/login"
-	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
-	"github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
-	"github.com/p1xray/pxr-sso/internal/usecase/auth/register"
+	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
+	oldLogin "github.com/p1xray/pxr-sso/internal/usecase/auth/login"
+	oldLogout "github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
+	oldRefresh "github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
+	oldRegister "github.com/p1xray/pxr-sso/internal/usecase/auth/register"
 	"github.com/p1xray/pxr-sso/internal/usecase/profile/card"
 	"github.com/p1xray/pxr-sso/internal/usecase/profile/edit"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
@@ -65,26 +66,28 @@ func New(
 	oauthRepository := repository.NewOAuthRepository(dbStorage)
 
 	// Use-cases.
-	loginUseCase := login.New(log, cfg.Tokens, authRepository)
-	registerUseCase := register.New(log, cfg.Tokens, authRepository, registerHandler)
-	refreshUseCase := refresh.New(log, cfg.Tokens, authRepository)
-	logoutUseCase := logout.New(log, cfg.Tokens, authRepository)
+	oldLoginUseCase := oldLogin.New(log, cfg.Tokens, authRepository)
+	oldRegisterUseCase := oldRegister.New(log, cfg.Tokens, authRepository, registerHandler)
+	oldRefreshUseCase := oldRefresh.New(log, cfg.Tokens, authRepository)
+	oldLogoutUseCase := oldLogout.New(log, cfg.Tokens, authRepository)
 
 	profileUseCase := card.New(log, profileRepository)
 	editProfileUseCase := edit.New(log, profileRepository)
 
 	authorizeUseCase := authorize.New(log, oauthRepository, redisStorage)
+	loginUseCase := login.New(log, oauthRepository, redisStorage)
 
 	grpcApp := grpcapp.New(
 		log,
 		cfg.GRPC.Port,
-		loginUseCase,
-		registerUseCase,
-		refreshUseCase,
-		logoutUseCase,
+		oldLoginUseCase,
+		oldRegisterUseCase,
+		oldRefreshUseCase,
+		oldLogoutUseCase,
 		profileUseCase,
 		editProfileUseCase,
 		authorizeUseCase,
+		loginUseCase,
 	)
 
 	return &App{

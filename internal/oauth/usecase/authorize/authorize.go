@@ -77,7 +77,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 	}
 
 	// authorize logic
-	oauthEntity := entity.NewOAuth(uriBuilder, entity.WithClient(nullableClient))
+	oauthEntity := entity.NewOAuth(uriBuilder, entity.WithNullableClient(nullableClient))
 
 	authorizeParams := dto.NewAuthorize(
 		data.ResponseType,
