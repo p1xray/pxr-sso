@@ -103,9 +103,10 @@ func (s *serverAPI) Token(
 	}
 
 	response := &oauthpb.TokenResponse{
-		AccessToken:  tokens.AccessToken(),
-		TokenType:    tokens.TokenType(),
-		ExpiresIn:    tokens.ExpiresIn(),
+		AccessToken: tokens.AccessToken(),
+		TokenType:   tokens.TokenType(),
+		// TODO: update proto
+		ExpiresIn:    uint32(tokens.ExpiresIn()),
 		RefreshToken: tokens.RefreshToken(),
 		IdToken:      tokens.IDToken(),
 	}

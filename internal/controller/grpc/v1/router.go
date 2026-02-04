@@ -19,6 +19,7 @@ func NewRoutes(
 	editProfileUseCase controller.EditProfile,
 	authorizeUseCase controller.Authorize,
 	loginUseCase controller.Login,
+	tokenUseCase controller.Token,
 ) {
 	auth.RegisterAuthServer(
 		server,
@@ -30,5 +31,5 @@ func NewRoutes(
 
 	profile.RegisterProfileServer(server, profileUseCase, editProfileUseCase)
 
-	oauth.RegisterOAuthServer(server, authorizeUseCase, loginUseCase)
+	oauth.RegisterOAuthServer(server, authorizeUseCase, loginUseCase, tokenUseCase)
 }

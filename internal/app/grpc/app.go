@@ -26,6 +26,7 @@ func New(
 	editProfileUseCase controller.EditProfile,
 	authorizeUseCase controller.Authorize,
 	loginUseCase controller.Login,
+	tokenUseCase controller.Token,
 ) *App {
 	gRPCServer := grpcserver.New(grpcserver.WithPort(port))
 
@@ -39,6 +40,7 @@ func New(
 		editProfileUseCase,
 		authorizeUseCase,
 		loginUseCase,
+		tokenUseCase,
 	)
 
 	return &App{
