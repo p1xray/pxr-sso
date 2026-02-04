@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/converter"
@@ -60,6 +61,17 @@ func (r *Redis) SaveFlow(ctx context.Context, flow dto.Flow, ttl time.Duration) 
 
 	redisFlowKey := builder.BuildRedisFlowKey(redisFlow.ID)
 	if err := r.client.Set(ctx, redisFlowKey, redisFlow, ttl).Err(); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (r *Redis) RemoveFlow(ctx context.Context, id uuid.UUID) error {
+	const op = "infrastructure.redis.RemoveFlow"
+
+	redisFlowKey := builder.BuildRedisFlowKey(id.String())
+	if err := r.client.Del(ctx, redisFlowKey).Err(); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 

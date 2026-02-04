@@ -12,6 +12,7 @@ type Storage interface {
 	ClientByCode(ctx context.Context, code string) (models.Client, error)
 	ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error)
 	UserByUsername(ctx context.Context, username string) (models.User, error)
+	User(ctx context.Context, id int64) (models.User, error)
 }
 
 type OAuth struct {
@@ -40,6 +41,19 @@ func (o *OAuth) ClientByCode(ctx context.Context, code string) (dto.Client, erro
 	clientDTO := converter.ToClientDTO(client, clientAudiences)
 
 	return clientDTO, nil
+}
+
+func (o *OAuth) User(ctx context.Context, id int64) (dto.User, error) {
+	const op = "infrastructure.repository.User"
+
+	user, err := o.storage.User(ctx, id)
+	if err != nil {
+		return dto.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	userDTO := converter.ToUserDTO(user)
+
+	return userDTO, nil
 }
 
 func (o *OAuth) UserByUsername(ctx context.Context, username string) (dto.User, error) {

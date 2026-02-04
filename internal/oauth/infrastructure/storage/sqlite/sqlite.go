@@ -110,6 +110,53 @@ func (s *Storage) ClientAudiences(ctx context.Context, clientID int64) ([]models
 	return audiences, nil
 }
 
+func (s *Storage) User(ctx context.Context, id int64) (models.User, error) {
+	const op = "infrastructure.storage.sqlite.User"
+
+	stmt, err := s.db.PrepareContext(ctx,
+		`select
+    		u.id,
+    		u.username,
+    		u.password_hash,
+    		u.fio,
+    		u.date_of_birth,
+    		u.gender,
+    		u.avatar_file_key,
+    		u.deleted,
+    		u.created_at,
+    		u.updated_at
+		from users u
+		where u.id = ?;`)
+	if err != nil {
+		return models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	row := stmt.QueryRowContext(ctx, id)
+
+	var user models.User
+	err = row.Scan(
+		&user.ID,
+		&user.Username,
+		&user.PasswordHash,
+		&user.FullName,
+		&user.DateOfBirth,
+		&user.Gender,
+		&user.AvatarFileKey,
+		&user.Deleted,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.User{}, fmt.Errorf("%s: %w", op, infrastructure.ErrEntityNotFound)
+		}
+
+		return models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return user, nil
+}
+
 func (s *Storage) UserByUsername(ctx context.Context, username string) (models.User, error) {
 	const op = "infrastructure.storage.sqlite.UserByUsername"
 
