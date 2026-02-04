@@ -28,9 +28,9 @@ type AccessTokenCreateData struct {
 }
 
 // NewAccessToken returns new JWT with claims.
-func NewAccessToken(data AccessTokenCreateData) (string, error) {
+func NewAccessToken(data AccessTokenCreateData) (jwtclaims.AccessTokenClaims, string, error) {
 	now := time.Now()
-	registeredClaims := jwtclaims.AccessTokenClaims{
+	claims := jwtclaims.AccessTokenClaims{
 		Claims: jwt.Claims{
 			ID:        uuid.New().String(),
 			Subject:   data.Subject,
@@ -41,33 +41,35 @@ func NewAccessToken(data AccessTokenCreateData) (string, error) {
 			NotBefore: jwt.NewNumericDate(now),
 		},
 		RegisteredCustomClaims: jwtclaims.RegisteredCustomClaims{
-			Scope: strings.Join(data.Scopes, " "),
+			TokenType: "Bearer",
+			Scope:     strings.Join(data.Scopes, " "),
 		},
 	}
 
-	tokenStr, err := createSignedTokenWithClaims(data.Key, registeredClaims, data.CustomClaims)
+	token, err := createSignedTokenWithClaims(data.Key, claims, data.CustomClaims)
 	if err != nil {
-		return "", err
+		return jwtclaims.AccessTokenClaims{}, "", err
 	}
 
-	return tokenStr, nil
+	return claims, token, nil
 }
 
 // NewRefreshToken returns new refresh token.
-func NewRefreshToken(key []byte, ttl time.Duration) (refreshToken string, refreshTokenID string, err error) {
+func NewRefreshToken(key []byte, ttl time.Duration) (jwtclaims.RefreshTokenClaims, string, error) {
 	id := uuid.New().String()
 	now := time.Now()
 	claims := jwtclaims.RefreshTokenClaims{
-		ID:     id,
-		Expiry: jwt.NewNumericDate(now.Add(ttl)),
+		ID:        id,
+		TokenType: "refresh",
+		Expiry:    jwt.NewNumericDate(now.Add(ttl)),
 	}
 
-	tokenStr, err := createSignedTokenWithClaims(key, claims, nil)
+	token, err := createSignedTokenWithClaims(key, claims, nil)
 	if err != nil {
-		return "", "", err
+		return jwtclaims.RefreshTokenClaims{}, "", err
 	}
 
-	return tokenStr, id, nil
+	return claims, token, nil
 }
 
 func createSignedTokenWithClaims(key []byte, registeredClaims interface{}, customClaims interface{}) (string, error) {

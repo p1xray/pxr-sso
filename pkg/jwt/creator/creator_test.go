@@ -68,7 +68,7 @@ func Test_NewAccessToken(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			tokenStr, err := NewAccessToken(tc.data)
+			_, tokenStr, err := NewAccessToken(tc.data)
 
 			if tc.expectedError != nil {
 				assert.ErrorIs(t, err, tc.expectedError)
@@ -112,7 +112,7 @@ func Test_NewRefreshToken(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			tokenStr, tokenID, err := NewRefreshToken(tc.key, tc.ttl)
+			tokenClaims, tokenStr, err := NewRefreshToken(tc.key, tc.ttl)
 
 			if tc.expectedError != nil {
 				assert.ErrorIs(t, err, tc.expectedError)
@@ -126,7 +126,7 @@ func Test_NewRefreshToken(t *testing.T) {
 				err = token.Claims(tc.key, &claims)
 				require.NoError(t, err)
 
-				checkRefreshTokenClaims(t, claims, tokenID)
+				checkRefreshTokenClaims(t, claims, tokenClaims.ID)
 			}
 		})
 	}
@@ -206,7 +206,7 @@ func checkAudClaim(t *testing.T, claims map[string]interface{}, expectedAudience
 	default:
 		t.Error("invalid type of aud claim")
 	}
-	
+
 	assert.Equal(t, expectedAudiences, audiences)
 }
 

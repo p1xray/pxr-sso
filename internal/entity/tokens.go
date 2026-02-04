@@ -24,13 +24,13 @@ func NewTokens(data CreateTokensParams) (Tokens, error) {
 		TTL:       data.AccessTokenTTL,
 		Key:       []byte(data.SecretKey),
 	}
-	accessToken, err := jwtcreator.NewAccessToken(createAccessTokenData)
+	_, accessToken, err := jwtcreator.NewAccessToken(createAccessTokenData)
 	if err != nil {
 		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateAccessToken, err)
 	}
 
 	// Create refresh token.
-	refreshToken, refreshTokenID, err := jwtcreator.NewRefreshToken([]byte(data.SecretKey), data.RefreshTokenTTL)
+	refreshTokenClaims, refreshToken, err := jwtcreator.NewRefreshToken([]byte(data.SecretKey), data.RefreshTokenTTL)
 	if err != nil {
 
 		return Tokens{}, fmt.Errorf("%w: %w", ErrCreateRefreshToken, err)
@@ -39,6 +39,6 @@ func NewTokens(data CreateTokensParams) (Tokens, error) {
 	return Tokens{
 		AccessToken:    accessToken,
 		RefreshToken:   refreshToken,
-		RefreshTokenID: refreshTokenID,
+		RefreshTokenID: refreshTokenClaims.ID,
 	}, nil
 }

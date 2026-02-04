@@ -288,7 +288,9 @@ func (v *Validator) validateCodeVerifierHashEqualsFlowCodeChallenge() error {
 	}
 
 	flow := v.flow.Unwrap()
-	if sha256.Base64URLHash(v.params.CodeVerifier()) != flow.CodeChallenge() {
+	hashCodeVerifier := sha256.Base64URLHash(v.params.CodeVerifier())
+	codeChallenge := flow.CodeChallenge()
+	if hashCodeVerifier != codeChallenge {
 		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameCodeVerifier)
 	}
 

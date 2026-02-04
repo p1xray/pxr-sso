@@ -13,7 +13,8 @@ type ValidatedClaims struct {
 
 // RegisteredCustomClaims are custom claims of the current SSO project.
 type RegisteredCustomClaims struct {
-	Scope string `json:"scope,omitempty"`
+	TokenType string `json:"token_type,omitempty"`
+	Scope     string `json:"scope,omitempty"`
 }
 
 // AccessTokenClaims are all access token claims of the current SSO project.
@@ -24,11 +25,20 @@ type AccessTokenClaims struct {
 
 // RefreshTokenClaims are refresh token claims of the current SSO project.
 type RefreshTokenClaims struct {
-	ID     string           `json:"jti,omitempty"`
-	Expiry *jwt.NumericDate `json:"exp,omitempty"`
+	ID        string           `json:"jti,omitempty"`
+	TokenType string           `json:"token_type,omitempty"`
+	Expiry    *jwt.NumericDate `json:"exp,omitempty"`
 }
 
 // CustomClaims defines any custom data / claims wanted.
 type CustomClaims interface {
 	Validate(ctx context.Context) error
+}
+
+func NumericDateToInt64(v *jwt.NumericDate) int64 {
+	if v == nil {
+		return 0
+	}
+
+	return int64(*v)
 }

@@ -1,5 +1,7 @@
 package dto
 
+import "strconv"
+
 // User is a DTO with user data.
 type User struct {
 	id           int64
@@ -17,6 +19,10 @@ func NewUser(id int64, username, passwordHash string) User {
 
 func (u *User) ID() int64 {
 	return u.id
+}
+
+func (u *User) IDString() string {
+	return strconv.FormatInt(u.id, 10)
 }
 
 func (u *User) Username() string {

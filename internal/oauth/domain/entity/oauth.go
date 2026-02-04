@@ -10,7 +10,10 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/login"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/token"
+	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
+	jwtcreator "github.com/p1xray/pxr-sso/pkg/jwt/creator"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
+	"time"
 )
 
 type OAuth struct {
@@ -41,7 +44,7 @@ func NewOAuth(setters ...OAuthOption) *OAuth {
 func (o *OAuth) Authorize(data dto.Authorize) error {
 	// validate request parameters
 	validator := authorize.NewValidator(data, o.client)
-	if err := o.validateRequestParams(validator); err != nil {
+	if err := o.validateAuthorizeRequestParams(validator); err != nil {
 		return err
 	}
 
@@ -91,10 +94,16 @@ func (o *OAuth) ExchangeToken(data dto.ExchangeToken) (dto.Token, error) {
 		return dto.Token{}, err
 	}
 
-	// TODO: generate tokens (access, ID, refresh)
+	// generate tokens
+	tokens, err := o.generateTokens()
+	if err != nil {
+		return dto.Token{}, err
+	}
+
+	return tokens, nil
 }
 
-func (o *OAuth) validateRequestParams(validator *authorize.Validator) error {
+func (o *OAuth) validateAuthorizeRequestParams(validator *authorize.Validator) error {
 	if err := validator.Validate(); err != nil {
 		validatedData := validator.ValidatedData()
 		o.HandleError(err, validatedData.RedirectURI())
@@ -134,6 +143,92 @@ func (o *OAuth) generateFlowID() (uuid.UUID, error) {
 	}
 
 	return id, nil
+}
+
+func (o *OAuth) generateTokens() (dto.Token, error) {
+	const op = "generate tokens"
+
+	accessTokenClaims, accessToken, err := o.generateAccessToken()
+	if err != nil {
+		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, refreshToken, err := o.generateRefreshToken()
+	if err != nil {
+		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, idToken, err := o.generateIDToken()
+	if err != nil {
+		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	tokens := dto.NewToken(
+		accessToken,
+		accessTokenClaims.TokenType,
+		refreshToken,
+		idToken,
+		jwtclaims.NumericDateToInt64(accessTokenClaims.Expiry),
+	)
+
+	return tokens, nil
+}
+
+func (o *OAuth) generateAccessToken() (jwtclaims.AccessTokenClaims, string, error) {
+	const op = "access token"
+
+	user, err := o.User()
+	if err != nil {
+		return jwtclaims.AccessTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	client, err := o.Client()
+	if err != nil {
+		return jwtclaims.AccessTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	createAccessTokenData := jwtcreator.AccessTokenCreateData{
+		Subject: user.IDString(),
+		// TODO: get this from request parameters and validate with client audiences
+		Audiences: []string{"http://localhost:3000"},
+		// TODO: get this from request parameters and validate with client scopes
+		Scopes: []string{},
+		// TODO: get this from from proto request
+		Issuer: "http://localhost:6003",
+		// TODO: get this from config
+		TTL: 1 * time.Hour,
+		Key: []byte(client.SecretKey),
+	}
+	claims, accessToken, err := jwtcreator.NewAccessToken(createAccessTokenData)
+	if err != nil {
+		return jwtclaims.AccessTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return claims, accessToken, nil
+}
+
+func (o *OAuth) generateRefreshToken() (jwtclaims.RefreshTokenClaims, string, error) {
+	const op = "refresh token"
+
+	client, err := o.Client()
+	if err != nil {
+		return jwtclaims.RefreshTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	// TODO: get refresh token TTL from config
+	claims, refreshToken, err := jwtcreator.NewRefreshToken([]byte(client.SecretKey), 24*time.Hour)
+	if err != nil {
+		return jwtclaims.RefreshTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return claims, refreshToken, nil
+}
+
+func (o *OAuth) generateIDToken() (jwtclaims.RefreshTokenClaims, string, error) {
+	const op = "id token"
+
+	// TODO: implement this
+	return jwtclaims.RefreshTokenClaims{}, "", nil
 }
 
 func (o *OAuth) HandleError(err *domain.OAuthError, redirectURI string) {
@@ -200,4 +295,12 @@ func (o *OAuth) User() (dto.User, error) {
 	}
 
 	return o.user.Unwrap(), nil
+}
+
+func (o *OAuth) Client() (dto.Client, error) {
+	if o.client.IsNone() {
+		return dto.Client{}, fmt.Errorf("get client: client not initialized")
+	}
+
+	return o.client.Unwrap(), nil
 }

@@ -3,7 +3,7 @@ package dto
 type Token struct {
 	accessToken  string
 	tokenType    string
-	expiresIn    uint32
+	expiresIn    int64
 	refreshToken string
 	idToken      string
 }
@@ -13,7 +13,7 @@ func NewToken(
 	tokenType,
 	refreshToken,
 	idToken string,
-	expiresIn uint32,
+	expiresIn int64,
 ) Token {
 	return Token{
 		accessToken:  accessToken,
@@ -32,7 +32,7 @@ func (t *Token) TokenType() string {
 	return t.tokenType
 }
 
-func (t *Token) ExpiresIn() uint32 {
+func (t *Token) ExpiresIn() int64 {
 	return t.expiresIn
 }
 
