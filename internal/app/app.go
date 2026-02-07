@@ -12,6 +12,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/sqlite"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
+	"github.com/p1xray/pxr-sso/internal/oauth/usecase/register"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/token"
 	oldLogin "github.com/p1xray/pxr-sso/internal/usecase/auth/login"
 	oldLogout "github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
@@ -77,6 +78,7 @@ func New(
 
 	authorizeUseCase := authorize.New(log, oauthRepository, redisStorage)
 	loginUseCase := login.New(log, oauthRepository, redisStorage)
+	registerUseCase := register.New(log, oauthRepository, redisStorage)
 	tokenUseCase := token.New(log, oauthRepository, redisStorage)
 
 	grpcApp := grpcapp.New(
@@ -90,6 +92,7 @@ func New(
 		editProfileUseCase,
 		authorizeUseCase,
 		loginUseCase,
+		registerUseCase,
 		tokenUseCase,
 	)
 

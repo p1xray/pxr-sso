@@ -6,6 +6,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/controller"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
+	"github.com/p1xray/pxr-sso/internal/oauth/usecase/register"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/token"
 	"google.golang.org/grpc"
 )
@@ -14,6 +15,7 @@ type serverAPI struct {
 	oauthpb.UnimplementedOauthServer
 	authorizeUseCase controller.Authorize
 	loginUseCase     controller.Login
+	registerUseCase  controller.Register
 	tokenUseCase     controller.Token
 }
 
@@ -22,11 +24,13 @@ func RegisterOAuthServer(
 	server *grpc.Server,
 	authorizeUseCase controller.Authorize,
 	loginUseCase controller.Login,
+	registerUseCase controller.Register,
 	tokenUseCase controller.Token,
 ) {
 	api := &serverAPI{
 		authorizeUseCase: authorizeUseCase,
 		loginUseCase:     loginUseCase,
+		registerUseCase:  registerUseCase,
 		tokenUseCase:     tokenUseCase,
 	}
 
@@ -77,6 +81,34 @@ func (s *serverAPI) Login(
 	}
 
 	response := &oauthpb.LoginResponse{
+		RedirectUri: redirectURI,
+	}
+	return response, nil
+}
+
+// Register is a gRPC handler for OAuth register.
+func (s *serverAPI) Register(
+	ctx context.Context,
+	req *oauthpb.RegisterRequest,
+) (*oauthpb.RegisterResponse, error) {
+	registerParams := register.Params{
+		FlowID:       req.GetFlowId(),
+		ResponseType: req.GetResponseType(),
+		ClientID:     req.GetClientId(),
+		RedirectURI:  req.GetRedirectUri(),
+		State:        req.GetState(),
+		Scope:        []string{req.GetScope()},
+		Username:     req.GetUsername(),
+		Password:     req.GetPassword(),
+	}
+	redirectURI, err := s.registerUseCase.Execute(ctx, registerParams)
+	if err != nil {
+		// TODO: update proto with displayable error
+
+		return nil, err.Unwrap()
+	}
+
+	response := &oauthpb.RegisterResponse{
 		RedirectUri: redirectURI,
 	}
 	return response, nil

@@ -17,6 +17,7 @@ func NewRouter(
 	editProfileUseCase controller.EditProfile,
 	authorizeUseCase controller.Authorize,
 	loginUseCase controller.Login,
+	registerUseCase controller.Register,
 	tokenUseCase controller.Token,
 ) {
 	v1.NewRoutes(
@@ -29,6 +30,7 @@ func NewRouter(
 		editProfileUseCase,
 		authorizeUseCase,
 		loginUseCase,
+		registerUseCase,
 		tokenUseCase,
 	)
 }
