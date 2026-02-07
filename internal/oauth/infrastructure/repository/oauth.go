@@ -8,11 +8,17 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/models"
 )
 
+const emptyID = 0
+
 type Storage interface {
 	ClientByCode(ctx context.Context, code string) (models.Client, error)
 	ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error)
-	UserByUsername(ctx context.Context, username string) (models.User, error)
+
 	User(ctx context.Context, id int64) (models.User, error)
+	UserByUsername(ctx context.Context, username string) (models.User, error)
+	CreateUser(ctx context.Context, user models.User) error
+
+	CreateUserClientLink(ctx context.Context, link models.UserClientLink) error
 }
 
 type OAuth struct {
@@ -67,4 +73,40 @@ func (o *OAuth) UserByUsername(ctx context.Context, username string) (dto.User, 
 	userDTO := converter.ToUserDTO(user)
 
 	return userDTO, nil
+}
+
+func (o *OAuth) CreateUser(ctx context.Context, user dto.User, clientID int64) error {
+	const op = "infrastructure.repository.CreateUser"
+
+	if err := o.createUser(ctx, user); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	if err := o.createUserClientLink(ctx, user.ID(), clientID); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (o *OAuth) createUser(ctx context.Context, user dto.User) error {
+	userStorageModel := converter.ToUserStorage(models.User{}, user, models.UserCreated())
+	if err := o.storage.CreateUser(ctx, userStorageModel); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (o *OAuth) createUserClientLink(ctx context.Context, userID int64, clientID int64) error {
+	if userID == emptyID || clientID == emptyID {
+		return fmt.Errorf("a non-null identifiers is required to create an user client link in storage")
+	}
+
+	userClientLinkStorageModel := converter.ToUserClientLinkStorage(userID, clientID, models.UserClientLinkCreated())
+	if err := o.storage.CreateUserClientLink(ctx, userClientLinkStorageModel); err != nil {
+		return err
+	}
+
+	return nil
 }

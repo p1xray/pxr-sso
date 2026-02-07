@@ -16,7 +16,7 @@ import (
 type Repository interface {
 	ClientByCode(ctx context.Context, code string) (dto.Client, error)
 	UserByUsername(ctx context.Context, username string) (dto.User, error)
-	SaveUser(ctx context.Context, user dto.User) error
+	CreateUser(ctx context.Context, user dto.User, clientID int64) error
 }
 
 type Redis interface {
@@ -129,7 +129,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		return "", domain.InternalError(err)
 	}
 
-	if err = uc.repo.SaveUser(ctx, newUser); err != nil {
+	if err = uc.repo.CreateUser(ctx, newUser, client.ID); err != nil {
 		log.Error(err.Error())
 
 		return "", domain.InternalError(err)

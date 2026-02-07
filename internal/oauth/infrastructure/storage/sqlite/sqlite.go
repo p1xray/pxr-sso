@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/mattn/go-sqlite3"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/models"
 )
@@ -202,4 +203,78 @@ func (s *Storage) UserByUsername(ctx context.Context, username string) (models.U
 	}
 
 	return user, nil
+}
+
+func (s *Storage) CreateUser(ctx context.Context, user models.User) error {
+	const op = "infrastructure.storage.sqlite.CreateUser"
+
+	stmt, err := s.db.PrepareContext(ctx,
+		`insert into users (
+		   username,
+		   password_hash,
+		   fio,
+		   date_of_birth,
+		   gender,
+		   avatar_file_key,
+		   deleted,
+		   created_at,
+		   updated_at)
+		values(?, ?, ?, ?, ?, ?, ?, ?, ?);`)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, err = stmt.ExecContext(
+		ctx,
+		user.Username,
+		user.PasswordHash,
+		user.FullName,
+		user.DateOfBirth,
+		user.Gender,
+		user.AvatarFileKey,
+		user.Deleted,
+		user.CreatedAt,
+		user.UpdatedAt,
+	)
+
+	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
+			return fmt.Errorf("%s: %w", op, infrastructure.ErrEntityExists)
+		}
+
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (s *Storage) CreateUserClientLink(ctx context.Context, link models.UserClientLink) error {
+	const op = "infrastructure.storage.sqlite.CreateUserClientLink"
+
+	stmt, err := s.db.PrepareContext(ctx,
+		`insert into user_clients (user_id, client_id, created_at, updated_at)
+		 values (?, ?, ?, ?);`)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, err = stmt.ExecContext(
+		ctx,
+		link.UserID,
+		link.ClientID,
+		link.CreatedAt,
+		link.UpdatedAt,
+	)
+
+	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
+			return fmt.Errorf("%s: %w", op, infrastructure.ErrEntityExists)
+		}
+
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }

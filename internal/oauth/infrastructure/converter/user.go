@@ -12,3 +12,16 @@ func ToUserDTO(user models.User) dto.User {
 		user.PasswordHash,
 	)
 }
+
+func ToUserStorage(dst models.User, src dto.User, setters ...models.UserOption) models.User {
+	dst.ID = src.ID()
+	dst.Username = src.Username()
+	dst.PasswordHash = src.PasswordHash()
+	dst.FullName = src.FullName()
+
+	for _, setter := range setters {
+		setter(&dst)
+	}
+
+	return dst
+}
