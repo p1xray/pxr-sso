@@ -14,6 +14,7 @@ var (
 	ErrOAuthClientNotRegistered               = errors.New("the client with the provided client_id is not registered")
 	ErrOAuthFlowNotExists                     = errors.New("the flow with the provided flow_id is not exists")
 	ErrOAuthInvalidUserCredentials            = errors.New("user with the provided credentials is not exists")
+	ErrOAuthUserAlreadyExists                 = errors.New("user with the provided username is already exists")
 )
 
 // OAuthError wraps OAuth errors with additional context.
