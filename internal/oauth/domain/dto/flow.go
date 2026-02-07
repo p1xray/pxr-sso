@@ -13,7 +13,7 @@ type Flow struct {
 	codeChallengeMethod string
 	state               string
 	authorizationCode   string
-	userID              int64
+	username            string
 }
 
 func NewFlow(
@@ -75,8 +75,8 @@ func (f *Flow) AuthorizationCode() string {
 	return f.authorizationCode
 }
 
-func (f *Flow) UserID() int64 {
-	return f.userID
+func (f *Flow) Username() string {
+	return f.username
 }
 
 // FlowOption is how options for the Flow are set up.
@@ -89,9 +89,9 @@ func WithAuthorizationCode(authorizationCode string) FlowOption {
 	}
 }
 
-// WithUserID is an option which sets up the user ID for the Flow.
-func WithUserID(userID int64) FlowOption {
+// WithUsername is an option which sets up the username for the Flow.
+func WithUsername(username string) FlowOption {
 	return func(a *Flow) {
-		a.userID = userID
+		a.username = username
 	}
 }

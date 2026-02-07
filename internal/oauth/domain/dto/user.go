@@ -7,6 +7,7 @@ type User struct {
 	id           int64
 	username     string
 	passwordHash string
+	fullName     string
 }
 
 func NewUser(id int64, username, passwordHash string) User {
@@ -14,6 +15,14 @@ func NewUser(id int64, username, passwordHash string) User {
 		id:           id,
 		username:     username,
 		passwordHash: passwordHash,
+	}
+}
+
+func NewRegisteringUser(username, passwordHash, fullName string) User {
+	return User{
+		username:     username,
+		passwordHash: passwordHash,
+		fullName:     fullName,
 	}
 }
 
@@ -31,4 +40,8 @@ func (u *User) Username() string {
 
 func (u *User) PasswordHash() string {
 	return u.passwordHash
+}
+
+func (u *User) FullName() string {
+	return u.fullName
 }
