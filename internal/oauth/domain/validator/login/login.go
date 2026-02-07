@@ -72,7 +72,7 @@ func (v *Validator) validateFlowID() *domain.DisplayableError {
 		return domain.InternalError(err)
 	}
 
-	if err := v.validateFlowIDExistFlow(); err != nil {
+	if err := v.validateFlowIDExistsFlow(); err != nil {
 		return domain.InternalError(err)
 	}
 
@@ -95,7 +95,7 @@ func (v *Validator) validateFlowIDValue() error {
 	return nil
 }
 
-func (v *Validator) validateFlowIDExistFlow() error {
+func (v *Validator) validateFlowIDExistsFlow() error {
 	if v.flow.IsNone() {
 		return domain.ErrOAuthFlowNotExists
 	}
@@ -164,7 +164,7 @@ func (v *Validator) validateClientID() *domain.DisplayableError {
 		return domain.InternalError(err)
 	}
 
-	if err := v.validateClientIDExistClient(); err != nil {
+	if err := v.validateClientIDExistsClient(); err != nil {
 		return domain.InternalError(err)
 	}
 
@@ -179,7 +179,7 @@ func (v *Validator) validateClientIDRequired() error {
 	return nil
 }
 
-func (v *Validator) validateClientIDExistClient() error {
+func (v *Validator) validateClientIDExistsClient() error {
 	if v.client.IsNone() {
 		return domain.ErrOAuthClientNotRegistered
 	}
@@ -291,7 +291,7 @@ func (v *Validator) validateUsername() *domain.DisplayableError {
 		return domain.DisplayError(domain.ErrorDescriptionUsernameRequired, err)
 	}
 
-	if err := v.validateUsernameUserExist(); err != nil {
+	if err := v.validateUsernameUserExists(); err != nil {
 		return domain.DisplayError(domain.ErrorDescriptionInvalidUserCredentials, err)
 	}
 
@@ -306,13 +306,12 @@ func (v *Validator) validateUsernameRequired() error {
 	return nil
 }
 
-func (v *Validator) validateUsernameUserExist() error {
+func (v *Validator) validateUsernameUserExists() error {
 	if v.user.IsNone() {
 		return domain.ErrOAuthInvalidUserCredentials
 	}
 
 	user := v.user.Unwrap()
-
 	if v.params.Username() != user.Username() {
 		return domain.ErrOAuthInvalidUserCredentials
 	}
@@ -321,11 +320,11 @@ func (v *Validator) validateUsernameUserExist() error {
 }
 
 func (v *Validator) validatePassword() *domain.DisplayableError {
-	if err := v.validateUsernameRequired(); err != nil {
+	if err := v.validatePasswordRequired(); err != nil {
 		return domain.DisplayError(domain.ErrorDescriptionPasswordRequired, err)
 	}
 
-	if err := v.validateUsernameUserExist(); err != nil {
+	if err := v.validatePasswordUserExists(); err != nil {
 		return domain.DisplayError(domain.ErrorDescriptionInvalidUserCredentials, err)
 	}
 
@@ -340,7 +339,7 @@ func (v *Validator) validatePasswordRequired() error {
 	return nil
 }
 
-func (v *Validator) validatePasswordUserExist() error {
+func (v *Validator) validatePasswordUserExists() error {
 	if v.user.IsNone() {
 		return domain.ErrOAuthInvalidUserCredentials
 	}
