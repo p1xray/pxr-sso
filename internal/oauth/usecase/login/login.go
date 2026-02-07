@@ -3,14 +3,12 @@ package login
 import (
 	"context"
 	"errors"
-	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"log/slog"
-	"time"
 )
 
 // Repository is a repository for log in use-case.
@@ -21,7 +19,7 @@ type Repository interface {
 
 type Redis interface {
 	Flow(ctx context.Context, id string) (dto.Flow, error)
-	SaveFlow(ctx context.Context, flow dto.Flow, ttl time.Duration) error
+	SaveFlow(ctx context.Context, flow dto.Flow) error
 }
 
 // UseCase is a use-case for logging in a user.
@@ -53,7 +51,6 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		slog.String("state", data.State),
 		slog.String("scope", data.Scope),
 		slog.String("username", data.Username),
-		slog.String("password", data.Password),
 	)
 	log.Info("attempting to login user")
 
@@ -128,7 +125,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		return "", domain.InternalError(err)
 	}
 
-	if err = uc.redis.SaveFlow(ctx, flow, oauth.RedisAuthorizationCodeTTL*time.Minute); err != nil {
+	if err = uc.redis.SaveFlow(ctx, flow); err != nil {
 		log.Error(err.Error())
 
 		return "", domain.InternalError(err)

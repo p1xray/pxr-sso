@@ -29,8 +29,5 @@ const (
 
 const (
 	// RedisFlowTTL is a redis record TTL for flow (in minutes)
-	RedisFlowTTL = 15
-
-	// RedisAuthorizationCodeTTL is a redis record TTL for authorization code (in minutes)
-	RedisAuthorizationCodeTTL = 10
+	RedisFlowTTL = 10
 )

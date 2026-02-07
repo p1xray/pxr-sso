@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/p1xray/pxr-sso/internal/infrastructure"
-	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
@@ -12,7 +11,6 @@ import (
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 	"log/slog"
-	"time"
 )
 
 // Repository is a repository for OAuth authorize use-case.
@@ -21,7 +19,7 @@ type Repository interface {
 }
 
 type Redis interface {
-	SaveFlow(ctx context.Context, flow dto.Flow, ttl time.Duration) error
+	SaveFlow(ctx context.Context, flow dto.Flow) error
 }
 
 // UseCase is a use-case for OAuth authorize.
@@ -106,7 +104,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		return oauthEntity.RedirectURI()
 	}
 
-	if err = uc.redis.SaveFlow(ctx, flow, oauth.RedisFlowTTL*time.Minute); err != nil {
+	if err = uc.redis.SaveFlow(ctx, flow); err != nil {
 		log.Error(err.Error())
 
 		oauthEntity.HandleError(domain.ServerErrorOAuthError(err), "")
