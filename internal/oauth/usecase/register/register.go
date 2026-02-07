@@ -1,4 +1,4 @@
-package login
+package register
 
 import (
 	"context"
@@ -8,13 +8,15 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
+	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 )
 
-// Repository is a repository for log in use-case.
+// Repository is a repository for register a new user use-case.
 type Repository interface {
 	ClientByCode(ctx context.Context, code string) (dto.Client, error)
 	UserByUsername(ctx context.Context, username string) (dto.User, error)
+	SaveUser(ctx context.Context, user dto.User) error
 }
 
 type Redis interface {
@@ -22,14 +24,14 @@ type Redis interface {
 	SaveFlow(ctx context.Context, flow dto.Flow) error
 }
 
-// UseCase is a use-case for logging in a user.
+// UseCase is a use-case for registering a new user.
 type UseCase struct {
 	log   *slog.Logger
 	repo  Repository
 	redis Redis
 }
 
-// New returns new log in use-case.
+// New returns new register a new user use-case.
 func New(log *slog.Logger, repo Repository, redis Redis) *UseCase {
 	return &UseCase{
 		log:   log,
@@ -38,9 +40,9 @@ func New(log *slog.Logger, repo Repository, redis Redis) *UseCase {
 	}
 }
 
-// Execute executes the use-case for logging in a user.
+// Execute executes the use-case for registering a new user.
 func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.DisplayableError) {
-	const op = "usecase.auth.login"
+	const op = "usecase.auth.register"
 
 	log := uc.log.With(
 		slog.String("op", op),
@@ -49,10 +51,11 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		slog.String("client_id", data.ClientID),
 		slog.String("redirect_uri", data.RedirectURI),
 		slog.String("state", data.State),
-		slog.String("scope", data.Scope),
+		sl.Strings("scope", data.Scope),
 		slog.String("username", data.Username),
+		slog.String("full_name", data.FullName),
 	)
-	log.Info("attempting to login user")
+	log.Info("attempting to register new user")
 
 	uriBuilder := builder.NewURI()
 
@@ -100,7 +103,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		entity.WithUser(user),
 	)
 
-	loginParams := dto.NewLogin(
+	registerParams := dto.NewRegister(
 		data.FlowID,
 		data.ResponseType,
 		data.ClientID,
@@ -108,13 +111,28 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		data.State,
 		data.Username,
 		data.Password,
+		data.FullName,
 	)
-	if displayableErr := oauthEntity.Login(loginParams); displayableErr != nil {
+	if displayableErr := oauthEntity.Register(registerParams); displayableErr != nil {
 		if displayableErr.IsInternal() {
 			log.Error(displayableErr.Error())
 		}
 
 		return "", displayableErr
+	}
+
+	// create new user in storage
+	newUser, err := oauthEntity.User()
+	if err != nil {
+		log.Error(err.Error())
+
+		return "", domain.InternalError(err)
+	}
+
+	if err = uc.repo.SaveUser(ctx, newUser); err != nil {
+		log.Error(err.Error())
+
+		return "", domain.InternalError(err)
 	}
 
 	// update flow data in redis
@@ -131,7 +149,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		return "", domain.InternalError(err)
 	}
 
-	log.Info("user logged in successfully")
+	log.Info("user register successfully")
 
 	return oauthEntity.RedirectURI(), nil
 }
