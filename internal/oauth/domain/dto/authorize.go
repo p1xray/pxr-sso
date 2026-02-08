@@ -7,6 +7,7 @@ type Authorize struct {
 	codeChallenge       []string
 	codeChallengeMethod []string
 	state               []string
+	scope               []string
 }
 
 func NewAuthorize(
@@ -15,7 +16,8 @@ func NewAuthorize(
 	redirectURI,
 	codeChallenge,
 	codeChallengeMethod,
-	state []string,
+	state,
+	scope []string,
 ) Authorize {
 	return Authorize{
 		responseType:        responseType,
@@ -24,6 +26,7 @@ func NewAuthorize(
 		codeChallenge:       codeChallenge,
 		codeChallengeMethod: codeChallengeMethod,
 		state:               state,
+		scope:               scope,
 	}
 }
 
@@ -49,4 +52,8 @@ func (a *Authorize) CodeChallengeMethod() []string {
 
 func (a *Authorize) State() []string {
 	return a.state
+}
+
+func (a *Authorize) Scope() []string {
+	return a.scope
 }

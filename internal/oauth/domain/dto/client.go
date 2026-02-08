@@ -7,4 +7,5 @@ type Client struct {
 	SecretKey   string
 	Audiences   []string
 	RedirectURI []string
+	Scope       []string
 }

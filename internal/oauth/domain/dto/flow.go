@@ -14,6 +14,7 @@ type Flow struct {
 	state               string
 	authorizationCode   string
 	username            string
+	scope               []string
 }
 
 func NewFlow(
@@ -24,6 +25,7 @@ func NewFlow(
 	codeChallenge,
 	codeChallengeMethod,
 	state string,
+	scope []string,
 	setters ...FlowOption,
 ) Flow {
 	flow := Flow{
@@ -34,6 +36,7 @@ func NewFlow(
 		codeChallenge:       codeChallenge,
 		codeChallengeMethod: codeChallengeMethod,
 		state:               state,
+		scope:               scope,
 	}
 
 	for _, setter := range setters {
@@ -77,6 +80,10 @@ func (f *Flow) AuthorizationCode() string {
 
 func (f *Flow) Username() string {
 	return f.username
+}
+
+func (f *Flow) Scope() []string {
+	return f.scope
 }
 
 // FlowOption is how options for the Flow are set up.

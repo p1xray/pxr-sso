@@ -9,6 +9,7 @@ type Register struct {
 	username     string
 	password     string
 	fullName     string
+	scope        []string
 }
 
 func NewRegister(
@@ -20,6 +21,7 @@ func NewRegister(
 	username,
 	password,
 	fullName string,
+	scope []string,
 ) Register {
 	return Register{
 		flowID:       flowID,
@@ -30,6 +32,7 @@ func NewRegister(
 		username:     username,
 		password:     password,
 		fullName:     fullName,
+		scope:        scope,
 	}
 }
 
@@ -51,6 +54,10 @@ func (r Register) RedirectURI() string {
 
 func (r Register) State() string {
 	return r.state
+}
+
+func (r Register) Scope() []string {
+	return r.scope
 }
 
 func (r Register) Username() string {

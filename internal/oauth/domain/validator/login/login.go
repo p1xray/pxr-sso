@@ -6,8 +6,10 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
+	"github.com/p1xray/pxr-sso/pkg/extslices"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 	"golang.org/x/crypto/bcrypt"
+	"slices"
 )
 
 type Validator struct {
@@ -49,6 +51,10 @@ func (v *Validator) Validate() *domain.DisplayableError {
 	}
 
 	if err := v.validateState(); err != nil {
+		return err
+	}
+
+	if err := v.validateScope(); err != nil {
 		return err
 	}
 
@@ -244,13 +250,7 @@ func (v *Validator) redirectURIRegisteredForClient() bool {
 	}
 
 	client := v.client.Unwrap()
-	for _, clientRedirectURI := range client.RedirectURI {
-		if v.params.RedirectURI() == clientRedirectURI {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(client.RedirectURI, v.params.RedirectURI())
 }
 
 func (v *Validator) validateState() *domain.DisplayableError {
@@ -281,6 +281,28 @@ func (v *Validator) validateStateEqualsFlowState() error {
 	flow := v.flow.Unwrap()
 	if v.params.State() != flow.State() {
 		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameState)
+	}
+
+	return nil
+}
+
+func (v *Validator) validateScope() *domain.DisplayableError {
+	if err := v.validateScopeEqualsFlowScope(); err != nil {
+		return domain.InternalError(err)
+	}
+
+	return nil
+}
+
+func (v *Validator) validateScopeEqualsFlowScope() error {
+	if v.flow.IsNone() {
+		return domain.ErrOAuthFlowNotExists
+	}
+
+	flow := v.flow.Unwrap()
+	equals := extslices.Any(flow.Scope(), v.params.Scope())
+	if !equals {
+		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameScope)
 	}
 
 	return nil

@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis/models"
+	"strings"
 )
 
 func ToFlowRedis(flow dto.Flow) models.Flow {
@@ -16,8 +17,9 @@ func ToFlowRedis(flow dto.Flow) models.Flow {
 		CodeChallenge:       flow.CodeChallenge(),
 		CodeChallengeMethod: flow.CodeChallengeMethod(),
 		State:               flow.State(),
+		Scope:               strings.Join(flow.Scope(), " "),
 		AuthorizationCode:   flow.AuthorizationCode(),
-		UserID:              flow.UserID(),
+		Username:            flow.Username(),
 	}
 }
 
@@ -37,7 +39,8 @@ func ToFlowDTO(flow models.Flow) (dto.Flow, error) {
 		flow.CodeChallenge,
 		flow.CodeChallengeMethod,
 		flow.State,
+		strings.Split(flow.Scope, ""),
 		dto.WithAuthorizationCode(flow.AuthorizationCode),
-		dto.WithUserID(flow.UserID),
+		dto.WithUsername(flow.Username),
 	), nil
 }

@@ -7,6 +7,7 @@ type ExchangeToken struct {
 	authorizationCode string
 	redirectURI       string
 	codeVerifier      string
+	scope             []string
 }
 
 func NewExchangeToken(
@@ -16,6 +17,7 @@ func NewExchangeToken(
 	authorizationCode,
 	redirectURI,
 	codeVerifier string,
+	scope []string,
 ) ExchangeToken {
 	return ExchangeToken{
 		flowID:            flowID,
@@ -24,6 +26,7 @@ func NewExchangeToken(
 		authorizationCode: authorizationCode,
 		redirectURI:       redirectURI,
 		codeVerifier:      codeVerifier,
+		scope:             scope,
 	}
 }
 
@@ -49,4 +52,8 @@ func (t *ExchangeToken) RedirectURI() string {
 
 func (t *ExchangeToken) CodeVerifier() string {
 	return t.codeVerifier
+}
+
+func (t *ExchangeToken) Scope() []string {
+	return t.scope
 }

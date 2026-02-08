@@ -8,6 +8,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/generator"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/authorize"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/consent"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/login"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/register"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/token"
@@ -73,16 +74,17 @@ func (o *OAuth) Login(data dto.Login) *domain.DisplayableError {
 		return err
 	}
 
-	// generate authorization code
-	authorizationCode := generator.NewAuthorizationCode()
+	if err := o.setFlowUsername(); err != nil {
+		return domain.InternalError(err)
+	}
 
-	// update flow data
-	if err := o.updateFlow(authorizationCode); err != nil {
+	// generate authorization code
+	if err := o.setFlowAuthorizationCode(); err != nil {
 		return domain.InternalError(err)
 	}
 
 	// build callback redirect URI
-	if err := o.createCallbackRedirectURI(); err != nil {
+	if err := o.createConsentRedirectURI(); err != nil {
 		return domain.InternalError(err)
 	}
 
@@ -101,17 +103,38 @@ func (o *OAuth) Register(data dto.Register) *domain.DisplayableError {
 		return domain.InternalError(err)
 	}
 
-	// generate authorization code
-	authorizationCode := generator.NewAuthorizationCode()
+	if err := o.setFlowUsername(); err != nil {
+		return domain.InternalError(err)
+	}
 
-	// update flow data
-	if err := o.updateFlow(authorizationCode); err != nil {
+	// generate authorization code
+	if err := o.setFlowAuthorizationCode(); err != nil {
 		return domain.InternalError(err)
 	}
 
 	// build callback redirect URI
-	if err := o.createCallbackRedirectURI(); err != nil {
+	if err := o.createConsentRedirectURI(); err != nil {
 		return domain.InternalError(err)
+	}
+
+	return nil
+}
+
+func (o *OAuth) Consent(data dto.Consent) error {
+	// validate request parameters
+	validator := consent.NewValidator(data, o.client, o.flow)
+	if err := validator.Validate(); err != nil {
+		return err
+	}
+
+	// generate authorization code
+	if err := o.setFlowAuthorizationCode(); err != nil {
+		return err
+	}
+
+	// build callback redirect URI
+	if err := o.createCallbackRedirectURI(); err != nil {
+		return err
 	}
 
 	return nil
@@ -125,7 +148,8 @@ func (o *OAuth) ExchangeToken(data dto.ExchangeToken) (dto.Token, error) {
 	}
 
 	// generate tokens
-	tokens, err := o.generateTokens()
+	scope := validator.ValidatedScope()
+	tokens, err := o.generateTokens(scope)
 	if err != nil {
 		return dto.Token{}, err
 	}
@@ -153,10 +177,10 @@ func (o *OAuth) generateFlowID() (uuid.UUID, error) {
 	return id, nil
 }
 
-func (o *OAuth) generateTokens() (dto.Token, error) {
+func (o *OAuth) generateTokens(scope []string) (dto.Token, error) {
 	const op = "generate tokens"
 
-	accessTokenClaims, accessToken, err := o.generateAccessToken()
+	accessTokenClaims, accessToken, err := o.generateAccessToken(scope)
 	if err != nil {
 		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -166,7 +190,7 @@ func (o *OAuth) generateTokens() (dto.Token, error) {
 		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	_, idToken, err := o.generateIDToken()
+	_, idToken, err := o.generateIDToken(scope)
 	if err != nil {
 		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -182,7 +206,7 @@ func (o *OAuth) generateTokens() (dto.Token, error) {
 	return tokens, nil
 }
 
-func (o *OAuth) generateAccessToken() (jwtclaims.AccessTokenClaims, string, error) {
+func (o *OAuth) generateAccessToken(scope []string) (jwtclaims.AccessTokenClaims, string, error) {
 	const op = "access token"
 
 	user, err := o.User()
@@ -199,8 +223,8 @@ func (o *OAuth) generateAccessToken() (jwtclaims.AccessTokenClaims, string, erro
 		Subject: user.IDString(),
 		// TODO: get this from request parameters and validate with client audiences
 		Audiences: []string{"http://localhost:3000"},
-		// TODO: get this from request parameters and validate with client scopes
-		Scopes: []string{},
+		// TODO: add to scope user permissions
+		Scopes: scope,
 		// TODO: get this from from proto request
 		Issuer: "http://localhost:6003",
 		// TODO: get this from config
@@ -232,7 +256,7 @@ func (o *OAuth) generateRefreshToken() (jwtclaims.RefreshTokenClaims, string, er
 	return claims, refreshToken, nil
 }
 
-func (o *OAuth) generateIDToken() (jwtclaims.RefreshTokenClaims, string, error) {
+func (o *OAuth) generateIDToken(scope []string) (jwtclaims.RefreshTokenClaims, string, error) {
 	const op = "id token"
 
 	// TODO: implement this
@@ -265,20 +289,25 @@ func (o *OAuth) createLoginRedirectURI() error {
 	return nil
 }
 
+func (o *OAuth) createConsentRedirectURI() error {
+	flow, err := o.Flow()
+	if err != nil {
+		return fmt.Errorf("%s: %w", "create consent redirect URI", err)
+	}
+
+	consentRedirectURI := o.uriBuilder.BuildConsentRedirectURI(flow)
+	o.setRedirectURI(consentRedirectURI)
+
+	return nil
+}
+
 func (o *OAuth) createCallbackRedirectURI() error {
 	flow, err := o.Flow()
 	if err != nil {
-		oauthErr := domain.ServerErrorOAuthError(err)
-		o.HandleError(oauthErr, "")
-
 		return fmt.Errorf("%s: %w", "create callback redirect URI", err)
 	}
 
-	callbackRedirectURI := o.uriBuilder.BuildCallbackRedirectURI(
-		flow.RedirectURI(),
-		flow.AuthorizationCode(),
-		flow.State(),
-	)
+	callbackRedirectURI := o.uriBuilder.BuildCallbackRedirectURI(flow)
 	o.setRedirectURI(callbackRedirectURI)
 
 	return nil
@@ -309,19 +338,15 @@ func (o *OAuth) createFlow(validatedData dto.ValidatedAuthorize) error {
 		validatedData.CodeChallenge(),
 		validatedData.CodeChallengeMethod(),
 		validatedData.State(),
+		validatedData.Scope(),
 	)
 	o.setFlow(flow)
 
 	return nil
 }
 
-func (o *OAuth) updateFlow(code string) error {
+func (o *OAuth) updateFlow(setters ...dto.FlowOption) error {
 	flow, err := o.Flow()
-	if err != nil {
-		return fmt.Errorf("update flow: %w", err)
-	}
-
-	user, err := o.User()
 	if err != nil {
 		return fmt.Errorf("update flow: %w", err)
 	}
@@ -334,10 +359,32 @@ func (o *OAuth) updateFlow(code string) error {
 		flow.CodeChallenge(),
 		flow.CodeChallengeMethod(),
 		flow.State(),
-		dto.WithAuthorizationCode(code),
-		dto.WithUsername(user.Username()),
+		flow.Scope(),
+		setters...,
 	)
 	o.setFlow(updatedFlow)
+
+	return nil
+}
+
+func (o *OAuth) setFlowAuthorizationCode() error {
+	code := generator.NewAuthorizationCode()
+	if err := o.updateFlow(dto.WithAuthorizationCode(code)); err != nil {
+		return fmt.Errorf("set flow authorization code: %w", err)
+	}
+
+	return nil
+}
+
+func (o *OAuth) setFlowUsername() error {
+	user, err := o.User()
+	if err != nil {
+		return fmt.Errorf("set flow username: %w", err)
+	}
+
+	if err = o.updateFlow(dto.WithUsername(user.Username())); err != nil {
+		return fmt.Errorf("set flow username: %w", err)
+	}
 
 	return nil
 }

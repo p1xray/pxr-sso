@@ -15,6 +15,7 @@ const (
 	RequestParameterNameGrantType           = "grant_type"
 	RequestParameterNameCodeVerifier        = "code_verifier"
 	RequestParameterNameFullName            = "full_name"
+	RequestParameterNameScope               = "scope"
 
 	RequestParameterNameError            = "error"
 	RequestParameterNameErrorDescription = "error_description"

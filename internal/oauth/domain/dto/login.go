@@ -8,6 +8,7 @@ type Login struct {
 	state        string
 	username     string
 	password     string
+	scope        []string
 }
 
 func NewLogin(
@@ -18,6 +19,7 @@ func NewLogin(
 	state,
 	username,
 	password string,
+	scope []string,
 ) Login {
 	return Login{
 		flowID:       flowID,
@@ -27,6 +29,7 @@ func NewLogin(
 		state:        state,
 		username:     username,
 		password:     password,
+		scope:        scope,
 	}
 }
 
@@ -48,6 +51,10 @@ func (l Login) RedirectURI() string {
 
 func (l Login) State() string {
 	return l.state
+}
+
+func (l Login) Scope() []string {
+	return l.scope
 }
 
 func (l Login) Username() string {

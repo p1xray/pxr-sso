@@ -7,6 +7,7 @@ type ValidatedAuthorize struct {
 	codeChallenge       string
 	codeChallengeMethod string
 	state               string
+	scope               []string
 }
 
 func NewValidatedAuthorize(
@@ -16,6 +17,7 @@ func NewValidatedAuthorize(
 	codeChallenge,
 	codeChallengeMethod,
 	state string,
+	scope []string,
 ) ValidatedAuthorize {
 	return ValidatedAuthorize{
 		responseType:        responseType,
@@ -24,6 +26,7 @@ func NewValidatedAuthorize(
 		codeChallenge:       codeChallenge,
 		codeChallengeMethod: codeChallengeMethod,
 		state:               state,
+		scope:               scope,
 	}
 }
 
@@ -49,4 +52,8 @@ func (va *ValidatedAuthorize) CodeChallengeMethod() string {
 
 func (va *ValidatedAuthorize) State() string {
 	return va.state
+}
+
+func (va *ValidatedAuthorize) Scope() []string {
+	return va.scope
 }

@@ -5,17 +5,20 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"net/url"
+	"strings"
 )
 
 type URI struct {
-	defaultErrorRedirectURI string
 	loginRedirectURI        string
+	consentRedirectURI      string
+	defaultErrorRedirectURI string
 }
 
 func NewURI() *URI {
 	return &URI{
 		// TODO: set this from config
 		loginRedirectURI:        "http://localhost:3000/login",
+		consentRedirectURI:      "http://localhost:3000/consent",
 		defaultErrorRedirectURI: "http://localhost:3000/sigin/error",
 	}
 }
@@ -27,19 +30,34 @@ func (u *URI) BuildLoginRedirectURI(flow dto.Flow) string {
 		oauth.RequestParameterNameClientID:     flow.ClientID(),
 		oauth.RequestParameterNameRedirectURI:  flow.RedirectURI(),
 		oauth.RequestParameterNameState:        flow.State(),
+		oauth.RequestParameterNameScope:        strings.Join(flow.Scope(), " "),
 	}
 
 	redirectURI := u.buildRedirectURI(u.loginRedirectURI, queryValues)
 	return redirectURI
 }
 
-func (u *URI) BuildCallbackRedirectURI(rawURL, code, state string) string {
+func (u *URI) BuildConsentRedirectURI(flow dto.Flow) string {
 	queryValues := map[string]string{
-		oauth.RequestParameterNameAuthorizationCode: code,
-		oauth.RequestParameterNameState:             state,
+		oauth.RequestParameterNameFlowID:       flow.ID().String(),
+		oauth.RequestParameterNameResponseType: flow.ResponseType(),
+		oauth.RequestParameterNameClientID:     flow.ClientID(),
+		oauth.RequestParameterNameRedirectURI:  flow.RedirectURI(),
+		oauth.RequestParameterNameState:        flow.State(),
+		oauth.RequestParameterNameScope:        strings.Join(flow.Scope(), " "),
 	}
 
-	redirectURI := u.buildRedirectURI(rawURL, queryValues)
+	redirectURI := u.buildRedirectURI(u.consentRedirectURI, queryValues)
+	return redirectURI
+}
+
+func (u *URI) BuildCallbackRedirectURI(flow dto.Flow) string {
+	queryValues := map[string]string{
+		oauth.RequestParameterNameAuthorizationCode: flow.AuthorizationCode(),
+		oauth.RequestParameterNameState:             flow.State(),
+	}
+
+	redirectURI := u.buildRedirectURI(flow.RedirectURI(), queryValues)
 	return redirectURI
 }
 

@@ -5,6 +5,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
+	"github.com/p1xray/pxr-sso/pkg/extslices"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 )
 
@@ -54,6 +55,7 @@ func (v *Validator) ValidatedData() dto.ValidatedAuthorize {
 	codeChallenge := v.validatedCodeChallenge()
 	codeChallengeMethod := v.validatedCodeChallengeMethod()
 	state := v.validatedState()
+	scope := v.validatedScope()
 
 	validatedData := dto.NewValidatedAuthorize(
 		responseType,
@@ -62,6 +64,7 @@ func (v *Validator) ValidatedData() dto.ValidatedAuthorize {
 		codeChallenge,
 		codeChallengeMethod,
 		state,
+		scope,
 	)
 
 	return validatedData
@@ -160,13 +163,14 @@ func (v *Validator) validateClientIDMoreThenOnce() error {
 }
 
 func (v *Validator) validateClientIDExistClient() error {
-	if v.client.IsSome() {
-		client := v.client.Unwrap()
+	if v.client.IsNone() {
+		return domain.ErrOAuthClientNotRegistered
+	}
 
-		paramClientID := v.params.ClientID()
-		if len(paramClientID) == 1 && paramClientID[0] == client.Code {
-			return nil
-		}
+	client := v.client.Unwrap()
+	paramClientID := v.params.ClientID()
+	if len(paramClientID) == 1 && paramClientID[0] == client.Code {
+		return nil
 	}
 
 	return domain.ErrOAuthClientNotRegistered
@@ -232,19 +236,12 @@ func (v *Validator) validateRedirectURIRegisteredForClient() error {
 }
 
 func (v *Validator) redirectURIRegisteredForClient() bool {
-	if v.client.IsSome() {
-		client := v.client.Unwrap()
-
-		for _, clientRedirectURI := range client.RedirectURI {
-			for _, paramRedirectURI := range v.params.RedirectURI() {
-				if paramRedirectURI == clientRedirectURI {
-					return true
-				}
-			}
-		}
+	if v.client.IsNone() {
+		return false
 	}
 
-	return false
+	client := v.client.Unwrap()
+	return extslices.Any(client.RedirectURI, v.params.RedirectURI())
 }
 
 func (v *Validator) isRedirectURIValid() bool {
@@ -457,6 +454,17 @@ func (v *Validator) validatedState() string {
 	state := paramState[0]
 
 	return state
+}
+
+func (v *Validator) validatedScope() []string {
+	if v.client.IsNone() {
+		return []string{}
+	}
+
+	client := v.client.Unwrap()
+	scope := extslices.Intersect(client.Scope, v.params.Scope())
+
+	return scope
 }
 
 func (v *Validator) setErrorIfEmpty(err *domain.OAuthError) {

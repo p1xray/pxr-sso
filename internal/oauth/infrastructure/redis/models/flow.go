@@ -12,8 +12,9 @@ type Flow struct {
 	CodeChallenge       string `json:"code_challenge" required:"true"`
 	CodeChallengeMethod string `json:"code_challenge_method" required:"true"`
 	State               string `json:"state" required:"true"`
+	Scope               string `json:"scope" required:"true"`
+	Username            string `json:"username"`
 	AuthorizationCode   string `json:"authorization_code"`
-	UserID              int64  `json:"user_id"`
 }
 
 //goland:noinspection GoMixedReceiverTypes
