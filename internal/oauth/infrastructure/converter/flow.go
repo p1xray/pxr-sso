@@ -39,7 +39,7 @@ func ToFlowDTO(flow models.Flow) (dto.Flow, error) {
 		flow.CodeChallenge,
 		flow.CodeChallengeMethod,
 		flow.State,
-		strings.Split(flow.Scope, ""),
+		strings.Split(flow.Scope, " "),
 		dto.WithAuthorizationCode(flow.AuthorizationCode),
 		dto.WithUsername(flow.Username),
 	), nil

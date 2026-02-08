@@ -14,9 +14,8 @@ type Storage interface {
 	ClientByCode(ctx context.Context, code string) (models.Client, error)
 	ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error)
 
-	User(ctx context.Context, id int64) (models.User, error)
 	UserByUsername(ctx context.Context, username string) (models.User, error)
-	CreateUser(ctx context.Context, user models.User) error
+	CreateUser(ctx context.Context, user models.User) (int64, error)
 
 	CreateUserClientLink(ctx context.Context, link models.UserClientLink) error
 }
@@ -49,19 +48,6 @@ func (o *OAuth) ClientByCode(ctx context.Context, code string) (dto.Client, erro
 	return clientDTO, nil
 }
 
-func (o *OAuth) User(ctx context.Context, id int64) (dto.User, error) {
-	const op = "infrastructure.repository.User"
-
-	user, err := o.storage.User(ctx, id)
-	if err != nil {
-		return dto.User{}, fmt.Errorf("%s: %w", op, err)
-	}
-
-	userDTO := converter.ToUserDTO(user)
-
-	return userDTO, nil
-}
-
 func (o *OAuth) UserByUsername(ctx context.Context, username string) (dto.User, error) {
 	const op = "infrastructure.repository.UserByUsername"
 
@@ -78,24 +64,26 @@ func (o *OAuth) UserByUsername(ctx context.Context, username string) (dto.User, 
 func (o *OAuth) CreateUser(ctx context.Context, user dto.User, clientID int64) error {
 	const op = "infrastructure.repository.CreateUser"
 
-	if err := o.createUser(ctx, user); err != nil {
+	newUserID, err := o.createUser(ctx, user)
+	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := o.createUserClientLink(ctx, user.ID(), clientID); err != nil {
+	if err = o.createUserClientLink(ctx, newUserID, clientID); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
 }
 
-func (o *OAuth) createUser(ctx context.Context, user dto.User) error {
+func (o *OAuth) createUser(ctx context.Context, user dto.User) (int64, error) {
 	userStorageModel := converter.ToUserStorage(models.User{}, user, models.UserCreated())
-	if err := o.storage.CreateUser(ctx, userStorageModel); err != nil {
-		return err
+	id, err := o.storage.CreateUser(ctx, userStorageModel)
+	if err != nil {
+		return 0, err
 	}
 
-	return nil
+	return id, nil
 }
 
 func (o *OAuth) createUserClientLink(ctx context.Context, userID int64, clientID int64) error {

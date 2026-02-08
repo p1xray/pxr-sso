@@ -6,6 +6,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
+	"github.com/p1xray/pxr-sso/internal/oauth/usecase/consent"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/register"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/token"
@@ -65,6 +66,11 @@ type (
 	// Register is a use-case for registering a new user.
 	Register interface {
 		Execute(ctx context.Context, data register.Params) (string, *domain.DisplayableError)
+	}
+
+	// Consent is a use-case for confirming consent.
+	Consent interface {
+		Execute(ctx context.Context, data consent.Params) (string, error)
 	}
 
 	// Token is a use-case for exchange token.

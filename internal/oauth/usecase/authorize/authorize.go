@@ -50,6 +50,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		sl.Strings("code_challenge", data.CodeChallenge),
 		sl.Strings("code_challenge_method", data.CodeChallengeMethod),
 		sl.Strings("state", data.State),
+		sl.Strings("scope", data.Scope),
 	)
 	log.Info("attempting to initiate user authorization")
 
@@ -87,6 +88,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		data.CodeChallenge,
 		data.CodeChallengeMethod,
 		data.State,
+		data.Scope,
 	)
 	err := oauthEntity.Authorize(authorizeParams)
 	if err != nil {

@@ -15,6 +15,6 @@ func Err(err error) slog.Attr {
 func Strings(key string, values []string) slog.Attr {
 	return slog.Attr{
 		Key:   key,
-		Value: slog.StringValue(strings.Join(values, "")),
+		Value: slog.StringValue(strings.Join(values, " ")),
 	}
 }

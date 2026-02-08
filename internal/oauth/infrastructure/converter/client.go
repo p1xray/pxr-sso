@@ -18,6 +18,6 @@ func ToClientDTO(client models.Client, audiences []models.Audience) dto.Client {
 		Audiences: audienceURLs,
 		// TODO: get this from storage
 		RedirectURI: []string{"http://localhost:3000"},
-		Scope:       []string{"profile"},
+		Scope:       []string{"openid", "profile"},
 	}
 }

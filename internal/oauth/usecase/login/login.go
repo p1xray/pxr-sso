@@ -8,6 +8,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
+	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 )
 
@@ -49,7 +50,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		slog.String("client_id", data.ClientID),
 		slog.String("redirect_uri", data.RedirectURI),
 		slog.String("state", data.State),
-		slog.String("scope", data.Scope),
+		sl.Strings("scope", data.Scope),
 		slog.String("username", data.Username),
 	)
 	log.Info("attempting to login user")
@@ -108,6 +109,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		data.State,
 		data.Username,
 		data.Password,
+		data.Scope,
 	)
 	if displayableErr := oauthEntity.Login(loginParams); displayableErr != nil {
 		if displayableErr.IsInternal() {

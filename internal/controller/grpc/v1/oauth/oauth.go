@@ -5,6 +5,7 @@ import (
 	oauthpb "github.com/p1xray/pxr-sso-protos/gen/go/oauth"
 	"github.com/p1xray/pxr-sso/internal/controller"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
+	"github.com/p1xray/pxr-sso/internal/oauth/usecase/consent"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/register"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/token"
@@ -16,6 +17,7 @@ type serverAPI struct {
 	authorizeUseCase controller.Authorize
 	loginUseCase     controller.Login
 	registerUseCase  controller.Register
+	consentUseCase   controller.Consent
 	tokenUseCase     controller.Token
 }
 
@@ -25,12 +27,14 @@ func RegisterOAuthServer(
 	authorizeUseCase controller.Authorize,
 	loginUseCase controller.Login,
 	registerUseCase controller.Register,
+	consentUseCase controller.Consent,
 	tokenUseCase controller.Token,
 ) {
 	api := &serverAPI{
 		authorizeUseCase: authorizeUseCase,
 		loginUseCase:     loginUseCase,
 		registerUseCase:  registerUseCase,
+		consentUseCase:   consentUseCase,
 		tokenUseCase:     tokenUseCase,
 	}
 
@@ -49,6 +53,7 @@ func (s *serverAPI) Authorize(
 		CodeChallenge:       req.GetCodeChallenge(),
 		CodeChallengeMethod: req.GetCodeChallengeMethod(),
 		State:               req.GetState(),
+		Scope:               req.GetScope(),
 	}
 	redirectURI := s.authorizeUseCase.Execute(ctx, authorizeParams)
 
@@ -75,9 +80,11 @@ func (s *serverAPI) Login(
 	}
 	redirectURI, err := s.loginUseCase.Execute(ctx, loginParams)
 	if err != nil {
-		// TODO: update proto with displayable error
-
-		return nil, err.Unwrap()
+		errResponse := &oauthpb.LoginResponse{
+			DisplayErrorMessage:  err.DisplayMessage,
+			InternalErrorMessage: err.InternalMessage,
+		}
+		return errResponse, err.Unwrap()
 	}
 
 	response := &oauthpb.LoginResponse{
@@ -97,18 +104,46 @@ func (s *serverAPI) Register(
 		ClientID:     req.GetClientId(),
 		RedirectURI:  req.GetRedirectUri(),
 		State:        req.GetState(),
-		Scope:        []string{req.GetScope()},
+		Scope:        req.GetScope(),
 		Username:     req.GetUsername(),
 		Password:     req.GetPassword(),
+		FullName:     req.GetFullName(),
 	}
 	redirectURI, err := s.registerUseCase.Execute(ctx, registerParams)
 	if err != nil {
-		// TODO: update proto with displayable error
+		errResponse := &oauthpb.RegisterResponse{
+			DisplayErrorMessage:  err.DisplayMessage,
+			InternalErrorMessage: err.InternalMessage,
+		}
 
-		return nil, err.Unwrap()
+		return errResponse, err.Unwrap()
 	}
 
 	response := &oauthpb.RegisterResponse{
+		RedirectUri: redirectURI,
+	}
+	return response, nil
+}
+
+// Consent is a gRPC handler for OAuth confirming consent.
+func (s *serverAPI) Consent(
+	ctx context.Context,
+	req *oauthpb.ConsentRequest,
+) (*oauthpb.ConsentResponse, error) {
+	consentParams := consent.Params{
+		FlowID:       req.GetFlowId(),
+		ResponseType: req.GetResponseType(),
+		ClientID:     req.GetClientId(),
+		RedirectURI:  req.GetRedirectUri(),
+		State:        req.GetState(),
+		Scope:        req.GetScope(),
+	}
+	redirectURI, err := s.consentUseCase.Execute(ctx, consentParams)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &oauthpb.ConsentResponse{
 		RedirectUri: redirectURI,
 	}
 	return response, nil
@@ -124,8 +159,9 @@ func (s *serverAPI) Token(
 		GrantType:         req.GetGrantType(),
 		ClientID:          req.GetClientId(),
 		AuthorizationCode: req.GetCode(),
-		RedirectURI:       req.GetRedirectURI(),
+		RedirectURI:       req.GetRedirectUri(),
 		CodeVerifier:      req.GetCodeVerifier(),
+		Scope:             req.GetScope(),
 	}
 	tokens, err := s.tokenUseCase.Execute(ctx, tokenParams)
 	if err != nil {
@@ -135,10 +171,9 @@ func (s *serverAPI) Token(
 	}
 
 	response := &oauthpb.TokenResponse{
-		AccessToken: tokens.AccessToken(),
-		TokenType:   tokens.TokenType(),
-		// TODO: update proto
-		ExpiresIn:    uint32(tokens.ExpiresIn()),
+		AccessToken:  tokens.AccessToken(),
+		TokenType:    tokens.TokenType(),
+		ExpiresIn:    tokens.ExpiresIn(),
 		RefreshToken: tokens.RefreshToken(),
 		IdToken:      tokens.IDToken(),
 	}

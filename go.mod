@@ -11,7 +11,8 @@ require (
 	github.com/guregu/null/v6 v6.0.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/mattn/go-sqlite3 v1.14.28
-	github.com/p1xray/pxr-sso-protos v0.0.6
+	github.com/p1xray/pxr-sso-protos v0.0.8
+	github.com/redis/go-redis/v9 v9.17.3
 	github.com/segmentio/kafka-go v0.4.49
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.37.0
@@ -27,7 +28,6 @@ require (
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/pierrec/lz4/v4 v4.1.16 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/redis/go-redis/v9 v9.17.3 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect

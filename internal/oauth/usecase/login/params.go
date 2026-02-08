@@ -6,7 +6,7 @@ type Params struct {
 	ClientID     string
 	RedirectURI  string
 	State        string
-	Scope        string
+	Scope        []string
 	Username     string
 	Password     string
 }

@@ -111,53 +111,6 @@ func (s *Storage) ClientAudiences(ctx context.Context, clientID int64) ([]models
 	return audiences, nil
 }
 
-func (s *Storage) User(ctx context.Context, id int64) (models.User, error) {
-	const op = "infrastructure.storage.sqlite.User"
-
-	stmt, err := s.db.PrepareContext(ctx,
-		`select
-    		u.id,
-    		u.username,
-    		u.password_hash,
-    		u.fio,
-    		u.date_of_birth,
-    		u.gender,
-    		u.avatar_file_key,
-    		u.deleted,
-    		u.created_at,
-    		u.updated_at
-		from users u
-		where u.id = ?;`)
-	if err != nil {
-		return models.User{}, fmt.Errorf("%s: %w", op, err)
-	}
-
-	row := stmt.QueryRowContext(ctx, id)
-
-	var user models.User
-	err = row.Scan(
-		&user.ID,
-		&user.Username,
-		&user.PasswordHash,
-		&user.FullName,
-		&user.DateOfBirth,
-		&user.Gender,
-		&user.AvatarFileKey,
-		&user.Deleted,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return models.User{}, fmt.Errorf("%s: %w", op, infrastructure.ErrEntityNotFound)
-		}
-
-		return models.User{}, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return user, nil
-}
-
 func (s *Storage) UserByUsername(ctx context.Context, username string) (models.User, error) {
 	const op = "infrastructure.storage.sqlite.UserByUsername"
 
@@ -205,7 +158,7 @@ func (s *Storage) UserByUsername(ctx context.Context, username string) (models.U
 	return user, nil
 }
 
-func (s *Storage) CreateUser(ctx context.Context, user models.User) error {
+func (s *Storage) CreateUser(ctx context.Context, user models.User) (int64, error) {
 	const op = "infrastructure.storage.sqlite.CreateUser"
 
 	stmt, err := s.db.PrepareContext(ctx,
@@ -221,10 +174,10 @@ func (s *Storage) CreateUser(ctx context.Context, user models.User) error {
 		   updated_at)
 		values(?, ?, ?, ?, ?, ?, ?, ?, ?);`)
 	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	_, err = stmt.ExecContext(
+	res, err := stmt.ExecContext(
 		ctx,
 		user.Username,
 		user.PasswordHash,
@@ -240,13 +193,18 @@ func (s *Storage) CreateUser(ctx context.Context, user models.User) error {
 	if err != nil {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
-			return fmt.Errorf("%s: %w", op, infrastructure.ErrEntityExists)
+			return 0, fmt.Errorf("%s: %w", op, infrastructure.ErrEntityExists)
 		}
 
-		return fmt.Errorf("%s: %w", op, err)
+		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return nil
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return id, nil
 }
 
 func (s *Storage) CreateUserClientLink(ctx context.Context, link models.UserClientLink) error {

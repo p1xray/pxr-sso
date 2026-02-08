@@ -8,13 +8,14 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
+	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 )
 
 // Repository is a repository for exchange token use-case.
 type Repository interface {
 	ClientByCode(ctx context.Context, code string) (dto.Client, error)
-	User(ctx context.Context, id int64) (dto.User, error)
+	UserByUsername(ctx context.Context, username string) (dto.User, error)
 }
 
 type Redis interface {
@@ -50,6 +51,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) 
 		slog.String("authorization_code", data.AuthorizationCode),
 		slog.String("redirect_uri", data.RedirectURI),
 		slog.String("code_verifier", data.CodeVerifier),
+		sl.Strings("scope", data.Scope),
 	)
 	log.Info("attempting to exchange token")
 
@@ -66,7 +68,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) 
 	}
 
 	// get user from storage.
-	user, err := uc.repo.User(ctx, flow.UserID())
+	user, err := uc.repo.UserByUsername(ctx, flow.Username())
 	if err != nil {
 		if errors.Is(err, infrastructure.ErrEntityNotFound) {
 			log.Warn(err.Error())
@@ -103,6 +105,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) 
 		data.AuthorizationCode,
 		data.RedirectURI,
 		data.CodeVerifier,
+		data.Scope,
 	)
 	tokens, err := oauthEntity.ExchangeToken(exchangeTokenParams)
 	if err != nil {

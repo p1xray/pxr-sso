@@ -112,6 +112,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		data.Username,
 		data.Password,
 		data.FullName,
+		data.Scope,
 	)
 	if displayableErr := oauthEntity.Register(registerParams); displayableErr != nil {
 		if displayableErr.IsInternal() {
