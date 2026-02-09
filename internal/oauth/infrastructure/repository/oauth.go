@@ -13,11 +13,13 @@ const emptyID = 0
 type Storage interface {
 	ClientByCode(ctx context.Context, code string) (models.Client, error)
 	ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error)
+	ClientRedirectURIs(ctx context.Context, clientID int64) ([]models.RedirectURI, error)
+	ClientScopes(ctx context.Context, clientID int64) ([]models.Scope, error)
 
 	UserByUsername(ctx context.Context, username string) (models.User, error)
 	CreateUser(ctx context.Context, user models.User) (int64, error)
 
-	CreateUserClientLink(ctx context.Context, link models.UserClientLink) error
+	CreateUserClientLink(ctx context.Context, link models.UserClientLink) (int64, error)
 }
 
 type OAuth struct {
@@ -43,7 +45,17 @@ func (o *OAuth) ClientByCode(ctx context.Context, code string) (dto.Client, erro
 		return dto.Client{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	clientDTO := converter.ToClientDTO(client, clientAudiences)
+	clientRedirectURIs, err := o.storage.ClientRedirectURIs(ctx, client.ID)
+	if err != nil {
+		return dto.Client{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	clientScopes, err := o.storage.ClientScopes(ctx, client.ID)
+	if err != nil {
+		return dto.Client{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	clientDTO := converter.ToClientDTO(client, clientAudiences, clientRedirectURIs, clientScopes)
 
 	return clientDTO, nil
 }
@@ -92,7 +104,7 @@ func (o *OAuth) createUserClientLink(ctx context.Context, userID int64, clientID
 	}
 
 	userClientLinkStorageModel := converter.ToUserClientLinkStorage(userID, clientID, models.UserClientLinkCreated())
-	if err := o.storage.CreateUserClientLink(ctx, userClientLinkStorageModel); err != nil {
+	if _, err := o.storage.CreateUserClientLink(ctx, userClientLinkStorageModel); err != nil {
 		return err
 	}
 

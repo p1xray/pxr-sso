@@ -2,8 +2,8 @@ package models
 
 import "time"
 
-// Audience is data for audience in storage.
-type Audience struct {
+// RedirectURI is data for redirect URI in storage.
+type RedirectURI struct {
 	ID        int64
 	ClientID  int64
 	URI       string
