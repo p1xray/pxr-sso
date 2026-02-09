@@ -33,6 +33,27 @@ func (s *Storage) Close() {
 	s.pg.Close()
 }
 
+func (s *Storage) WithTransaction(ctx context.Context, f func() error) error {
+	tx, err := s.pg.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err = f(); err != nil {
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			return rbErr
+		}
+		
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *Storage) ClientByCode(ctx context.Context, code string) (models.Client, error) {
 	const op = "infrastructure.storage.postgresql.ClientByCode"
 
@@ -318,6 +339,32 @@ func (s *Storage) CreateUserClientLink(ctx context.Context, link models.UserClie
 	args := pgx.NamedArgs{
 		"user_id":    link.UserID,
 		"client_id":  link.ClientID,
+		"created_at": link.CreatedAt,
+		"updated_at": link.UpdatedAt,
+	}
+
+	row := s.pg.Pool.QueryRow(ctx, stmt, args)
+
+	var id int64
+	err := row.Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return id, nil
+}
+
+func (s *Storage) CreateUserRoleLink(ctx context.Context, link models.UserRoleLink) (int64, error) {
+	const op = "infrastructure.storage.postgresql.CreateUserRoleLink"
+
+	stmt :=
+		`insert into sso.user_role_links (user_id, role_id, created_at, updated_at)
+		 values (@user_id, @role_id, @created_at, @updated_at)
+		 returning id;`
+
+	args := pgx.NamedArgs{
+		"user_id":    link.UserID,
+		"role_id":    link.RoleID,
 		"created_at": link.CreatedAt,
 		"updated_at": link.UpdatedAt,
 	}

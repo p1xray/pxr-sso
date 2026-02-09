@@ -8,6 +8,7 @@ type User struct {
 	username     string
 	passwordHash string
 	fullName     string
+	roleIDs      []int64
 }
 
 func NewUser(id int64, username, passwordHash string) User {
@@ -18,11 +19,12 @@ func NewUser(id int64, username, passwordHash string) User {
 	}
 }
 
-func NewRegisteringUser(username, passwordHash, fullName string) User {
+func NewRegisteringUser(username, passwordHash, fullName string, roleIDs []int64) User {
 	return User{
 		username:     username,
 		passwordHash: passwordHash,
 		fullName:     fullName,
+		roleIDs:      roleIDs,
 	}
 }
 
@@ -44,4 +46,8 @@ func (u *User) PasswordHash() string {
 
 func (u *User) FullName() string {
 	return u.fullName
+}
+
+func (u *User) RoleIDs() []int64 {
+	return u.roleIDs
 }

@@ -2,6 +2,7 @@ package models
 
 import "time"
 
+// UserClientLink is data for user client link in storage.
 type UserClientLink struct {
 	ID        int64
 	UserID    int64

@@ -11,6 +11,8 @@ import (
 const emptyID = 0
 
 type Storage interface {
+	WithTransaction(ctx context.Context, f func() error) error
+
 	ClientByCode(ctx context.Context, code string) (models.Client, error)
 	ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error)
 	ClientRedirectURIs(ctx context.Context, clientID int64) ([]models.RedirectURI, error)
@@ -20,6 +22,7 @@ type Storage interface {
 	CreateUser(ctx context.Context, user models.User) (int64, error)
 
 	CreateUserClientLink(ctx context.Context, link models.UserClientLink) (int64, error)
+	CreateUserRoleLink(ctx context.Context, link models.UserRoleLink) (int64, error)
 }
 
 type OAuth struct {
@@ -76,12 +79,26 @@ func (o *OAuth) UserByUsername(ctx context.Context, username string) (dto.User, 
 func (o *OAuth) CreateUser(ctx context.Context, user dto.User, clientID int64) error {
 	const op = "infrastructure.repository.CreateUser"
 
-	newUserID, err := o.createUser(ctx, user)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
+	err := o.storage.WithTransaction(ctx, func() error {
+		newUserID, err := o.createUser(ctx, user)
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
 
-	if err = o.createUserClientLink(ctx, newUserID, clientID); err != nil {
+		if err = o.createUserClientLink(ctx, newUserID, clientID); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+
+		for _, roleID := range user.RoleIDs() {
+			if err = o.createUserRoleLink(ctx, newUserID, roleID); err != nil {
+				return fmt.Errorf("%s: %w", op, err)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -104,9 +121,18 @@ func (o *OAuth) createUserClientLink(ctx context.Context, userID int64, clientID
 	}
 
 	userClientLinkStorageModel := converter.ToUserClientLinkStorage(userID, clientID, models.UserClientLinkCreated())
-	if _, err := o.storage.CreateUserClientLink(ctx, userClientLinkStorageModel); err != nil {
-		return err
+	_, err := o.storage.CreateUserClientLink(ctx, userClientLinkStorageModel)
+
+	return err
+}
+
+func (o *OAuth) createUserRoleLink(ctx context.Context, userID, roleID int64) error {
+	if userID == emptyID || roleID == emptyID {
+		return fmt.Errorf("a non-null identifiers is required to create an user role link in storage")
 	}
 
-	return nil
+	userRoleLinkStorageModel := converter.ToUserRoleLinkStorage(userID, roleID, models.UserRoleLinkCreated())
+	_, err := o.storage.CreateUserRoleLink(ctx, userRoleLinkStorageModel)
+
+	return err
 }
