@@ -8,9 +8,27 @@ tasks:
     cmds:
       - go run ./cmd/sso --config=./config/local.yaml
 
-  migrate:
+  create_migration:
     aliases:
-      - migrate
-    desc: 'up migrations'
+      - 'migration create'
+    desc: 'create a new SQL migration'
+    vars:
+      FILE_NAME: '{{.FILE_NAME}}'
     cmds:
-      - go run ./cmd/migrator --storage-path=./storage/sso.db -migrations-path=./migrations
+      - goose -dir db/migrations create {{.FILE_NAME}} sql
+
+  migrate_up:
+    aliases:
+      - 'migrate up'
+    desc: 'apply all available migrations'
+    cmds:
+      - goose -dir db/migrations up
+
+  migrate_down:
+    aliases:
+      - 'migrate down'
+    desc: 'roll back migrations to a specific version'
+    vars:
+      VERSION: '{{.VERSION}}'
+    cmds:
+      - goose -dir db/migrations down-to {{.VERSION}}

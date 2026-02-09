@@ -9,7 +9,7 @@ import (
 	oldSqlite "github.com/p1xray/pxr-sso/internal/infrastructure/storage/sqlite"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
-	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/sqlite"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/postgresql"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/consent"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
@@ -46,7 +46,8 @@ func New(
 		panic(err)
 	}
 
-	dbStorage, err := sqlite.New(cfg.StoragePath)
+	// TODO: get postgresql connection URL from config
+	storage, err := postgresql.New("postgresql://postgres:admin@127.0.0.1:5432/sso?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
@@ -66,7 +67,7 @@ func New(
 	authRepository := oldRepository.NewAuthRepository(log, oldDbStorage)
 	profileRepository := oldRepository.NewProfileRepository(log, oldDbStorage)
 
-	oauthRepository := repository.NewOAuthRepository(dbStorage)
+	oauthRepository := repository.NewOAuthRepository(storage)
 
 	// Use-cases.
 	oldLoginUseCase := oldLogin.New(log, cfg.Tokens, authRepository)
