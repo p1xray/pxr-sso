@@ -8,19 +8,14 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
-	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository/client"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 	"log/slog"
 )
 
-// Repository is a repository for OAuth authorize use-case.
 type Repository interface {
-	ClientByCode(ctx context.Context, code string) (dto.Client, error)
-}
-
-type ClientRepository interface {
-	ClientByCode(ctx context.Context, code string, opts ...client.Option) (dto.Client, error)
+	ClientByCode(ctx context.Context, code string, opts ...repository.ClientOption) (dto.Client, error)
 }
 
 type Redis interface {
@@ -29,19 +24,17 @@ type Redis interface {
 
 // UseCase is a use-case for OAuth authorize.
 type UseCase struct {
-	log        *slog.Logger
-	repo       Repository
-	redis      Redis
-	clientRepo ClientRepository
+	log   *slog.Logger
+	repo  Repository
+	redis Redis
 }
 
 // New returns new OAuth authorize use-case.
-func New(log *slog.Logger, repo Repository, redis Redis, clientRepo ClientRepository) *UseCase {
+func New(log *slog.Logger, repo Repository, redis Redis) *UseCase {
 	return &UseCase{
-		log:        log,
-		repo:       repo,
-		redis:      redis,
-		clientRepo: clientRepo,
+		log:   log,
+		repo:  repo,
+		redis: redis,
 	}
 }
 

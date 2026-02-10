@@ -1,4 +1,4 @@
-package client
+package repository
 
 import (
 	"context"
@@ -8,31 +8,9 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/models"
 )
 
-type Storage interface {
-	ClientByCode(ctx context.Context, code string) (models.Client, error)
-	ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error)
-	ClientRedirectURIs(ctx context.Context, clientID int64) ([]models.RedirectURI, error)
-	ClientScopeLinks(ctx context.Context, clientID int64) ([]models.ClientScopeLink, error)
-	Scopes(ctx context.Context, ids []int64) ([]models.Scope, error)
-	ClientDefaultRoleLinks(ctx context.Context, clientID int64) ([]models.ClientDefaultRoleLink, error)
-	Roles(ctx context.Context, ids []int64) ([]models.Role, error)
-	RolePermissionLinks(ctx context.Context, roleIDs []int64) ([]models.RolePermissionLink, error)
-	Permissions(ctx context.Context, ids []int64) ([]models.Permission, error)
-}
+type ClientOption func(context.Context, *Repository, *models.Client) error
 
-type Repository struct {
-	storage Storage
-}
-
-func NewRepository(storage Storage) *Repository {
-	return &Repository{
-		storage: storage,
-	}
-}
-
-type Option func(context.Context, *Repository, *models.Client) error
-
-func (r *Repository) ClientByCode(ctx context.Context, code string, opts ...Option) (dto.Client, error) {
+func (r *Repository) ClientByCode(ctx context.Context, code string, opts ...ClientOption) (dto.Client, error) {
 	const op = "client repository: get client by code"
 
 	client, err := r.storage.ClientByCode(ctx, code)
@@ -124,60 +102,7 @@ func (r *Repository) clientDefaultRoles(ctx context.Context, clientID int64) ([]
 	return clientDefaultRoleLinks, nil
 }
 
-func (r *Repository) roles(ctx context.Context, ids []int64) ([]models.Role, error) {
-	roles, err := r.storage.Roles(ctx, ids)
-	if err != nil {
-		return []models.Role{}, fmt.Errorf("%s: %w", "get roles", err)
-	}
-
-	rolePermissionLinks, err := r.rolePermissions(ctx, ids)
-	if err != nil {
-		return []models.Role{}, err
-	}
-
-	for i := range roles {
-		rolePermissions := make([]models.RolePermissionLink, 0)
-		for j := range rolePermissionLinks {
-			if roles[i].ID == rolePermissionLinks[j].RoleID {
-				rolePermissions = append(rolePermissions, rolePermissionLinks[j])
-			}
-		}
-
-		roles[i].PermissionLinks = rolePermissions
-	}
-
-	return roles, nil
-}
-
-func (r *Repository) rolePermissions(ctx context.Context, roleIDs []int64) ([]models.RolePermissionLink, error) {
-	rolePermissionLinks, err := r.storage.RolePermissionLinks(ctx, roleIDs)
-	if err != nil {
-		return []models.RolePermissionLink{}, fmt.Errorf("%s: %w", "get role permission links", err)
-	}
-
-	permissionIDs := make([]int64, len(rolePermissionLinks))
-	for i, link := range rolePermissionLinks {
-		permissionIDs[i] = link.PermissionID
-	}
-
-	permissions, err := r.storage.Permissions(ctx, permissionIDs)
-	if err != nil {
-		return []models.RolePermissionLink{}, fmt.Errorf("%s: %w", "get permissions", err)
-	}
-
-	for i := range rolePermissionLinks {
-		for j := range permissions {
-			if rolePermissionLinks[i].PermissionID == permissions[j].ID {
-				rolePermissionLinks[i].Permission = permissions[j]
-				break
-			}
-		}
-	}
-
-	return rolePermissionLinks, nil
-}
-
-func WithAudiences() Option {
+func WithAudiences() ClientOption {
 	return func(ctx context.Context, r *Repository, client *models.Client) error {
 		audiences, err := r.clientAudiences(ctx, client.ID)
 		if err != nil {
@@ -189,7 +114,7 @@ func WithAudiences() Option {
 	}
 }
 
-func WithRedirectURIs() Option {
+func WithRedirectURIs() ClientOption {
 	return func(ctx context.Context, r *Repository, client *models.Client) error {
 		redirectURIs, err := r.clientRedirectURIs(ctx, client.ID)
 		if err != nil {
@@ -201,7 +126,7 @@ func WithRedirectURIs() Option {
 	}
 }
 
-func WithScopes() Option {
+func WithScopes() ClientOption {
 	return func(ctx context.Context, r *Repository, client *models.Client) error {
 		clientScopeLinks, err := r.clientScopes(ctx, client.ID)
 		if err != nil {
@@ -213,7 +138,7 @@ func WithScopes() Option {
 	}
 }
 
-func WithDefaultRoles() Option {
+func WithDefaultRoles() ClientOption {
 	return func(ctx context.Context, r *Repository, client *models.Client) error {
 		clientDefaultRoleLinks, err := r.clientDefaultRoles(ctx, client.ID)
 		if err != nil {

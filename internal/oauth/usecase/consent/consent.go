@@ -8,15 +8,14 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 )
 
 // Repository is a repository for confirm consent use-case.
 type Repository interface {
-	ClientByCode(ctx context.Context, code string) (dto.Client, error)
-	UserByUsername(ctx context.Context, username string) (dto.User, error)
-	CreateUser(ctx context.Context, user dto.User, clientID int64) error
+	ClientByCode(ctx context.Context, code string, opts ...repository.ClientOption) (dto.Client, error)
 }
 
 type Redis interface {
