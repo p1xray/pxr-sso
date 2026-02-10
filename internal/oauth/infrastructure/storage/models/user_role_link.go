@@ -9,6 +9,8 @@ type UserRoleLink struct {
 	RoleID    int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	Role Role
 }
 
 type UserRoleLinkOption func(*UserRoleLink)

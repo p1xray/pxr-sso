@@ -17,6 +17,8 @@ type User struct {
 	Deleted       bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+
+	RoleLinks []UserRoleLink
 }
 
 type UserOption func(*User)

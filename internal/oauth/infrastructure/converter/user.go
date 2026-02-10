@@ -5,11 +5,29 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/models"
 )
 
+func ToUserDTONew(user models.User) dto.User {
+	roles := make([]dto.Role, len(user.RoleLinks))
+	for i, link := range user.RoleLinks {
+		roleDTO := ToRoleDTO(link.Role)
+		roles[i] = roleDTO
+	}
+
+	userDTO := dto.NewUser(
+		user.ID,
+		user.Username,
+		user.PasswordHash,
+		roles,
+	)
+
+	return userDTO
+}
+
 func ToUserDTO(user models.User) dto.User {
 	return dto.NewUser(
 		user.ID,
 		user.Username,
 		user.PasswordHash,
+		[]dto.Role{},
 	)
 }
 

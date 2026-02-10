@@ -11,11 +11,12 @@ type User struct {
 	roles        []Role
 }
 
-func NewUser(id int64, username, passwordHash string) User {
+func NewUser(id int64, username, passwordHash string, roles []Role) User {
 	return User{
 		id:           id,
 		username:     username,
 		passwordHash: passwordHash,
+		roles:        roles,
 	}
 }
 

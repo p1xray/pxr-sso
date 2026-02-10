@@ -606,6 +606,50 @@ func (s *Storage) UserByUsername(ctx context.Context, username string) (models.U
 	return user, nil
 }
 
+func (s *Storage) UserRoleLinks(ctx context.Context, userID int64) ([]models.UserRoleLink, error) {
+	const op = "postgresql storage: get user role links"
+
+	stmt :=
+		`select
+			 link.id,
+			 link.user_id,
+			 link.role_id,
+			 link.created_at,
+			 link.updated_at
+		 from sso.user_role_links link
+		 where link.role_id = any(@ids);`
+
+	args := pgx.NamedArgs{
+		"ids": userID,
+	}
+
+	rows, err := s.pg.Pool.Query(ctx, stmt, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	links := make([]models.UserRoleLink, 0)
+	for rows.Next() {
+		link := models.UserRoleLink{}
+		err = rows.Scan(
+			&link.ID,
+			&link.UserID,
+			&link.RoleID,
+			&link.CreatedAt,
+			&link.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		links = append(links, link)
+	}
+
+	return links, nil
+}
+
 func (s *Storage) CreateUser(ctx context.Context, user models.User) (int64, error) {
 	const op = "infrastructure.storage.postgresql.CreateUser"
 
