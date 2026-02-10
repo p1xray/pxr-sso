@@ -169,7 +169,7 @@ func (v *Validator) validateClientIDExistClient() error {
 
 	client := v.client.Unwrap()
 	paramClientID := v.params.ClientID()
-	if len(paramClientID) == 1 && paramClientID[0] == client.Code {
+	if len(paramClientID) == 1 && paramClientID[0] == client.Code() {
 		return nil
 	}
 
@@ -241,7 +241,7 @@ func (v *Validator) redirectURIRegisteredForClient() bool {
 	}
 
 	client := v.client.Unwrap()
-	return extslices.Any(client.RedirectURI, v.params.RedirectURI())
+	return extslices.Any(client.RedirectURI(), v.params.RedirectURI())
 }
 
 func (v *Validator) isRedirectURIValid() bool {
@@ -462,7 +462,7 @@ func (v *Validator) validatedScope() []string {
 	}
 
 	client := v.client.Unwrap()
-	scope := extslices.Intersect(client.Scope, v.params.Scope())
+	scope := extslices.Intersect(client.Scope(), v.params.Scope())
 
 	return scope
 }

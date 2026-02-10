@@ -9,6 +9,7 @@ import (
 	oldSqlite "github.com/p1xray/pxr-sso/internal/infrastructure/storage/sqlite"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository/client"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/postgresql"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/consent"
@@ -68,6 +69,7 @@ func New(
 	profileRepository := oldRepository.NewProfileRepository(log, oldDbStorage)
 
 	oauthRepository := repository.NewOAuthRepository(storage)
+	clientRepository := client.NewRepository(storage)
 
 	// Use-cases.
 	oldLoginUseCase := oldLogin.New(log, cfg.Tokens, authRepository)
@@ -78,7 +80,7 @@ func New(
 	profileUseCase := card.New(log, profileRepository)
 	editProfileUseCase := edit.New(log, profileRepository)
 
-	authorizeUseCase := authorize.New(log, oauthRepository, redisStorage)
+	authorizeUseCase := authorize.New(log, oauthRepository, redisStorage, clientRepository)
 	loginUseCase := login.New(log, oauthRepository, redisStorage)
 	registerUseCase := register.New(log, oauthRepository, redisStorage)
 	consentUseCase := consent.New(log, oauthRepository, redisStorage)

@@ -17,6 +17,7 @@ type Storage interface {
 	ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error)
 	ClientRedirectURIs(ctx context.Context, clientID int64) ([]models.RedirectURI, error)
 	ClientScopes(ctx context.Context, clientID int64) ([]models.Scope, error)
+	ClientDefaultRoles(ctx context.Context, clientID int64) ([]models.Role, error)
 
 	UserByUsername(ctx context.Context, username string) (models.User, error)
 	CreateUser(ctx context.Context, user models.User) (int64, error)
@@ -89,8 +90,8 @@ func (o *OAuth) CreateUser(ctx context.Context, user dto.User, clientID int64) e
 			return fmt.Errorf("%s: %w", op, err)
 		}
 
-		for _, roleID := range user.RoleIDs() {
-			if err = o.createUserRoleLink(ctx, newUserID, roleID); err != nil {
+		for _, role := range user.Roles() {
+			if err = o.createUserRoleLink(ctx, newUserID, role.ID()); err != nil {
 				return fmt.Errorf("%s: %w", op, err)
 			}
 		}

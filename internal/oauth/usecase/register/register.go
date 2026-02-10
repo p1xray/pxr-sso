@@ -130,7 +130,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		return "", domain.InternalError(err)
 	}
 
-	if err = uc.repo.CreateUser(ctx, newUser, client.ID); err != nil {
+	if err = uc.repo.CreateUser(ctx, newUser, client.ID()); err != nil {
 		log.Error(err.Error())
 
 		return "", domain.InternalError(err)

@@ -229,7 +229,7 @@ func (o *OAuth) generateAccessToken(scope []string) (jwtclaims.AccessTokenClaims
 		Issuer: "http://localhost:6003",
 		// TODO: get this from config
 		TTL: 1 * time.Hour,
-		Key: []byte(client.SecretKey),
+		Key: []byte(client.SecretKey()),
 	}
 	claims, accessToken, err := jwtcreator.NewAccessToken(createAccessTokenData)
 	if err != nil {
@@ -248,7 +248,7 @@ func (o *OAuth) generateRefreshToken() (jwtclaims.RefreshTokenClaims, string, er
 	}
 
 	// TODO: get refresh token TTL from config
-	claims, refreshToken, err := jwtcreator.NewRefreshToken([]byte(client.SecretKey), 24*time.Hour)
+	claims, refreshToken, err := jwtcreator.NewRefreshToken([]byte(client.SecretKey()), 24*time.Hour)
 	if err != nil {
 		return jwtclaims.RefreshTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -407,7 +407,7 @@ func (o *OAuth) createNewUser(data dto.Register) error {
 		return fmt.Errorf("%s: %w", "create new user", err)
 	}
 
-	user := dto.NewRegisteringUser(data.Username(), passwordHash, data.FullName())
+	user := dto.NewRegisteringUser(data.Username(), passwordHash, data.FullName(), []dto.Role{})
 	o.setUser(user)
 
 	return nil

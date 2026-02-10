@@ -43,7 +43,7 @@ func (s *Storage) WithTransaction(ctx context.Context, f func() error) error {
 		if rbErr := tx.Rollback(ctx); rbErr != nil {
 			return rbErr
 		}
-		
+
 		return err
 	}
 
@@ -184,6 +184,282 @@ func (s *Storage) ClientRedirectURIs(ctx context.Context, clientID int64) ([]mod
 	return redirectURIs, nil
 }
 
+func (s *Storage) ClientScopeLinks(ctx context.Context, clientID int64) ([]models.ClientScopeLink, error) {
+	const op = "postgresql storage: get client scope links"
+
+	stmt :=
+		`select
+			 link.id,
+			 link.client_id,
+			 link.scope_id,
+			 link.created_at,
+			 link.updated_at
+		 from sso.client_scope_links link
+		 where link.client_id = @client_id;`
+
+	args := pgx.NamedArgs{
+		"client_id": clientID,
+	}
+
+	rows, err := s.pg.Pool.Query(ctx, stmt, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	links := make([]models.ClientScopeLink, 0)
+	for rows.Next() {
+		link := models.ClientScopeLink{}
+		err = rows.Scan(
+			&link.ID,
+			&link.ClientID,
+			&link.ScopeID,
+			&link.CreatedAt,
+			&link.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		links = append(links, link)
+	}
+
+	return links, nil
+}
+
+func (s *Storage) Scopes(ctx context.Context, ids []int64) ([]models.Scope, error) {
+	const op = "postgresql storage: get scopes"
+
+	stmt :=
+		`select
+			 s.id,
+			 s.code,
+			 s.name,
+			 s.description,
+			 s.created_at,
+			 s.updated_at
+		 from sso.scopes s
+		 where s.id = any(@ids);`
+
+	args := pgx.NamedArgs{
+		"ids": ids,
+	}
+
+	rows, err := s.pg.Pool.Query(ctx, stmt, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	scopes := make([]models.Scope, 0)
+	for rows.Next() {
+		scope := models.Scope{}
+		err = rows.Scan(
+			&scope.ID,
+			&scope.Code,
+			&scope.Name,
+			&scope.Description,
+			&scope.CreatedAt,
+			&scope.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		scopes = append(scopes, scope)
+	}
+
+	return scopes, nil
+}
+
+func (s *Storage) ClientDefaultRoleLinks(ctx context.Context, clientID int64) ([]models.ClientDefaultRoleLink, error) {
+	const op = "postgresql storage: get client default role links"
+
+	stmt :=
+		`select
+			 link.id,
+			 link.client_id,
+			 link.role_id,
+			 link.created_at,
+			 link.updated_at
+		 from sso.client_default_role_links link
+		 where link.client_id = @client_id;`
+
+	args := pgx.NamedArgs{
+		"client_id": clientID,
+	}
+
+	rows, err := s.pg.Pool.Query(ctx, stmt, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	links := make([]models.ClientDefaultRoleLink, 0)
+	for rows.Next() {
+		link := models.ClientDefaultRoleLink{}
+		err = rows.Scan(
+			&link.ID,
+			&link.ClientID,
+			&link.RoleID,
+			&link.CreatedAt,
+			&link.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		links = append(links, link)
+	}
+
+	return links, nil
+}
+
+func (s *Storage) Roles(ctx context.Context, ids []int64) ([]models.Role, error) {
+	const op = "postgresql storage: get roles"
+
+	stmt :=
+		`select
+			 r.id,
+			 r.code,
+			 r.name,
+			 r.description,
+			 r.active,
+			 r.deleted,
+			 r.created_at,
+			 r.updated_at
+		 from sso.roles r
+		 where r.id = any(@ids);`
+
+	args := pgx.NamedArgs{
+		"ids": ids,
+	}
+
+	rows, err := s.pg.Pool.Query(ctx, stmt, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	roles := make([]models.Role, 0)
+	for rows.Next() {
+		role := models.Role{}
+		err = rows.Scan(
+			&role.ID,
+			&role.Code,
+			&role.Name,
+			&role.Description,
+			&role.Active,
+			&role.Deleted,
+			&role.CreatedAt,
+			&role.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		roles = append(roles, role)
+	}
+
+	return roles, nil
+}
+
+func (s *Storage) RolePermissionLinks(ctx context.Context, roleIDs []int64) ([]models.RolePermissionLink, error) {
+	const op = "postgresql storage: get role permission links"
+
+	stmt :=
+		`select
+			 link.id,
+			 link.role_id,
+			 link.permission_id,
+			 link.created_at,
+			 link.updated_at
+		 from sso.role_permission_links link
+		 where link.role_id = any(@ids);`
+
+	args := pgx.NamedArgs{
+		"ids": roleIDs,
+	}
+
+	rows, err := s.pg.Pool.Query(ctx, stmt, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	links := make([]models.RolePermissionLink, 0)
+	for rows.Next() {
+		link := models.RolePermissionLink{}
+		err = rows.Scan(
+			&link.ID,
+			&link.RoleID,
+			&link.PermissionID,
+			&link.CreatedAt,
+			&link.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		links = append(links, link)
+	}
+
+	return links, nil
+}
+
+func (s *Storage) Permissions(ctx context.Context, ids []int64) ([]models.Permission, error) {
+	const op = "postgresql storage: get permissions"
+
+	stmt :=
+		`select
+			 p.id,
+			 p.code,
+			 p.description,
+			 p.active,
+			 p.deleted,
+			 p.created_at,
+			 p.updated_at
+		 from sso.permissions p
+		 where p.id = any(@ids);`
+
+	args := pgx.NamedArgs{
+		"ids": ids,
+	}
+
+	rows, err := s.pg.Pool.Query(ctx, stmt, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	permissions := make([]models.Permission, 0)
+	for rows.Next() {
+		permission := models.Permission{}
+		err = rows.Scan(
+			&permission.ID,
+			&permission.Code,
+			&permission.Description,
+			&permission.Active,
+			&permission.Deleted,
+			&permission.CreatedAt,
+			&permission.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		permissions = append(permissions, permission)
+	}
+
+	return permissions, nil
+}
+
 func (s *Storage) ClientScopes(ctx context.Context, clientID int64) ([]models.Scope, error) {
 	const op = "infrastructure.storage.postgresql.ClientScopes"
 
@@ -229,6 +505,57 @@ func (s *Storage) ClientScopes(ctx context.Context, clientID int64) ([]models.Sc
 	}
 
 	return scopes, nil
+}
+
+func (s *Storage) ClientDefaultRoles(ctx context.Context, clientID int64) ([]models.Role, error) {
+	const op = "infrastructure.storage.postgresql.ClientDefaultRoles"
+
+	stmt :=
+		`select
+			 r.id,
+			 r.code,
+			 r.name,
+			 r.description,
+			 r.active,
+			 r.deleted,
+			 r.created_at,
+			 r.updated_at
+		 from sso.roles r
+		 	join sso.client_default_role_links cdrl on cdrl.role_id = r.id
+		 where cdrl.client_id = @client_id;`
+
+	args := pgx.NamedArgs{
+		"client_id": clientID,
+	}
+
+	rows, err := s.pg.Pool.Query(ctx, stmt, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	roles := make([]models.Role, 0)
+	for rows.Next() {
+		role := models.Role{}
+		err = rows.Scan(
+			&role.ID,
+			&role.Code,
+			&role.Name,
+			&role.Description,
+			&role.Active,
+			&role.Deleted,
+			&role.CreatedAt,
+			&role.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		roles = append(roles, role)
+	}
+
+	return roles, nil
 }
 
 func (s *Storage) UserByUsername(ctx context.Context, username string) (models.User, error) {

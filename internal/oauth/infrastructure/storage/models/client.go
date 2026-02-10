@@ -11,4 +11,9 @@ type Client struct {
 	Deleted   bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	Audiences        []Audience
+	RedirectURIs     []RedirectURI
+	ScopeLinks       []ClientScopeLink
+	DefaultRoleLinks []ClientDefaultRoleLink
 }

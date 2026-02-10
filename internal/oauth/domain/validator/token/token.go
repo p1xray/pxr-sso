@@ -175,7 +175,7 @@ func (v *Validator) validateClientIDExistClient() error {
 
 	client := v.client.Unwrap()
 
-	if v.params.ClientID() != client.Code {
+	if v.params.ClientID() != client.Code() {
 		return domain.ErrOAuthClientNotRegistered
 	}
 
@@ -266,7 +266,7 @@ func (v *Validator) redirectURIRegisteredForClient() bool {
 	}
 
 	client := v.client.Unwrap()
-	return slices.Contains(client.RedirectURI, v.params.RedirectURI())
+	return slices.Contains(client.RedirectURI(), v.params.RedirectURI())
 }
 
 func (v *Validator) validateCodeVerifier() error {
