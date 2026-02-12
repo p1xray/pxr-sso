@@ -2,11 +2,7 @@ package app
 
 import (
 	grpcapp "github.com/p1xray/pxr-sso/internal/app/grpc"
-	kafkaapp "github.com/p1xray/pxr-sso/internal/app/kafka"
 	"github.com/p1xray/pxr-sso/internal/config"
-	"github.com/p1xray/pxr-sso/internal/infrastructure/kafka/handlers"
-	oldRepository "github.com/p1xray/pxr-sso/internal/infrastructure/repository"
-	oldSqlite "github.com/p1xray/pxr-sso/internal/infrastructure/storage/sqlite"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/postgresql"
@@ -15,12 +11,6 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/register"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/token"
-	oldLogin "github.com/p1xray/pxr-sso/internal/usecase/auth/login"
-	oldLogout "github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
-	oldRefresh "github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
-	oldRegister "github.com/p1xray/pxr-sso/internal/usecase/auth/register"
-	"github.com/p1xray/pxr-sso/internal/usecase/profile/card"
-	"github.com/p1xray/pxr-sso/internal/usecase/profile/edit"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 	"os"
@@ -30,9 +20,8 @@ import (
 
 // App is an application.
 type App struct {
-	log      *slog.Logger
-	grpcApp  *grpcapp.App
-	kafkaApp *kafkaapp.App
+	log     *slog.Logger
+	grpcApp *grpcapp.App
 }
 
 // New creates a new application.
@@ -41,11 +30,6 @@ func New(
 	cfg *config.Config,
 ) *App {
 	// Storages.
-	oldDbStorage, err := oldSqlite.New(cfg.StoragePath)
-	if err != nil {
-		panic(err)
-	}
-
 	// TODO: get postgresql connection URL from config
 	storage, err := postgresql.New("postgresql://postgres:admin@127.0.0.1:5432/sso?sslmode=disable")
 	if err != nil {
@@ -58,26 +42,10 @@ func New(
 		panic(err)
 	}
 
-	kafkaApp := kafkaapp.New(log, cfg.Kafka)
-
-	// Handlers.
-	registerHandler := handlers.NewUserHasRegistered(log, kafkaApp.Input())
-
 	// Repositories.
-	authRepository := oldRepository.NewAuthRepository(log, oldDbStorage)
-	profileRepository := oldRepository.NewProfileRepository(log, oldDbStorage)
-
 	oauthRepository := repository.NewRepository(storage)
 
 	// Use-cases.
-	oldLoginUseCase := oldLogin.New(log, cfg.Tokens, authRepository)
-	oldRegisterUseCase := oldRegister.New(log, cfg.Tokens, authRepository, registerHandler)
-	oldRefreshUseCase := oldRefresh.New(log, cfg.Tokens, authRepository)
-	oldLogoutUseCase := oldLogout.New(log, cfg.Tokens, authRepository)
-
-	profileUseCase := card.New(log, profileRepository)
-	editProfileUseCase := edit.New(log, profileRepository)
-
 	authorizeUseCase := authorize.New(log, oauthRepository, redisStorage)
 	loginUseCase := login.New(log, oauthRepository, redisStorage)
 	registerUseCase := register.New(log, oauthRepository, redisStorage)
@@ -87,12 +55,6 @@ func New(
 	grpcApp := grpcapp.New(
 		log,
 		cfg.GRPC.Port,
-		oldLoginUseCase,
-		oldRegisterUseCase,
-		oldRefreshUseCase,
-		oldLogoutUseCase,
-		profileUseCase,
-		editProfileUseCase,
 		authorizeUseCase,
 		loginUseCase,
 		registerUseCase,
@@ -101,9 +63,8 @@ func New(
 	)
 
 	return &App{
-		log:      log,
-		grpcApp:  grpcApp,
-		kafkaApp: kafkaApp,
+		log:     log,
+		grpcApp: grpcApp,
 	}
 }
 
@@ -114,7 +75,6 @@ func (a *App) Start() {
 	log := a.log.With(slog.String("op", op))
 	log.Info("starting application")
 
-	a.kafkaApp.Start()
 	a.grpcApp.Start()
 }
 
@@ -137,5 +97,4 @@ func (a *App) GracefulStop() {
 	log.Info("stopping application")
 
 	a.grpcApp.Stop()
-	a.kafkaApp.Stop()
 }

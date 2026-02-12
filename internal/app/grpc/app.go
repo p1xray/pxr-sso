@@ -18,12 +18,6 @@ type App struct {
 func New(
 	log *slog.Logger,
 	port string,
-	oldLoginUseCase controller.OldLogin,
-	oldRegisterUseCase controller.OldRegister,
-	oldRefreshUseCase controller.OldRefreshTokens,
-	oldLogoutUseCase controller.OldLogout,
-	profileUseCase controller.UserProfile,
-	editProfileUseCase controller.EditProfile,
 	authorizeUseCase controller.Authorize,
 	loginUseCase controller.Login,
 	registerUseCase controller.Register,
@@ -34,12 +28,6 @@ func New(
 
 	grpc.NewRouter(
 		gRPCServer.App,
-		oldLoginUseCase,
-		oldRegisterUseCase,
-		oldRefreshUseCase,
-		oldLogoutUseCase,
-		profileUseCase,
-		editProfileUseCase,
 		authorizeUseCase,
 		loginUseCase,
 		registerUseCase,
