@@ -165,8 +165,6 @@ func (s *serverAPI) Token(
 	}
 	tokens, err := s.tokenUseCase.Execute(ctx, tokenParams)
 	if err != nil {
-		// TODO: update proto with displayable error
-
 		return nil, err
 	}
 

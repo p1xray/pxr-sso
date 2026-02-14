@@ -1,12 +1,19 @@
 version: '3'
 
 tasks:
+  local:
+    aliases:
+      - local
+    desc: 'run sso app with local config'
+    cmds:
+      - go run ./cmd/sso --config=./config/config.yaml --env-config=./config/config.local.yaml
+
   dev:
     aliases:
       - dev
-    desc: 'run sso app with local config'
+    desc: 'run sso app with dev config'
     cmds:
-      - go run ./cmd/sso --config=./config/local.yaml
+      - go run ./cmd/sso --config=./config/config.yaml --env-config=./config/config.dev.yaml
 
   create_migration:
     aliases:

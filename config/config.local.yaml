@@ -1,0 +1,3 @@
+env: 'local'
+tokens:
+  access_token_ttl: 3h

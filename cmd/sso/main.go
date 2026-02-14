@@ -8,7 +8,8 @@ import (
 )
 
 func main() {
-	cfg := config.MustLoad()
+	cfgLoader := config.NewLoader()
+	cfg := cfgLoader.MustLoad()
 
 	log := logger.SetupLogger(cfg.Env)
 

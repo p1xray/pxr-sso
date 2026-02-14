@@ -1,76 +1,37 @@
 package config
 
 import (
-	"flag"
-	"os"
 	"time"
-
-	"github.com/ilyakaznacheev/cleanenv"
 )
 
 // Config is the project configuration.
 type Config struct {
-	Env         string       `yaml:"env" env-default:"local"`
-	GRPC        GRPCConfig   `yaml:"grpc" env-required:"true"`
-	Tokens      TokensConfig `yaml:"tokens" env-required:"true"`
-	StoragePath string       `yaml:"storage_path" env-required:"true"`
-	Kafka       KafkaConfig  `yaml:"kafka" env-required:"true"`
+	Env      string         `yaml:"env" env:"ENV" env-default:"local" env-upd:""`
+	GRPC     GRPCConfig     `yaml:"grpc" env-required:"true"`
+	Postgres PostgresConfig `yaml:"postgres" env-required:"true"`
+	Redis    RedisConfig    `yaml:"redis" env-required:"true"`
+	Tokens   TokensConfig   `yaml:"tokens" env-required:"true"`
 }
 
 // GRPCConfig is the gRPC controller configuration.
 type GRPCConfig struct {
-	Port    string        `yaml:"port" env-required:"true"`
-	Timeout time.Duration `yaml:"timeout" env-required:"true"`
+	Port    string        `yaml:"port" evn:"PXR_SSO_GRPC_PORT" env-required:"true" env-upd:""`
+	Timeout time.Duration `yaml:"timeout" env:"PXR_SSO_GRPC_TIMEOUT" env-required:"true" env-upd:""`
+}
+
+// PostgresConfig is the PostgreSQL storage configuration.
+type PostgresConfig struct {
+	ConnectionURL string `yaml:"connection_url" env:"PXR_SSO_POSTGRES_URL" env-required:"true" env-upd:""`
+}
+
+// RedisConfig is the redis storage configuration.
+type RedisConfig struct {
+	ConnectionURL string        `yaml:"connection_url" env:"PXR_SSO_REDIS_URL" env-required:"true" env-upd:""`
+	FlowTTL       time.Duration `yaml:"flow_ttl" env:"PXR_SSO_REDIS_FLOW_TTL" env-required:"true" env-upd:""`
 }
 
 // TokensConfig is the auth tokens configuration.
 type TokensConfig struct {
-	AccessTokenTTL  time.Duration `yaml:"access_token_ttl" env-required:"true"`
-	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl" env-required:"true"`
-}
-
-// KafkaConfig is the kafka configuration.
-type KafkaConfig struct {
-	Address        string `yaml:"address" env-required:"true"`
-	NumberOfTopics int    `yaml:"number_of_topics" env-required:"true"`
-}
-
-// MustLoad loads config and panics if any error occurs.
-func MustLoad() *Config {
-	path := fetchConfigPath()
-	if path == "" {
-		panic("config path is empty")
-	}
-
-	return MustLoadByPath(path)
-}
-
-// MustLoadByPath loads config by path and panics if any error occurs.
-func MustLoadByPath(configPath string) *Config {
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		panic("config file does not exist: " + configPath)
-	}
-
-	var cfg Config
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
-		panic("cannot read config: " + err.Error())
-	}
-
-	return &cfg
-}
-
-// fetchConfigPath fetches config path from command line flag or environment variable.
-// Priority: flag > env > default.
-// Default value is empty string.
-func fetchConfigPath() string {
-	var path string
-
-	flag.StringVar(&path, "config", "", "path to config file")
-	flag.Parse()
-
-	if path == "" {
-		path = os.Getenv("CONFIG_PATH")
-	}
-
-	return path
+	AccessTokenTTL  time.Duration `yaml:"access_token_ttl" env:"PXR_SSO_ACCESS_TOKEN_TTL" env-required:"true" env-upd:""`
+	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl" env:"PXR_SSO_REFRESH_TOKEN_TTL" env-required:"true" env-upd:""`
 }

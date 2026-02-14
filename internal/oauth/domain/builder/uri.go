@@ -19,7 +19,7 @@ func NewURI() *URI {
 		// TODO: set this from config
 		loginRedirectURI:        "http://localhost:3000/login",
 		consentRedirectURI:      "http://localhost:3000/consent",
-		defaultErrorRedirectURI: "http://localhost:3000/sigin/error",
+		defaultErrorRedirectURI: "http://localhost:3000/signin/error",
 	}
 }
 

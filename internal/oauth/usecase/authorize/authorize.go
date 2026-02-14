@@ -3,11 +3,11 @@ package authorize
 import (
 	"context"
 	"errors"
-	"github.com/p1xray/pxr-sso/internal/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
+	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
