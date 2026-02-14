@@ -2,7 +2,8 @@ package app
 
 import (
 	grpcapp "github.com/p1xray/pxr-sso/internal/app/grpc"
-	"github.com/p1xray/pxr-sso/internal/config"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/generator"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/postgresql"
@@ -27,34 +28,38 @@ type App struct {
 // New creates a new application.
 func New(
 	log *slog.Logger,
-	cfg *config.Config,
+	cfg Config,
 ) *App {
-	// Storages.
-	// TODO: get postgresql connection URL from config
-	storage, err := postgresql.New("postgresql://postgres:admin@127.0.0.1:5432/sso?sslmode=disable")
+	// storages
+	storage, err := postgresql.New(cfg.Postgres)
 	if err != nil {
 		panic(err)
 	}
 
-	// TODO: get redis connection URL from config
-	redisStorage, err := redis.New("redis://test_redis_user:test_redis_user_pass@localhost:6380/0")
+	redisStorage, err := redis.New(cfg.Redis)
 	if err != nil {
 		panic(err)
 	}
 
-	// Repositories.
+	// repositories
 	oauthRepository := repository.NewRepository(storage)
 
-	// Use-cases.
-	authorizeUseCase := authorize.New(log, oauthRepository, redisStorage)
-	loginUseCase := login.New(log, oauthRepository, redisStorage)
-	registerUseCase := register.New(log, oauthRepository, redisStorage)
-	consentUseCase := consent.New(log, oauthRepository, redisStorage)
-	tokenUseCase := token.New(log, oauthRepository, redisStorage)
+	// builders
+	uriBuilder := builder.NewURI(cfg.URIBuilder)
+
+	// generators
+	tokenGenerator := generator.NewToken(cfg.Token)
+
+	// use cases
+	authorizeUseCase := authorize.New(log, uriBuilder, oauthRepository, redisStorage)
+	loginUseCase := login.New(log, uriBuilder, oauthRepository, redisStorage)
+	registerUseCase := register.New(log, uriBuilder, oauthRepository, redisStorage)
+	consentUseCase := consent.New(log, uriBuilder, oauthRepository, redisStorage)
+	tokenUseCase := token.New(log, tokenGenerator, oauthRepository, redisStorage)
 
 	grpcApp := grpcapp.New(
 		log,
-		cfg.GRPC.Port,
+		cfg.GRPC,
 		authorizeUseCase,
 		loginUseCase,
 		registerUseCase,

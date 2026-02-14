@@ -12,15 +12,12 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/login"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/register"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator/token"
-	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
-	jwtcreator "github.com/p1xray/pxr-sso/pkg/jwt/creator"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
-	"golang.org/x/crypto/bcrypt"
-	"time"
 )
 
 type OAuth struct {
-	uriBuilder *builder.URI
+	uriBuilder     *builder.URI
+	tokenGenerator *generator.Token
 
 	client nullable.Nullable[dto.Client]
 	flow   nullable.Nullable[dto.Flow]
@@ -47,13 +44,15 @@ func NewOAuth(setters ...OAuthOption) *OAuth {
 func (o *OAuth) Authorize(data dto.Authorize) error {
 	// validate request parameters
 	validator := authorize.NewValidator(data, o.client)
-	if err := o.validateAuthorizeRequestParams(validator); err != nil {
-		return err
+	if err := validator.Validate(); err != nil {
+		validatedData := validator.ValidatedData()
+		o.HandleError(err, validatedData.RedirectURI())
+
+		return fmt.Errorf("%s: %w", "validate request parameters", err.Unwrap())
 	}
-
-	validatedData := validator.ValidatedData()
-
+	
 	// create flow data
+	validatedData := validator.ValidatedData()
 	err := o.createFlow(validatedData)
 	if err != nil {
 		return err
@@ -149,23 +148,12 @@ func (o *OAuth) ExchangeToken(data dto.ExchangeToken) (dto.Token, error) {
 
 	// generate tokens
 	scope := validator.ValidatedScope()
-	tokens, err := o.generateTokens(scope)
+	tokens, err := o.generateTokens(scope, data.Audience())
 	if err != nil {
 		return dto.Token{}, err
 	}
 
 	return tokens, nil
-}
-
-func (o *OAuth) validateAuthorizeRequestParams(validator *authorize.Validator) error {
-	if err := validator.Validate(); err != nil {
-		validatedData := validator.ValidatedData()
-		o.HandleError(err, validatedData.RedirectURI())
-
-		return fmt.Errorf("%s: %w", "validate request parameters", err.Unwrap())
-	}
-
-	return nil
 }
 
 func (o *OAuth) generateFlowID() (uuid.UUID, error) {
@@ -177,90 +165,23 @@ func (o *OAuth) generateFlowID() (uuid.UUID, error) {
 	return id, nil
 }
 
-func (o *OAuth) generateTokens(scope []string) (dto.Token, error) {
-	const op = "generate tokens"
-
-	accessTokenClaims, accessToken, err := o.generateAccessToken(scope)
-	if err != nil {
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
-	}
-
-	_, refreshToken, err := o.generateRefreshToken()
-	if err != nil {
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
-	}
-
-	_, idToken, err := o.generateIDToken(scope)
-	if err != nil {
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
-	}
-
-	tokens := dto.NewToken(
-		accessToken,
-		accessTokenClaims.TokenType,
-		refreshToken,
-		idToken,
-		jwtclaims.NumericDateToInt64(accessTokenClaims.Expiry),
-	)
-
-	return tokens, nil
-}
-
-func (o *OAuth) generateAccessToken(scope []string) (jwtclaims.AccessTokenClaims, string, error) {
-	const op = "access token"
-
+func (o *OAuth) generateTokens(scope []string, audiences string) (dto.Token, error) {
 	user, err := o.User()
 	if err != nil {
-		return jwtclaims.AccessTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, err
 	}
 
 	client, err := o.Client()
 	if err != nil {
-		return jwtclaims.AccessTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, err
 	}
 
-	createAccessTokenData := jwtcreator.AccessTokenCreateData{
-		Subject: user.IDString(),
-		// TODO: get this from request parameters and validate with client audiences
-		Audiences: []string{"http://localhost:3000"},
-		// TODO: add to scope user permissions
-		Scopes: scope,
-		// TODO: get this from from proto request
-		Issuer: "http://localhost:6003",
-		// TODO: get this from config
-		TTL: 1 * time.Hour,
-		Key: []byte(client.SecretKey()),
-	}
-	claims, accessToken, err := jwtcreator.NewAccessToken(createAccessTokenData)
+	tokens, err := o.tokenGenerator.GenerateTokens(scope, audiences, user, client)
 	if err != nil {
-		return jwtclaims.AccessTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, err
 	}
 
-	return claims, accessToken, nil
-}
-
-func (o *OAuth) generateRefreshToken() (jwtclaims.RefreshTokenClaims, string, error) {
-	const op = "refresh token"
-
-	client, err := o.Client()
-	if err != nil {
-		return jwtclaims.RefreshTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
-	}
-
-	// TODO: get refresh token TTL from config
-	claims, refreshToken, err := jwtcreator.NewRefreshToken([]byte(client.SecretKey()), 24*time.Hour)
-	if err != nil {
-		return jwtclaims.RefreshTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
-	}
-
-	return claims, refreshToken, nil
-}
-
-func (o *OAuth) generateIDToken(scope []string) (jwtclaims.RefreshTokenClaims, string, error) {
-	const op = "id token"
-
-	// TODO: implement this
-	return jwtclaims.RefreshTokenClaims{}, "", nil
+	return tokens, nil
 }
 
 func (o *OAuth) HandleError(err *domain.OAuthError, redirectURI string) {
@@ -368,7 +289,7 @@ func (o *OAuth) updateFlow(setters ...dto.FlowOption) error {
 }
 
 func (o *OAuth) setFlowAuthorizationCode() error {
-	code := generator.NewAuthorizationCode()
+	code := generator.AuthorizationCode()
 	if err := o.updateFlow(dto.WithAuthorizationCode(code)); err != nil {
 		return fmt.Errorf("set flow authorization code: %w", err)
 	}
@@ -402,26 +323,20 @@ func (o *OAuth) Flow() (dto.Flow, error) {
 }
 
 func (o *OAuth) createNewUser(data dto.Register) error {
-	passwordHash, err := o.generatePasswordHash(data.Password())
+	passwordHash, err := generator.PasswordHash(data.Password())
 	if err != nil {
 		return fmt.Errorf("%s: %w", "create new user", err)
 	}
 
-	user := dto.NewRegisteringUser(data.Username(), passwordHash, data.FullName(), []dto.Role{})
+	client, err := o.Client()
+	if err != nil {
+		return fmt.Errorf("%s: %w", "create new user", err)
+	}
+
+	user := dto.NewRegisteringUser(data.Username(), passwordHash, data.FullName(), client.DefaultRoles())
 	o.setUser(user)
 
 	return nil
-}
-
-func (o *OAuth) generatePasswordHash(password string) (string, error) {
-	passwordHash, err := bcrypt.GenerateFromPassword(
-		[]byte(password),
-		bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", "generate password hash", err)
-	}
-
-	return string(passwordHash), nil
 }
 
 func (o *OAuth) setUser(user dto.User) {

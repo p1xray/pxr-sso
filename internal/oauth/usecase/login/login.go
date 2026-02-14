@@ -25,17 +25,19 @@ type Redis interface {
 
 // UseCase is a use-case for logging in a user.
 type UseCase struct {
-	log   *slog.Logger
-	repo  Repository
-	redis Redis
+	log        *slog.Logger
+	uriBuilder *builder.URI
+	repo       Repository
+	redis      Redis
 }
 
 // New returns new log in use-case.
-func New(log *slog.Logger, repo Repository, redis Redis) *UseCase {
+func New(log *slog.Logger, uriBuilder *builder.URI, repo Repository, redis Redis) *UseCase {
 	return &UseCase{
-		log:   log,
-		repo:  repo,
-		redis: redis,
+		log:        log,
+		uriBuilder: uriBuilder,
+		repo:       repo,
+		redis:      redis,
 	}
 }
 
@@ -54,8 +56,6 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		slog.String("username", data.Username),
 	)
 	log.Info("attempting to login user")
-
-	uriBuilder := builder.NewURI()
 
 	// get flow from redis
 	flow, err := uc.redis.Flow(ctx, data.FlowID)
@@ -95,7 +95,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 
 	// login logic
 	oauthEntity := entity.NewOAuth(
-		entity.WithBuilderURI(uriBuilder),
+		entity.WithBuilderURI(uc.uriBuilder),
 		entity.WithFlow(flow),
 		entity.WithClient(client),
 		entity.WithUser(user),

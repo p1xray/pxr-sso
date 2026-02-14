@@ -2,11 +2,16 @@ env: 'local'
 grpc:
   port: 6004
   timeout: 1h
-tokens:
+token:
   access_token_ttl: 1h
   refresh_token_ttl: 24h
+  issuer: 'http://localhost:6003'
 postgres:
   connection_url: 'postgresql://postgres:admin@127.0.0.1:5432/sso?sslmode=disable'
 redis:
   connection_url: 'redis://test_redis_user:test_redis_user_pass@localhost:6380/0'
   flow_ttl: 10m
+uri_builder:
+  login: 'http://localhost:3000/login'
+  consent: 'http://localhost:3000/consent'
+  error: 'http://localhost:3000/signin/error'

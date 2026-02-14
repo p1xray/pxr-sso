@@ -161,7 +161,9 @@ func (s *serverAPI) Token(
 		AuthorizationCode: req.GetCode(),
 		RedirectURI:       req.GetRedirectUri(),
 		CodeVerifier:      req.GetCodeVerifier(),
-		Scope:             req.GetScope(),
+		// TODO: add audience to proto
+		// Audience:          req.GetAudience(),
+		Scope: req.GetScope(),
 	}
 	tokens, err := s.tokenUseCase.Execute(ctx, tokenParams)
 	if err != nil {

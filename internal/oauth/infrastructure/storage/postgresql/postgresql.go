@@ -17,10 +17,10 @@ type Storage struct {
 }
 
 // New creates a new instance of the PostgreSQL store.
-func New(connectionURL string) (*Storage, error) {
+func New(cfg Config) (*Storage, error) {
 	const op = "infrastructure.storage.postgresql.New"
 
-	pg, err := postgresql.New(connectionURL)
+	pg, err := postgresql.New(cfg.ConnectionURL)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

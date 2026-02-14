@@ -17,14 +17,14 @@ type App struct {
 // New creates new gRPC controller application.
 func New(
 	log *slog.Logger,
-	port string,
+	cfg Config,
 	authorizeUseCase controller.Authorize,
 	loginUseCase controller.Login,
 	registerUseCase controller.Register,
 	consentUseCase controller.Consent,
 	tokenUseCase controller.Token,
 ) *App {
-	gRPCServer := grpcserver.New(grpcserver.WithPort(port))
+	gRPCServer := grpcserver.New(grpcserver.WithPort(cfg.Port))
 
 	grpc.NewRouter(
 		gRPCServer.App,
@@ -37,7 +37,7 @@ func New(
 
 	return &App{
 		log:        log,
-		port:       port,
+		port:       cfg.Port,
 		gRPCServer: gRPCServer,
 	}
 }

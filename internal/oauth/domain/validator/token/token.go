@@ -55,6 +55,10 @@ func (v *Validator) Validate() error {
 		return err
 	}
 
+	if err := v.validateAudience(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -302,4 +306,41 @@ func (v *Validator) validateCodeVerifierHashEqualsFlowCodeChallenge() error {
 	}
 
 	return nil
+}
+
+func (v *Validator) validateAudience() error {
+	if err := v.validateAudienceRequired(); err != nil {
+		return err
+	}
+
+	if err := v.validateAudienceRegisteredForClient(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (v *Validator) validateAudienceRequired() error {
+	if v.params.Audience() == "" {
+		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameAudience)
+	}
+
+	return nil
+}
+
+func (v *Validator) validateAudienceRegisteredForClient() error {
+	if v.audienceRegisteredForClient() == false {
+		return domain.ErrOAuthAudienceNotRegisteredForClient
+	}
+
+	return nil
+}
+
+func (v *Validator) audienceRegisteredForClient() bool {
+	if v.client.IsNone() {
+		return false
+	}
+
+	client := v.client.Unwrap()
+	return slices.Contains(client.Audiences(), v.params.Audience())
 }

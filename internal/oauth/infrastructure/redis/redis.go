@@ -19,8 +19,8 @@ type Redis struct {
 	client *redis.Client
 }
 
-func New(connectionURL string) (*Redis, error) {
-	opt, err := redis.ParseURL(connectionURL)
+func New(cfg Config) (*Redis, error) {
+	opt, err := redis.ParseURL(cfg.ConnectionURL)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", "parse redis connection URL", err)
 	}

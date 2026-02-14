@@ -7,5 +7,6 @@ type Params struct {
 	AuthorizationCode string
 	RedirectURI       string
 	CodeVerifier      string
+	Audience          string
 	Scope             []string
 }

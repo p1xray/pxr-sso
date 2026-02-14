@@ -24,17 +24,19 @@ type Redis interface {
 
 // UseCase is a use-case for OAuth authorize.
 type UseCase struct {
-	log   *slog.Logger
-	repo  Repository
-	redis Redis
+	log        *slog.Logger
+	uriBuilder *builder.URI
+	repo       Repository
+	redis      Redis
 }
 
 // New returns new OAuth authorize use-case.
-func New(log *slog.Logger, repo Repository, redis Redis) *UseCase {
+func New(log *slog.Logger, uriBuilder *builder.URI, repo Repository, redis Redis) *UseCase {
 	return &UseCase{
-		log:   log,
-		repo:  repo,
-		redis: redis,
+		log:        log,
+		uriBuilder: uriBuilder,
+		repo:       repo,
+		redis:      redis,
 	}
 }
 
@@ -54,8 +56,6 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 	)
 	log.Info("attempting to initiate user authorization")
 
-	uriBuilder := builder.NewURI()
-
 	// get client from storage
 	nullableClient := nullable.None[dto.Client]()
 	if len(data.ClientID) == 1 {
@@ -66,7 +66,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 			} else {
 				log.Error(err.Error())
 
-				redirectURI := uriBuilder.BuildErrorRedirectURI("", domain.ServerErrorOAuthError(err))
+				redirectURI := uc.uriBuilder.BuildErrorRedirectURI("", domain.ServerErrorOAuthError(err))
 
 				return redirectURI
 			}
@@ -77,7 +77,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 
 	// authorize logic
 	oauthEntity := entity.NewOAuth(
-		entity.WithBuilderURI(uriBuilder),
+		entity.WithBuilderURI(uc.uriBuilder),
 		entity.WithNullableClient(nullableClient),
 	)
 

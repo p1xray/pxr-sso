@@ -11,6 +11,7 @@ var (
 	ErrOAuthParameterIncludedMoreThanOnce     = errors.New("the parameter included in the request more than once")
 	ErrOAuthParameterInvalidValue             = errors.New("the parameter have an invalid value")
 	ErrOAuthRedirectURINotRegisteredForClient = errors.New("the redirect_uri used in the request is not registered for the client being used")
+	ErrOAuthAudienceNotRegisteredForClient    = errors.New("the audience used in the request is not registered for the client being used")
 	ErrOAuthClientNotRegistered               = errors.New("the client with the provided client_id is not registered")
 	ErrOAuthFlowNotExists                     = errors.New("the flow with the provided flow_id is not exists")
 	ErrOAuthInvalidUserCredentials            = errors.New("user with the provided credentials is not exists")

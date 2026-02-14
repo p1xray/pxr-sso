@@ -3,6 +3,7 @@ package entity
 import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/generator"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 )
 
@@ -13,6 +14,13 @@ type OAuthOption func(*OAuth)
 func WithBuilderURI(uriBuilder *builder.URI) OAuthOption {
 	return func(a *OAuth) {
 		a.uriBuilder = uriBuilder
+	}
+}
+
+// WithTokenGenerator is an option which sets up the token generator for the OAuth.
+func WithTokenGenerator(tokenGenerator *generator.Token) OAuthOption {
+	return func(a *OAuth) {
+		a.tokenGenerator = tokenGenerator
 	}
 }
 

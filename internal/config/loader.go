@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
+	"github.com/p1xray/pxr-sso/internal/app"
 	"os"
 )
 
@@ -21,7 +22,7 @@ const (
 )
 
 type Loader struct {
-	cfg Config
+	cfg app.Config
 
 	commonConfigPath      string
 	environmentConfigPath string
@@ -32,7 +33,7 @@ func NewLoader() *Loader {
 }
 
 // MustLoad loads config and panics if any error occurs.
-func (l *Loader) MustLoad() *Config {
+func (l *Loader) MustLoad() app.Config {
 	l.fetchPath()
 
 	if err := l.loadCommonConfig(); err != nil {
@@ -41,7 +42,7 @@ func (l *Loader) MustLoad() *Config {
 
 	_ = l.loadEnvironmentConfig()
 
-	return &l.cfg
+	return l.cfg
 }
 
 // fetchPath fetches path from command line flag or environment variable.

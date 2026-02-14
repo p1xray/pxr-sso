@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/generator"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
@@ -26,17 +27,19 @@ type Redis interface {
 
 // UseCase is a use-case for exchange token.
 type UseCase struct {
-	log   *slog.Logger
-	repo  Repository
-	redis Redis
+	log            *slog.Logger
+	tokenGenerator *generator.Token
+	repo           Repository
+	redis          Redis
 }
 
 // New returns new exchange token use-case.
-func New(log *slog.Logger, repo Repository, redis Redis) *UseCase {
+func New(log *slog.Logger, tokenGenerator *generator.Token, repo Repository, redis Redis) *UseCase {
 	return &UseCase{
-		log:   log,
-		repo:  repo,
-		redis: redis,
+		log:            log,
+		tokenGenerator: tokenGenerator,
+		repo:           repo,
+		redis:          redis,
 	}
 }
 
@@ -94,6 +97,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) 
 
 	// exchange token logic.
 	oauthEntity := entity.NewOAuth(
+		entity.WithTokenGenerator(uc.tokenGenerator),
 		entity.WithFlow(flow),
 		entity.WithUser(user),
 		entity.WithClient(client),
@@ -106,6 +110,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) 
 		data.AuthorizationCode,
 		data.RedirectURI,
 		data.CodeVerifier,
+		data.Audience,
 		data.Scope,
 	)
 	tokens, err := oauthEntity.ExchangeToken(exchangeTokenParams)

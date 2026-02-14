@@ -16,6 +16,7 @@ const (
 	RequestParameterNameCodeVerifier        = "code_verifier"
 	RequestParameterNameFullName            = "full_name"
 	RequestParameterNameScope               = "scope"
+	RequestParameterNameAudience            = "audience"
 
 	RequestParameterNameError            = "error"
 	RequestParameterNameErrorDescription = "error_description"

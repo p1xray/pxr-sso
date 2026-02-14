@@ -5,7 +5,7 @@ import "math/rand"
 const symbols = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHILKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 const authorizationCodeLength = 10
 
-func NewAuthorizationCode() string {
+func AuthorizationCode() string {
 	code := randomString(authorizationCodeLength)
 	return code
 }

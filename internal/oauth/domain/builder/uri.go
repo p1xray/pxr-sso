@@ -14,12 +14,11 @@ type URI struct {
 	defaultErrorRedirectURI string
 }
 
-func NewURI() *URI {
+func NewURI(cfg URIBuilderConfig) *URI {
 	return &URI{
-		// TODO: set this from config
-		loginRedirectURI:        "http://localhost:3000/login",
-		consentRedirectURI:      "http://localhost:3000/consent",
-		defaultErrorRedirectURI: "http://localhost:3000/signin/error",
+		loginRedirectURI:        cfg.Login,
+		consentRedirectURI:      cfg.Consent,
+		defaultErrorRedirectURI: cfg.Error,
 	}
 }
 
