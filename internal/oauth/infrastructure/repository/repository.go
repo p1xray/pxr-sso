@@ -5,6 +5,8 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/models"
 )
 
+const pkgTag = "storage repository"
+
 const emptyID = 0
 
 type Storage interface {

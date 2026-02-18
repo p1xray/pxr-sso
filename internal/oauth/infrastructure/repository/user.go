@@ -11,16 +11,16 @@ import (
 type UserOption func(context.Context, *Repository, *models.User) error
 
 func (r *Repository) UserByUsername(ctx context.Context, username string, opts ...UserOption) (dto.User, error) {
-	const op = "user repository: get user by username"
+	const op = "get user by username"
 
 	user, err := r.storage.UserByUsername(ctx, username)
 	if err != nil {
-		return dto.User{}, fmt.Errorf("%s: %w", op, err)
+		return dto.User{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	for _, opt := range opts {
 		if err = opt(ctx, r, &user); err != nil {
-			return dto.User{}, fmt.Errorf("%s: %w", op, err)
+			return dto.User{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 	}
 
@@ -31,7 +31,7 @@ func (r *Repository) UserByUsername(ctx context.Context, username string, opts .
 func (r *Repository) userRoles(ctx context.Context, userID int64) ([]models.UserRoleLink, error) {
 	userRoleLinks, err := r.storage.UserRoleLinks(ctx, userID)
 	if err != nil {
-		return []models.UserRoleLink{}, fmt.Errorf("%s: %w", "get user role links", err)
+		return []models.UserRoleLink{}, err
 	}
 
 	roleIDs := make([]int64, len(userRoleLinks))
@@ -57,21 +57,21 @@ func (r *Repository) userRoles(ctx context.Context, userID int64) ([]models.User
 }
 
 func (r *Repository) CreateUser(ctx context.Context, user dto.User, clientID int64) error {
-	const op = "user repository: create user"
+	const op = "create new user"
 
 	err := r.storage.WithTransaction(ctx, func() error {
 		newUserID, err := r.createUser(ctx, user)
 		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
+			return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		if err = r.createUserClientLink(ctx, newUserID, clientID); err != nil {
-			return fmt.Errorf("%s: %w", op, err)
+			return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		for _, role := range user.Roles() {
 			if err = r.createUserRoleLink(ctx, newUserID, role.ID()); err != nil {
-				return fmt.Errorf("%s: %w", op, err)
+				return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 			}
 		}
 
@@ -79,7 +79,7 @@ func (r *Repository) CreateUser(ctx context.Context, user dto.User, clientID int
 	})
 
 	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return nil

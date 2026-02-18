@@ -11,16 +11,16 @@ import (
 type ClientOption func(context.Context, *Repository, *models.Client) error
 
 func (r *Repository) ClientByCode(ctx context.Context, code string, opts ...ClientOption) (dto.Client, error) {
-	const op = "client repository: get client by code"
+	const op = "get client by code"
 
 	client, err := r.storage.ClientByCode(ctx, code)
 	if err != nil {
-		return dto.Client{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Client{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	for _, opt := range opts {
 		if err = opt(ctx, r, &client); err != nil {
-			return dto.Client{}, fmt.Errorf("%s: %w", op, err)
+			return dto.Client{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 	}
 
@@ -31,7 +31,7 @@ func (r *Repository) ClientByCode(ctx context.Context, code string, opts ...Clie
 func (r *Repository) clientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error) {
 	audiences, err := r.storage.ClientAudiences(ctx, clientID)
 	if err != nil {
-		return []models.Audience{}, fmt.Errorf("%s: %w", "get client audiences", err)
+		return []models.Audience{}, err
 	}
 
 	return audiences, nil
@@ -40,7 +40,7 @@ func (r *Repository) clientAudiences(ctx context.Context, clientID int64) ([]mod
 func (r *Repository) clientRedirectURIs(ctx context.Context, clientID int64) ([]models.RedirectURI, error) {
 	redirectURIs, err := r.storage.ClientRedirectURIs(ctx, clientID)
 	if err != nil {
-		return []models.RedirectURI{}, fmt.Errorf("%s: %w", "get client redirect URIs", err)
+		return []models.RedirectURI{}, err
 	}
 
 	return redirectURIs, nil
@@ -49,7 +49,7 @@ func (r *Repository) clientRedirectURIs(ctx context.Context, clientID int64) ([]
 func (r *Repository) clientScopes(ctx context.Context, clientID int64) ([]models.ClientScopeLink, error) {
 	clientScopeLinks, err := r.storage.ClientScopeLinks(ctx, clientID)
 	if err != nil {
-		return []models.ClientScopeLink{}, fmt.Errorf("%s: %w", "get client scope links", err)
+		return []models.ClientScopeLink{}, err
 	}
 
 	scopeIDs := make([]int64, len(clientScopeLinks))
@@ -59,7 +59,7 @@ func (r *Repository) clientScopes(ctx context.Context, clientID int64) ([]models
 
 	scopes, err := r.storage.Scopes(ctx, scopeIDs)
 	if err != nil {
-		return []models.ClientScopeLink{}, fmt.Errorf("%s: %w", "get scopes", err)
+		return []models.ClientScopeLink{}, err
 	}
 
 	for i := range clientScopeLinks {
@@ -77,7 +77,7 @@ func (r *Repository) clientScopes(ctx context.Context, clientID int64) ([]models
 func (r *Repository) clientDefaultRoles(ctx context.Context, clientID int64) ([]models.ClientDefaultRoleLink, error) {
 	clientDefaultRoleLinks, err := r.storage.ClientDefaultRoleLinks(ctx, clientID)
 	if err != nil {
-		return []models.ClientDefaultRoleLink{}, fmt.Errorf("%s: %w", "get client default role links", err)
+		return []models.ClientDefaultRoleLink{}, err
 	}
 
 	roleIDs := make([]int64, len(clientDefaultRoleLinks))

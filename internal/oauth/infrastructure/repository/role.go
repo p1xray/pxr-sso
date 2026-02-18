@@ -2,14 +2,13 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/models"
 )
 
 func (r *Repository) roles(ctx context.Context, ids []int64) ([]models.Role, error) {
 	roles, err := r.storage.Roles(ctx, ids)
 	if err != nil {
-		return []models.Role{}, fmt.Errorf("%s: %w", "get roles", err)
+		return []models.Role{}, err
 	}
 
 	rolePermissionLinks, err := r.rolePermissions(ctx, ids)
@@ -34,7 +33,7 @@ func (r *Repository) roles(ctx context.Context, ids []int64) ([]models.Role, err
 func (r *Repository) rolePermissions(ctx context.Context, roleIDs []int64) ([]models.RolePermissionLink, error) {
 	rolePermissionLinks, err := r.storage.RolePermissionLinks(ctx, roleIDs)
 	if err != nil {
-		return []models.RolePermissionLink{}, fmt.Errorf("%s: %w", "get role permission links", err)
+		return []models.RolePermissionLink{}, err
 	}
 
 	permissionIDs := make([]int64, len(rolePermissionLinks))
@@ -44,7 +43,7 @@ func (r *Repository) rolePermissions(ctx context.Context, roleIDs []int64) ([]mo
 
 	permissions, err := r.storage.Permissions(ctx, permissionIDs)
 	if err != nil {
-		return []models.RolePermissionLink{}, fmt.Errorf("%s: %w", "get permissions", err)
+		return []models.RolePermissionLink{}, err
 	}
 
 	for i := range rolePermissionLinks {
