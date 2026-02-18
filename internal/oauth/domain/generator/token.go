@@ -29,21 +29,21 @@ func (t *Token) GenerateTokens(
 	user dto.User,
 	client dto.Client,
 ) (dto.Token, error) {
-	const op = "generate tokens"
+	const op = "tokens"
 
 	accessTokenClaims, accessToken, err := t.generateAccessToken(scope, audience, user, client)
 	if err != nil {
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	_, refreshToken, err := t.generateRefreshToken(client.SecretKey())
 	if err != nil {
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	_, idToken, err := t.generateIDToken(scope)
 	if err != nil {
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	tokens := dto.NewToken(

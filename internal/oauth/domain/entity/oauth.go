@@ -42,31 +42,35 @@ func NewOAuth(setters ...OAuthOption) *OAuth {
 }
 
 func (o *OAuth) Authorize(data dto.Authorize) error {
+	const op = "oauth authorize"
+
 	// validate request parameters
 	validator := authorize.NewValidator(data, o.client)
 	if err := validator.Validate(); err != nil {
 		validatedData := validator.ValidatedData()
 		o.HandleError(err, validatedData.RedirectURI())
 
-		return fmt.Errorf("%s: %w", "validate request parameters", err.Unwrap())
+		return fmt.Errorf("%s: %w", op, err.Unwrap())
 	}
-	
+
 	// create flow data
 	validatedData := validator.ValidatedData()
 	err := o.createFlow(validatedData)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	// build redirect URI to login page
 	if err = o.createLoginRedirectURI(); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
 }
 
 func (o *OAuth) Login(data dto.Login) *domain.DisplayableError {
+	const op = "oauth login"
+
 	// validate request parameters
 	validator := login.NewValidator(data, o.client, o.flow, o.user)
 	if err := validator.Validate(); err != nil {
@@ -91,6 +95,8 @@ func (o *OAuth) Login(data dto.Login) *domain.DisplayableError {
 }
 
 func (o *OAuth) Register(data dto.Register) *domain.DisplayableError {
+	const op = "oauth register"
+
 	// validate request parameters
 	validator := register.NewValidator(data, o.client, o.flow, o.user)
 	if err := validator.Validate(); err != nil {
@@ -120,37 +126,41 @@ func (o *OAuth) Register(data dto.Register) *domain.DisplayableError {
 }
 
 func (o *OAuth) Consent(data dto.Consent) error {
+	const op = "oauth confirm consent"
+
 	// validate request parameters
 	validator := consent.NewValidator(data, o.client, o.flow)
 	if err := validator.Validate(); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	// generate authorization code
 	if err := o.setFlowAuthorizationCode(); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	// build callback redirect URI
 	if err := o.createCallbackRedirectURI(); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
 }
 
 func (o *OAuth) ExchangeToken(data dto.ExchangeToken) (dto.Token, error) {
+	const op = "oauth exchange token"
+
 	// validate request parameters
 	validator := token.NewValidator(data, o.client, o.flow)
 	if err := validator.Validate(); err != nil {
-		return dto.Token{}, err
+		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	// generate tokens
 	scope := validator.ValidatedScope()
 	tokens, err := o.generateTokens(scope, data.Audience())
 	if err != nil {
-		return dto.Token{}, err
+		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return tokens, nil
@@ -166,19 +176,21 @@ func (o *OAuth) generateFlowID() (uuid.UUID, error) {
 }
 
 func (o *OAuth) generateTokens(scope []string, audiences string) (dto.Token, error) {
+	const op = "generate tokens"
+
 	user, err := o.User()
 	if err != nil {
-		return dto.Token{}, err
+		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	client, err := o.Client()
 	if err != nil {
-		return dto.Token{}, err
+		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	tokens, err := o.tokenGenerator.GenerateTokens(scope, audiences, user, client)
 	if err != nil {
-		return dto.Token{}, err
+		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return tokens, nil
