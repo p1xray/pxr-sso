@@ -91,7 +91,7 @@ func (s *Storage) ClientByCode(ctx context.Context, code string) (models.Client,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.Client{}, fmt.Errorf("%s: %s: %w: %s", pkgTag, op, infrastructure.ErrEntityNotFound, err.Error())
+			return models.Client{}, fmt.Errorf("%s: %s: %w", pkgTag, op, infrastructure.ErrEntityNotFound)
 		}
 
 		return models.Client{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
@@ -550,7 +550,7 @@ func (s *Storage) UserByUsername(ctx context.Context, username string) (models.U
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.User{}, fmt.Errorf("%s: %s: %w: %s", pkgTag, op, infrastructure.ErrEntityNotFound, err.Error())
+			return models.User{}, fmt.Errorf("%s: %s: %w", pkgTag, op, infrastructure.ErrEntityNotFound)
 		}
 
 		return models.User{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)

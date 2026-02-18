@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+const pkgTag = "redis storage"
+
 type Redis struct {
 	client *redis.Client
 }
@@ -22,7 +24,7 @@ type Redis struct {
 func New(cfg Config) (*Redis, error) {
 	opt, err := redis.ParseURL(cfg.ConnectionURL)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", "parse redis connection URL", err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, "parse connection URL", err)
 	}
 	client := redis.NewClient(opt)
 
@@ -32,48 +34,52 @@ func New(cfg Config) (*Redis, error) {
 }
 
 func (r *Redis) Flow(ctx context.Context, id string) (dto.Flow, error) {
-	const op = "infrastructure.redis.Flow"
-
-	redisFlow := models.Flow{}
+	const op = "get flow"
 
 	redisFlowKey := builder.BuildRedisFlowKey(id)
-	if err := r.client.Get(ctx, redisFlowKey).Scan(&redisFlow); err != nil {
+	cmd := r.client.Get(ctx, redisFlowKey)
+
+	redisFlow := models.Flow{}
+	if err := cmd.Scan(&redisFlow); err != nil {
 		if errors.Is(err, redis.Nil) {
-			return dto.Flow{}, fmt.Errorf("%s: %w", op, infrastructure.ErrEntityNotFound)
+			return dto.Flow{}, fmt.Errorf("%s: %s: %w", pkgTag, op, infrastructure.ErrEntityNotFound)
 		}
 
-		return dto.Flow{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Flow{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	fmt.Printf("redis flow: %v", redisFlow)
 
 	flow, err := converter.ToFlowDTO(redisFlow)
 	if err != nil {
-		return dto.Flow{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Flow{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return flow, nil
 }
 
 func (r *Redis) SaveFlow(ctx context.Context, flow dto.Flow) error {
-	const op = "infrastructure.redis.SaveFlow"
+	const op = "save flow"
 
 	redisFlow := converter.ToFlowRedis(flow)
-
 	redisFlowKey := builder.BuildRedisFlowKey(redisFlow.ID)
-	if err := r.client.Set(ctx, redisFlowKey, redisFlow, oauth.RedisFlowTTL*time.Minute).Err(); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+
+	cmd := r.client.Set(ctx, redisFlowKey, redisFlow, oauth.RedisFlowTTL*time.Minute)
+	if err := cmd.Err(); err != nil {
+		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return nil
 }
 
 func (r *Redis) RemoveFlow(ctx context.Context, id uuid.UUID) error {
-	const op = "infrastructure.redis.RemoveFlow"
+	const op = "remove flow"
 
 	redisFlowKey := builder.BuildRedisFlowKey(id.String())
-	if err := r.client.Del(ctx, redisFlowKey).Err(); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+
+	cmd := r.client.Del(ctx, redisFlowKey)
+	if err := cmd.Err(); err != nil {
+		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return nil
