@@ -5,11 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/models"
 	"github.com/p1xray/pxr-sso/pkg/postgresql"
 )
+
+const pkgTag = "postgresql storage"
 
 // Storage provides access to PostgreSQL storage.
 type Storage struct {
@@ -18,11 +22,11 @@ type Storage struct {
 
 // New creates a new instance of the PostgreSQL store.
 func New(cfg Config) (*Storage, error) {
-	const op = "infrastructure.storage.postgresql.New"
+	const op = "create new instance"
 
 	pg, err := postgresql.New(cfg.ConnectionURL)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return &Storage{pg: pg}, nil
@@ -36,26 +40,26 @@ func (s *Storage) Close() {
 func (s *Storage) WithTransaction(ctx context.Context, f func() error) error {
 	tx, err := s.pg.Pool.Begin(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %s: %w", pkgTag, "begin transaction", err)
 	}
 
 	if err = f(); err != nil {
 		if rbErr := tx.Rollback(ctx); rbErr != nil {
-			return rbErr
+			return fmt.Errorf("%s: %s: %w", pkgTag, "rollback transaction", rbErr)
 		}
 
 		return err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		return err
+		return fmt.Errorf("%s: %s: %w", pkgTag, "commit transaction", err)
 	}
 
 	return nil
 }
 
 func (s *Storage) ClientByCode(ctx context.Context, code string) (models.Client, error) {
-	const op = "infrastructure.storage.postgresql.ClientByCode"
+	const op = "get client by code"
 
 	stmt :=
 		`select
@@ -87,17 +91,17 @@ func (s *Storage) ClientByCode(ctx context.Context, code string) (models.Client,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.Client{}, fmt.Errorf("%s: %w", op, infrastructure.ErrEntityNotFound)
+			return models.Client{}, fmt.Errorf("%s: %s: %w: %s", pkgTag, op, infrastructure.ErrEntityNotFound, err.Error())
 		}
 
-		return models.Client{}, fmt.Errorf("%s: %w", op, err)
+		return models.Client{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return client, nil
 }
 
 func (s *Storage) ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error) {
-	const op = "infrastructure.storage.postgresql.ClientAudiences"
+	const op = "get client audiences"
 
 	stmt :=
 		`select
@@ -115,7 +119,7 @@ func (s *Storage) ClientAudiences(ctx context.Context, clientID int64) ([]models
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 	defer rows.Close()
 
@@ -131,7 +135,7 @@ func (s *Storage) ClientAudiences(ctx context.Context, clientID int64) ([]models
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		audiences = append(audiences, audience)
@@ -141,7 +145,7 @@ func (s *Storage) ClientAudiences(ctx context.Context, clientID int64) ([]models
 }
 
 func (s *Storage) ClientRedirectURIs(ctx context.Context, clientID int64) ([]models.RedirectURI, error) {
-	const op = "infrastructure.storage.postgresql.ClientRedirectURIs"
+	const op = "get client redirect uris"
 
 	stmt :=
 		`select
@@ -159,7 +163,7 @@ func (s *Storage) ClientRedirectURIs(ctx context.Context, clientID int64) ([]mod
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 	defer rows.Close()
 
@@ -175,7 +179,7 @@ func (s *Storage) ClientRedirectURIs(ctx context.Context, clientID int64) ([]mod
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		redirectURIs = append(redirectURIs, redirectURI)
@@ -185,7 +189,7 @@ func (s *Storage) ClientRedirectURIs(ctx context.Context, clientID int64) ([]mod
 }
 
 func (s *Storage) ClientScopeLinks(ctx context.Context, clientID int64) ([]models.ClientScopeLink, error) {
-	const op = "postgresql storage: get client scope links"
+	const op = "get client scope links"
 
 	stmt :=
 		`select
@@ -203,7 +207,7 @@ func (s *Storage) ClientScopeLinks(ctx context.Context, clientID int64) ([]model
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 	defer rows.Close()
 
@@ -219,7 +223,7 @@ func (s *Storage) ClientScopeLinks(ctx context.Context, clientID int64) ([]model
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		links = append(links, link)
@@ -229,7 +233,7 @@ func (s *Storage) ClientScopeLinks(ctx context.Context, clientID int64) ([]model
 }
 
 func (s *Storage) Scopes(ctx context.Context, ids []int64) ([]models.Scope, error) {
-	const op = "postgresql storage: get scopes"
+	const op = "get scopes"
 
 	stmt :=
 		`select
@@ -248,7 +252,7 @@ func (s *Storage) Scopes(ctx context.Context, ids []int64) ([]models.Scope, erro
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 	defer rows.Close()
 
@@ -265,7 +269,7 @@ func (s *Storage) Scopes(ctx context.Context, ids []int64) ([]models.Scope, erro
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		scopes = append(scopes, scope)
@@ -275,7 +279,7 @@ func (s *Storage) Scopes(ctx context.Context, ids []int64) ([]models.Scope, erro
 }
 
 func (s *Storage) ClientDefaultRoleLinks(ctx context.Context, clientID int64) ([]models.ClientDefaultRoleLink, error) {
-	const op = "postgresql storage: get client default role links"
+	const op = "get client default role links"
 
 	stmt :=
 		`select
@@ -293,7 +297,7 @@ func (s *Storage) ClientDefaultRoleLinks(ctx context.Context, clientID int64) ([
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 	defer rows.Close()
 
@@ -309,7 +313,7 @@ func (s *Storage) ClientDefaultRoleLinks(ctx context.Context, clientID int64) ([
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		links = append(links, link)
@@ -319,7 +323,7 @@ func (s *Storage) ClientDefaultRoleLinks(ctx context.Context, clientID int64) ([
 }
 
 func (s *Storage) Roles(ctx context.Context, ids []int64) ([]models.Role, error) {
-	const op = "postgresql storage: get roles"
+	const op = "get roles"
 
 	stmt :=
 		`select
@@ -340,7 +344,7 @@ func (s *Storage) Roles(ctx context.Context, ids []int64) ([]models.Role, error)
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 	defer rows.Close()
 
@@ -359,7 +363,7 @@ func (s *Storage) Roles(ctx context.Context, ids []int64) ([]models.Role, error)
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		roles = append(roles, role)
@@ -369,7 +373,7 @@ func (s *Storage) Roles(ctx context.Context, ids []int64) ([]models.Role, error)
 }
 
 func (s *Storage) RolePermissionLinks(ctx context.Context, roleIDs []int64) ([]models.RolePermissionLink, error) {
-	const op = "postgresql storage: get role permission links"
+	const op = "get role permission links"
 
 	stmt :=
 		`select
@@ -387,7 +391,7 @@ func (s *Storage) RolePermissionLinks(ctx context.Context, roleIDs []int64) ([]m
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 	defer rows.Close()
 
@@ -403,7 +407,7 @@ func (s *Storage) RolePermissionLinks(ctx context.Context, roleIDs []int64) ([]m
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		links = append(links, link)
@@ -413,7 +417,7 @@ func (s *Storage) RolePermissionLinks(ctx context.Context, roleIDs []int64) ([]m
 }
 
 func (s *Storage) Permissions(ctx context.Context, ids []int64) ([]models.Permission, error) {
-	const op = "postgresql storage: get permissions"
+	const op = "get permissions"
 
 	stmt :=
 		`select
@@ -433,7 +437,7 @@ func (s *Storage) Permissions(ctx context.Context, ids []int64) ([]models.Permis
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 	defer rows.Close()
 
@@ -451,7 +455,7 @@ func (s *Storage) Permissions(ctx context.Context, ids []int64) ([]models.Permis
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		permissions = append(permissions, permission)
@@ -461,7 +465,7 @@ func (s *Storage) Permissions(ctx context.Context, ids []int64) ([]models.Permis
 }
 
 func (s *Storage) ClientScopes(ctx context.Context, clientID int64) ([]models.Scope, error) {
-	const op = "infrastructure.storage.postgresql.ClientScopes"
+	const op = "get client scopes"
 
 	stmt :=
 		`select
@@ -481,7 +485,7 @@ func (s *Storage) ClientScopes(ctx context.Context, clientID int64) ([]models.Sc
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 	defer rows.Close()
 
@@ -498,7 +502,7 @@ func (s *Storage) ClientScopes(ctx context.Context, clientID int64) ([]models.Sc
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		scopes = append(scopes, scope)
@@ -507,59 +511,8 @@ func (s *Storage) ClientScopes(ctx context.Context, clientID int64) ([]models.Sc
 	return scopes, nil
 }
 
-func (s *Storage) ClientDefaultRoles(ctx context.Context, clientID int64) ([]models.Role, error) {
-	const op = "infrastructure.storage.postgresql.ClientDefaultRoles"
-
-	stmt :=
-		`select
-			 r.id,
-			 r.code,
-			 r.name,
-			 r.description,
-			 r.active,
-			 r.deleted,
-			 r.created_at,
-			 r.updated_at
-		 from sso.roles r
-		 	join sso.client_default_role_links cdrl on cdrl.role_id = r.id
-		 where cdrl.client_id = @client_id;`
-
-	args := pgx.NamedArgs{
-		"client_id": clientID,
-	}
-
-	rows, err := s.pg.Pool.Query(ctx, stmt, args)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	defer rows.Close()
-
-	roles := make([]models.Role, 0)
-	for rows.Next() {
-		role := models.Role{}
-		err = rows.Scan(
-			&role.ID,
-			&role.Code,
-			&role.Name,
-			&role.Description,
-			&role.Active,
-			&role.Deleted,
-			&role.CreatedAt,
-			&role.UpdatedAt,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
-		}
-
-		roles = append(roles, role)
-	}
-
-	return roles, nil
-}
-
 func (s *Storage) UserByUsername(ctx context.Context, username string) (models.User, error) {
-	const op = "infrastructure.storage.postgresql.UserByUsername"
+	const op = "get user by username"
 
 	stmt :=
 		`select
@@ -597,17 +550,17 @@ func (s *Storage) UserByUsername(ctx context.Context, username string) (models.U
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.User{}, fmt.Errorf("%s: %w", op, infrastructure.ErrEntityNotFound)
+			return models.User{}, fmt.Errorf("%s: %s: %w: %s", pkgTag, op, infrastructure.ErrEntityNotFound, err.Error())
 		}
 
-		return models.User{}, fmt.Errorf("%s: %w", op, err)
+		return models.User{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return user, nil
 }
 
 func (s *Storage) UserRoleLinks(ctx context.Context, userID int64) ([]models.UserRoleLink, error) {
-	const op = "postgresql storage: get user role links"
+	const op = "get user role links"
 
 	stmt :=
 		`select
@@ -625,7 +578,7 @@ func (s *Storage) UserRoleLinks(ctx context.Context, userID int64) ([]models.Use
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 	defer rows.Close()
 
@@ -641,7 +594,7 @@ func (s *Storage) UserRoleLinks(ctx context.Context, userID int64) ([]models.Use
 		)
 
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 		}
 
 		links = append(links, link)
@@ -651,7 +604,7 @@ func (s *Storage) UserRoleLinks(ctx context.Context, userID int64) ([]models.Use
 }
 
 func (s *Storage) CreateUser(ctx context.Context, user models.User) (int64, error) {
-	const op = "infrastructure.storage.postgresql.CreateUser"
+	const op = "create new user"
 
 	stmt :=
 		`insert into sso.users (
@@ -693,14 +646,19 @@ func (s *Storage) CreateUser(ctx context.Context, user models.User) (int64, erro
 	var id int64
 	err := row.Scan(&id)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			return 0, fmt.Errorf("%s: %s: %w: %s", pkgTag, op, infrastructure.ErrEntityExists, pgErr.Error())
+		}
+
+		return 0, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return id, nil
 }
 
 func (s *Storage) CreateUserClientLink(ctx context.Context, link models.UserClientLink) (int64, error) {
-	const op = "infrastructure.storage.postgresql.CreateUserClientLink"
+	const op = "create new user client link"
 
 	stmt :=
 		`insert into sso.user_client_links (user_id, client_id, created_at, updated_at)
@@ -719,14 +677,19 @@ func (s *Storage) CreateUserClientLink(ctx context.Context, link models.UserClie
 	var id int64
 	err := row.Scan(&id)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			return 0, fmt.Errorf("%s: %s: %w: %s", pkgTag, op, infrastructure.ErrEntityExists, pgErr.Error())
+		}
+
+		return 0, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return id, nil
 }
 
 func (s *Storage) CreateUserRoleLink(ctx context.Context, link models.UserRoleLink) (int64, error) {
-	const op = "infrastructure.storage.postgresql.CreateUserRoleLink"
+	const op = "create new user role link"
 
 	stmt :=
 		`insert into sso.user_role_links (user_id, role_id, created_at, updated_at)
@@ -745,7 +708,12 @@ func (s *Storage) CreateUserRoleLink(ctx context.Context, link models.UserRoleLi
 	var id int64
 	err := row.Scan(&id)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			return 0, fmt.Errorf("%s: %s: %w: %s", pkgTag, op, infrastructure.ErrEntityExists, pgErr.Error())
+		}
+
+		return 0, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return id, nil
