@@ -24,7 +24,7 @@ func (r *Repository) ClientByCode(ctx context.Context, code string, opts ...Clie
 		}
 	}
 
-	clientDTO := converter.ToClientDTONew(client)
+	clientDTO := converter.ToClientDTO(client)
 	return clientDTO, nil
 }
 

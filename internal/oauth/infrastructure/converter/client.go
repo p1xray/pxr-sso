@@ -5,7 +5,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/models"
 )
 
-func ToClientDTONew(client models.Client) dto.Client {
+func ToClientDTO(client models.Client) dto.Client {
 	audienceURIs := make([]string, len(client.Audiences))
 	for i, audience := range client.Audiences {
 		audienceURIs[i] = audience.URI
@@ -35,40 +35,6 @@ func ToClientDTONew(client models.Client) dto.Client {
 		redirectURIs,
 		scopes,
 		defaultRoles,
-	)
-
-	return clientDTO
-}
-
-func ToClientDTO(
-	client models.Client,
-	clientAudiences []models.Audience,
-	clientRedirectURIs []models.RedirectURI,
-	clientScopes []models.Scope,
-) dto.Client {
-	audienceURIs := make([]string, len(clientAudiences))
-	for i, audience := range clientAudiences {
-		audienceURIs[i] = audience.URI
-	}
-
-	redirectURIs := make([]string, len(clientRedirectURIs))
-	for i, redirectURI := range clientRedirectURIs {
-		redirectURIs[i] = redirectURI.URI
-	}
-
-	scopes := make([]string, len(clientScopes))
-	for i, scope := range clientScopes {
-		scopes[i] = scope.Code
-	}
-
-	clientDTO := dto.NewClient(
-		client.ID,
-		client.Code,
-		client.SecretKey,
-		audienceURIs,
-		redirectURIs,
-		scopes,
-		[]dto.Role{},
 	)
 
 	return clientDTO

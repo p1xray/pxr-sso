@@ -24,7 +24,7 @@ func (r *Repository) UserByUsername(ctx context.Context, username string, opts .
 		}
 	}
 
-	userDTO := converter.ToUserDTONew(user)
+	userDTO := converter.ToUserDTO(user)
 	return userDTO, nil
 }
 

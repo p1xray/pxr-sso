@@ -24,11 +24,11 @@ func ToFlowRedis(flow dto.Flow) models.Flow {
 }
 
 func ToFlowDTO(flow models.Flow) (dto.Flow, error) {
-	const op = "infrastructure.converter.ToFlowDTO"
+	const op = "to flow DTO"
 
 	id, err := uuid.Parse(flow.ID)
 	if err != nil {
-		return dto.Flow{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Flow{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return dto.NewFlow(
