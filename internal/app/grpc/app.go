@@ -55,17 +55,21 @@ func (a *App) Start() {
 
 // Stop - stops the gRPC controller application.
 func (a *App) Stop() {
-	a.log.Info(componentTag + " stopping gRPC server")
+	a.log.Debug(componentTag + " stopping gRPC server")
 
 	a.gRPCServer.Stop()
 }
 
 func (a *App) handleError() {
 	go func() {
-		select {
-		case err := <-a.gRPCServer.Notify():
-			a.log.Warn(componentTag+" received an error from the gRPC server:", sl.Err(err))
-		default:
+		for {
+			select {
+			case err := <-a.gRPCServer.Notify():
+				if err != nil {
+					a.log.Warn(componentTag+" received an error from the gRPC server:", sl.Err(err))
+				}
+			default:
+			}
 		}
 	}()
 }

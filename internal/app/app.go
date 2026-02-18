@@ -87,8 +87,8 @@ func (a *App) GracefulStop() {
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 
 	s := <-stop
-	
-	a.log.Debug(componentTag+" signal received from OS", slog.String("signal:", s.String()))
+
+	a.log.Debug(componentTag + " signal received from OS: " + s.String())
 	a.log.Debug(componentTag + " stopping application")
 
 	a.grpcApp.Stop()
