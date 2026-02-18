@@ -12,12 +12,13 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/register"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/token"
-	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 )
+
+const componentTag = "[pxr-sso-app]"
 
 // App is an application.
 type App struct {
@@ -75,31 +76,20 @@ func New(
 
 // Start - starts the application.
 func (a *App) Start() {
-	const op = "app.Start"
-
-	log := a.log.With(slog.String("op", op))
-	log.Info("starting application")
+	a.log.Debug(componentTag + " starting application")
 
 	a.grpcApp.Start()
 }
 
 // GracefulStop - gracefully stops the application.
 func (a *App) GracefulStop() {
-	const op = "app.GracefulStop"
-
-	log := a.log.With(slog.String("op", op))
-
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 
-	select {
-	case s := <-stop:
-		log.Info("signal received from OS", slog.String("signal:", s.String()))
-	case err := <-a.grpcApp.Notify():
-		log.Error("received an error from the gRPC server:", sl.Err(err))
-	}
-
-	log.Info("stopping application")
+	s := <-stop
+	
+	a.log.Debug(componentTag+" signal received from OS", slog.String("signal:", s.String()))
+	a.log.Debug(componentTag + " stopping application")
 
 	a.grpcApp.Stop()
 }

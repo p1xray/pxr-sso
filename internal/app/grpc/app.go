@@ -4,8 +4,11 @@ import (
 	"github.com/p1xray/pxr-sso/internal/controller"
 	"github.com/p1xray/pxr-sso/internal/controller/grpc"
 	"github.com/p1xray/pxr-sso/pkg/grpcserver"
+	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 )
+
+const componentTag = "[pxr-sso-grpc-app]"
 
 // App is an gRPC controller application.
 type App struct {
@@ -44,31 +47,25 @@ func New(
 
 // Start - starts the gRPC controller application.
 func (a *App) Start() {
-	const op = "grpcapp.Start"
-
-	log := a.log.With(
-		slog.String("op", op),
-		slog.String("port", a.port),
-	)
-	log.Info("running gRPC server")
+	a.log.Debug(componentTag + " running gRPC server on port " + a.port)
 
 	a.gRPCServer.Start()
+	a.handleError()
 }
 
 // Stop - stops the gRPC controller application.
 func (a *App) Stop() {
-	const op = "grpcapp.Stop"
-
-	log := a.log.With(
-		slog.String("op", op),
-		slog.String("port", a.port),
-	)
-	log.Info("stopping gRPC server")
+	a.log.Info(componentTag + " stopping gRPC server")
 
 	a.gRPCServer.Stop()
 }
 
-// Notify - notifies about gRPC controller application errors.
-func (a *App) Notify() <-chan error {
-	return a.gRPCServer.Notify()
+func (a *App) handleError() {
+	go func() {
+		select {
+		case err := <-a.gRPCServer.Notify():
+			a.log.Warn(componentTag+" received an error from the gRPC server:", sl.Err(err))
+		default:
+		}
+	}()
 }

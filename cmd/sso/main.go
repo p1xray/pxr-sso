@@ -7,20 +7,20 @@ import (
 	"log/slog"
 )
 
+const componentTag = "[pxr-sso-main]"
+
 func main() {
 	cfgLoader := config.NewLoader()
 	cfg := cfgLoader.MustLoad()
 
 	log := logger.SetupLogger(cfg.Env)
 
-	log.Info("starting application", slog.Any("config", cfg))
+	log.Debug(componentTag+" starting application", slog.Any("config", cfg))
 
 	application := app.New(log, cfg)
 
-	go func() {
-		application.Start()
-	}()
+	go application.Start()
 
 	application.GracefulStop()
-	log.Info("application stopped")
+	log.Debug(componentTag + " application stopped")
 }

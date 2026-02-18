@@ -13,6 +13,8 @@ import (
 	"log/slog"
 )
 
+const componentTag = "[pxr-sso-register-use-case]"
+
 // Repository is a repository for register a new user use-case.
 type Repository interface {
 	ClientByCode(ctx context.Context, code string, opts ...repository.ClientOption) (dto.Client, error)
@@ -45,10 +47,7 @@ func New(log *slog.Logger, uriBuilder *builder.URI, repo Repository, redis Redis
 
 // Execute executes the use-case for registering a new user.
 func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.DisplayableError) {
-	const op = "usecase.auth.register"
-
 	log := uc.log.With(
-		slog.String("op", op),
 		slog.String("flow_id", data.FlowID),
 		slog.String("response_type", data.ResponseType),
 		slog.String("client_id", data.ClientID),
@@ -58,42 +57,30 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		slog.String("username", data.Username),
 		slog.String("full_name", data.FullName),
 	)
-	log.Info("attempting to register new user")
+	log.Debug(componentTag + " attempting to register new user")
 
 	// get flow from redis
 	flow, err := uc.redis.Flow(ctx, data.FlowID)
-	if err != nil {
-		if errors.Is(err, infrastructure.ErrEntityNotFound) {
-			log.Warn(err.Error())
-		} else {
-			log.Error(err.Error())
+	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
+		log.Error(componentTag+" get flow", sl.Err(err))
 
-			return "", domain.InternalError(err)
-		}
+		return "", domain.InternalError(err)
 	}
 
 	// get client from storage
 	client, err := uc.repo.ClientByCode(ctx, data.ClientID)
-	if err != nil {
-		if errors.Is(err, infrastructure.ErrEntityNotFound) {
-			log.Warn(err.Error())
-		} else {
-			log.Error(err.Error())
+	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
+		log.Error(componentTag+" get client by code", sl.Err(err))
 
-			return "", domain.InternalError(err)
-		}
+		return "", domain.InternalError(err)
 	}
 
 	// get user from storage
 	user, err := uc.repo.UserByUsername(ctx, data.Username)
-	if err != nil {
-		if errors.Is(err, infrastructure.ErrEntityNotFound) {
-			log.Warn(err.Error())
-		} else {
-			log.Error(err.Error())
+	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
+		log.Error(componentTag+" get user by username", sl.Err(err))
 
-			return "", domain.InternalError(err)
-		}
+		return "", domain.InternalError(err)
 	}
 
 	// login logic
@@ -117,7 +104,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 	)
 	if displayableErr := oauthEntity.Register(registerParams); displayableErr != nil {
 		if displayableErr.IsInternal() {
-			log.Error(displayableErr.Error())
+			log.Error(componentTag+" register process", sl.Err(displayableErr.Unwrap()))
 		}
 
 		return "", displayableErr
@@ -126,13 +113,13 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 	// create new user in storage
 	newUser, err := oauthEntity.User()
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(componentTag+" get the generated user", sl.Err(err))
 
 		return "", domain.InternalError(err)
 	}
 
 	if err = uc.repo.CreateUser(ctx, newUser, client.ID()); err != nil {
-		log.Error(err.Error())
+		log.Error(componentTag+" save user", sl.Err(err))
 
 		return "", domain.InternalError(err)
 	}
@@ -140,18 +127,18 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 	// update flow data in redis
 	updatedFlow, err := oauthEntity.Flow()
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(componentTag+" get the updated flow", sl.Err(err))
 
 		return "", domain.InternalError(err)
 	}
 
 	if err = uc.redis.SaveFlow(ctx, updatedFlow); err != nil {
-		log.Error(err.Error())
+		log.Error(componentTag+" save flow", sl.Err(err))
 
 		return "", domain.InternalError(err)
 	}
 
-	log.Info("user register successfully")
+	log.Debug(componentTag + " user register successfully")
 
 	return oauthEntity.RedirectURI(), nil
 }

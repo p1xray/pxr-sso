@@ -3,7 +3,7 @@ package consent
 import (
 	"context"
 	"errors"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain"
+	"fmt"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
@@ -12,6 +12,8 @@ import (
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 )
+
+const componentTag = "[pxr-sso-consent-use-case]"
 
 // Repository is a repository for confirm consent use-case.
 type Repository interface {
@@ -43,10 +45,9 @@ func New(log *slog.Logger, uriBuilder *builder.URI, repo Repository, redis Redis
 
 // Execute executes the use-case for registering a new user.
 func (uc *UseCase) Execute(ctx context.Context, data Params) (string, error) {
-	const op = "usecase.auth.consent"
+	const op = "consent use case"
 
 	log := uc.log.With(
-		slog.String("op", op),
 		slog.String("flow_id", data.FlowID),
 		slog.String("response_type", data.ResponseType),
 		slog.String("client_id", data.ClientID),
@@ -54,30 +55,22 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, error) {
 		slog.String("state", data.State),
 		sl.Strings("scope", data.Scope),
 	)
-	log.Info("attempting to confirm consent")
+	log.Debug(componentTag + " attempting to confirm consent")
 
 	// get flow from redis
 	flow, err := uc.redis.Flow(ctx, data.FlowID)
-	if err != nil {
-		if errors.Is(err, infrastructure.ErrEntityNotFound) {
-			log.Warn(err.Error())
-		} else {
-			log.Error(err.Error())
+	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
+		log.Error(componentTag+" get flow", sl.Err(err))
 
-			return "", domain.InternalError(err)
-		}
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	// get client from storage
 	client, err := uc.repo.ClientByCode(ctx, data.ClientID)
-	if err != nil {
-		if errors.Is(err, infrastructure.ErrEntityNotFound) {
-			log.Warn(err.Error())
-		} else {
-			log.Error(err.Error())
+	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
+		log.Error(componentTag+" get client by code", sl.Err(err))
 
-			return "", domain.InternalError(err)
-		}
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	// confirm consent logic
@@ -96,26 +89,24 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, error) {
 		data.Scope,
 	)
 	if err = oauthEntity.Consent(consentParams); err != nil {
-		log.Error(err.Error())
-
-		return "", err
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	// update flow data in redis
 	updatedFlow, err := oauthEntity.Flow()
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(componentTag+" get the updated flow", sl.Err(err))
 
-		return "", err
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err = uc.redis.SaveFlow(ctx, updatedFlow); err != nil {
-		log.Error(err.Error())
+		log.Error(componentTag+" save flow", sl.Err(err))
 
-		return "", err
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	log.Info("confirming consent successfully")
+	log.Debug(componentTag + " confirming consent successfully")
 
 	return oauthEntity.RedirectURI(), nil
 }

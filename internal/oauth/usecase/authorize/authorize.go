@@ -14,6 +14,8 @@ import (
 	"log/slog"
 )
 
+const componentTag = "[pxr-sso-authorize-use-case]"
+
 type Repository interface {
 	ClientByCode(ctx context.Context, code string, opts ...repository.ClientOption) (dto.Client, error)
 }
@@ -42,10 +44,7 @@ func New(log *slog.Logger, uriBuilder *builder.URI, repo Repository, redis Redis
 
 // Execute executes the use-case for OAuth authorize.
 func (uc *UseCase) Execute(ctx context.Context, data Params) string {
-	const op = "usecase.oauth.authorize"
-
 	log := uc.log.With(
-		slog.String("op", op),
 		sl.Strings("response_type", data.ResponseType),
 		sl.Strings("client_id", data.ClientID),
 		sl.Strings("redirect_uri", data.RedirectURI),
@@ -54,22 +53,18 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		sl.Strings("state", data.State),
 		sl.Strings("scope", data.Scope),
 	)
-	log.Info("attempting to initiate user authorization")
+	log.Debug(componentTag + " attempting to initiate user authorization")
 
 	// get client from storage
 	nullableClient := nullable.None[dto.Client]()
 	if len(data.ClientID) == 1 {
 		client, err := uc.repo.ClientByCode(ctx, data.ClientID[0])
-		if err != nil {
-			if errors.Is(err, infrastructure.ErrEntityNotFound) {
-				log.Warn("client not found by code %s", data.ClientID[0])
-			} else {
-				log.Error(err.Error())
+		if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
+			log.Error(componentTag+" get client by code", sl.Err(err))
 
-				redirectURI := uc.uriBuilder.BuildErrorRedirectURI("", domain.ServerErrorOAuthError(err))
+			redirectURI := uc.uriBuilder.BuildErrorRedirectURI("", domain.ServerErrorOAuthError(err))
+			return redirectURI
 
-				return redirectURI
-			}
 		}
 
 		nullableClient = nullable.Some(client)
@@ -92,28 +87,26 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 	)
 	err := oauthEntity.Authorize(authorizeParams)
 	if err != nil {
-		log.Warn("%s: %s", "initiate user authorization", err.Error())
-
 		return oauthEntity.RedirectURI()
 	}
 
 	// save flow data to redis
 	flow, err := oauthEntity.Flow()
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(componentTag+" get the generated flow", sl.Err(err))
 
 		oauthEntity.HandleError(domain.ServerErrorOAuthError(err), "")
 		return oauthEntity.RedirectURI()
 	}
 
 	if err = uc.redis.SaveFlow(ctx, flow); err != nil {
-		log.Error(err.Error())
+		log.Error(componentTag+" save flow", sl.Err(err))
 
 		oauthEntity.HandleError(domain.ServerErrorOAuthError(err), "")
 		return oauthEntity.RedirectURI()
 	}
 
-	log.Info("initiate user authorization successfully")
+	log.Debug(componentTag + " initiate user authorization successfully")
 
 	return oauthEntity.RedirectURI()
 }
