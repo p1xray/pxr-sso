@@ -13,7 +13,10 @@ import (
 	"log/slog"
 )
 
-const componentTag = "[pxr-sso-consent-use-case]"
+const (
+	logTag = "[pxr-sso-consent-use-case]"
+	pkgTag = "consent use case"
+)
 
 // Repository is a repository for confirm consent use-case.
 type Repository interface {
@@ -45,7 +48,7 @@ func New(log *slog.Logger, uriBuilder *builder.URI, repo Repository, redis Redis
 
 // Execute executes the use-case for registering a new user.
 func (uc *UseCase) Execute(ctx context.Context, data Params) (string, error) {
-	const op = "consent use case"
+	const op = "confirm consent"
 
 	log := uc.log.With(
 		slog.String("flow_id", data.FlowID),
@@ -55,22 +58,22 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, error) {
 		slog.String("state", data.State),
 		sl.Strings("scope", data.Scope),
 	)
-	log.Debug(componentTag + " attempting to confirm consent")
+	log.Debug(logTag + " attempting to confirm consent")
 
 	// get flow from redis
 	flow, err := uc.redis.Flow(ctx, data.FlowID)
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
-		log.Error(componentTag+" get flow", sl.Err(err))
+		log.Error(logTag+" get flow", sl.Err(err))
 
-		return "", fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	// get client from storage
 	client, err := uc.repo.ClientByCode(ctx, data.ClientID)
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
-		log.Error(componentTag+" get client by code", sl.Err(err))
+		log.Error(logTag+" get client by code", sl.Err(err))
 
-		return "", fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	// confirm consent logic
@@ -89,24 +92,24 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, error) {
 		data.Scope,
 	)
 	if err = oauthEntity.Consent(consentParams); err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	// update flow data in redis
 	updatedFlow, err := oauthEntity.Flow()
 	if err != nil {
-		log.Error(componentTag+" get the updated flow", sl.Err(err))
+		log.Error(logTag+" get the updated flow", sl.Err(err))
 
-		return "", fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	if err = uc.redis.SaveFlow(ctx, updatedFlow); err != nil {
-		log.Error(componentTag+" save flow", sl.Err(err))
+		log.Error(logTag+" save flow", sl.Err(err))
 
-		return "", fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
-	log.Debug(componentTag + " confirming consent successfully")
+	log.Debug(logTag + " confirming consent successfully")
 
 	return oauthEntity.RedirectURI(), nil
 }

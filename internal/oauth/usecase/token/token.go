@@ -14,7 +14,10 @@ import (
 	"log/slog"
 )
 
-const componentTag = "[pxr-sso-exchange-token-use-case]"
+const (
+	logTag = "[pxr-sso-exchange-token-use-case]"
+	pkgTag = "token use case"
+)
 
 // Repository is a repository for exchange token use-case.
 type Repository interface {
@@ -47,7 +50,7 @@ func New(log *slog.Logger, tokenGenerator *generator.Token, repo Repository, red
 
 // Execute executes the use-case for exchange token.
 func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) {
-	const op = "token use case"
+	const op = "exchange token"
 
 	log := uc.log.With(
 		slog.String("flow_id", data.FlowID),
@@ -58,30 +61,30 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) 
 		slog.String("code_verifier", data.CodeVerifier),
 		sl.Strings("scope", data.Scope),
 	)
-	log.Debug(componentTag + " attempting to exchange token")
+	log.Debug(logTag + " attempting to exchange token")
 
 	// get flow from redis.
 	flow, err := uc.redis.Flow(ctx, data.FlowID)
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
-		log.Error(componentTag+" get flow", sl.Err(err))
+		log.Error(logTag+" get flow", sl.Err(err))
 
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	// get user from storage.
 	user, err := uc.repo.UserByUsername(ctx, flow.Username())
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
-		log.Error(componentTag+" get user by username", sl.Err(err))
+		log.Error(logTag+" get user by username", sl.Err(err))
 
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	// get client from storage.
 	client, err := uc.repo.ClientByCode(ctx, data.ClientID)
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
-		log.Error(componentTag+" get client by code", sl.Err(err))
+		log.Error(logTag+" get client by code", sl.Err(err))
 
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	// exchange token logic.
@@ -104,14 +107,14 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) 
 	)
 	tokens, err := oauthEntity.ExchangeToken(exchangeTokenParams)
 	if err != nil {
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	// remove flow from redis.
 	if err = uc.redis.RemoveFlow(ctx, flow.ID()); err != nil {
-		log.Error(componentTag+" save flow", sl.Err(err))
+		log.Error(logTag+" save flow", sl.Err(err))
 
-		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	return tokens, nil

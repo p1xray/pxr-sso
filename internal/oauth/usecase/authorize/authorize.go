@@ -14,7 +14,7 @@ import (
 	"log/slog"
 )
 
-const componentTag = "[pxr-sso-authorize-use-case]"
+const logTag = "[pxr-sso-authorize-use-case]"
 
 type Repository interface {
 	ClientByCode(ctx context.Context, code string, opts ...repository.ClientOption) (dto.Client, error)
@@ -53,14 +53,14 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		sl.Strings("state", data.State),
 		sl.Strings("scope", data.Scope),
 	)
-	log.Debug(componentTag + " attempting to initiate user authorization")
+	log.Debug(logTag + " attempting to initiate user authorization")
 
 	// get client from storage
 	nullableClient := nullable.None[dto.Client]()
 	if len(data.ClientID) == 1 {
 		client, err := uc.repo.ClientByCode(ctx, data.ClientID[0])
 		if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
-			log.Error(componentTag+" get client by code", sl.Err(err))
+			log.Error(logTag+" get client by code", sl.Err(err))
 
 			redirectURI := uc.uriBuilder.BuildErrorRedirectURI("", domain.ServerErrorOAuthError(err))
 			return redirectURI
@@ -93,20 +93,20 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 	// save flow data to redis
 	flow, err := oauthEntity.Flow()
 	if err != nil {
-		log.Error(componentTag+" get the generated flow", sl.Err(err))
+		log.Error(logTag+" get the generated flow", sl.Err(err))
 
 		oauthEntity.HandleError(domain.ServerErrorOAuthError(err), "")
 		return oauthEntity.RedirectURI()
 	}
 
 	if err = uc.redis.SaveFlow(ctx, flow); err != nil {
-		log.Error(componentTag+" save flow", sl.Err(err))
+		log.Error(logTag+" save flow", sl.Err(err))
 
 		oauthEntity.HandleError(domain.ServerErrorOAuthError(err), "")
 		return oauthEntity.RedirectURI()
 	}
 
-	log.Debug(componentTag + " initiate user authorization successfully")
+	log.Debug(logTag + " initiate user authorization successfully")
 
 	return oauthEntity.RedirectURI()
 }
