@@ -3,10 +3,10 @@ package register
 import (
 	"context"
 	"errors"
+	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
@@ -46,7 +46,15 @@ func New(log *slog.Logger, uriBuilder *builder.URI, repo Repository, redis Redis
 }
 
 // Execute executes the use-case for registering a new user.
-func (uc *UseCase) Execute(ctx context.Context, data Params) (string, error) {
+func (uc *UseCase) Execute(ctx context.Context, data Params) (oauth.ServiceData[string], error) {
+	output, err := oauth.Call(func() (string, error) {
+		return uc.register(ctx, data)
+	})
+
+	return output, err
+}
+
+func (uc *UseCase) register(ctx context.Context, data Params) (string, error) {
 	log := uc.log.With(
 		slog.String("flow_id", data.FlowID),
 		slog.String("response_type", data.ResponseType),
@@ -103,7 +111,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, error) {
 		data.Scope,
 	)
 	if err = oauthEntity.Register(registerParams); err != nil {
-		var validationErr *validator.Error
+		var validationErr *oauth.Error
 		if errors.As(err, &validationErr) && !validationErr.IsInvalidUserCredentials() {
 			log.Error(logTag+" register process", sl.Err(err))
 		}

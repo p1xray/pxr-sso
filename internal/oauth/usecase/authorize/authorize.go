@@ -3,6 +3,7 @@ package authorize
 import (
 	"context"
 	"errors"
+	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
@@ -42,7 +43,15 @@ func New(log *slog.Logger, uriBuilder *builder.URI, repo Repository, redis Redis
 }
 
 // Execute executes the use-case for OAuth authorize.
-func (uc *UseCase) Execute(ctx context.Context, data Params) string {
+func (uc *UseCase) Execute(ctx context.Context, data Params) (oauth.ServiceData[string], error) {
+	output, err := oauth.Call(func() (string, error) {
+		return uc.authorize(ctx, data)
+	})
+
+	return output, err
+}
+
+func (uc *UseCase) authorize(ctx context.Context, data Params) (string, error) {
 	log := uc.log.With(
 		sl.Strings("response_type", data.ResponseType),
 		sl.Strings("client_id", data.ClientID),
@@ -62,7 +71,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 			log.Error(logTag+" get client by code", sl.Err(err))
 
 			redirectURI := uc.uriBuilder.BuildErrorRedirectURI("", err)
-			return redirectURI
+			return redirectURI, err
 
 		}
 
@@ -86,7 +95,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 	)
 	err := oauthEntity.Authorize(authorizeParams)
 	if err != nil {
-		return oauthEntity.RedirectURI()
+		return oauthEntity.RedirectURI(), err
 	}
 
 	// save flow data to redis
@@ -95,17 +104,17 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		log.Error(logTag+" get the generated flow", sl.Err(err))
 
 		oauthEntity.HandleError(err, "")
-		return oauthEntity.RedirectURI()
+		return oauthEntity.RedirectURI(), err
 	}
 
 	if err = uc.redis.SaveFlow(ctx, flow); err != nil {
 		log.Error(logTag+" save flow", sl.Err(err))
 
 		oauthEntity.HandleError(err, "")
-		return oauthEntity.RedirectURI()
+		return oauthEntity.RedirectURI(), err
 	}
 
 	log.Debug(logTag + " initiate user authorization successfully")
 
-	return oauthEntity.RedirectURI()
+	return oauthEntity.RedirectURI(), err
 }

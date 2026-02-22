@@ -2,9 +2,8 @@ package builder
 
 import (
 	"errors"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain"
+	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
 	"net/url"
 	"strings"
 )
@@ -76,12 +75,12 @@ func (u *URI) fetchErrorRedirectURI(rawURL string) string {
 }
 
 func (u *URI) fetchErrorQueryParameters(err error) queryParameters {
-	var validationErr *validator.Error
+	var validationErr *oauth.Error
 	if errors.As(err, &validationErr) {
 		return newErrorQueryParameters(validationErr.Code, validationErr.Description, validationErr.URI)
 	}
 
-	return newErrorQueryParameters(domain.ErrorCodeServerError, domain.ErrorDescriptionInternalServerError, "")
+	return newErrorQueryParameters(oauth.ErrorCodeServerError, oauth.ErrorDescriptionInternalServerError, "")
 }
 
 func (u *URI) buildRedirectURI(rawURL string, parameters queryParameters) string {

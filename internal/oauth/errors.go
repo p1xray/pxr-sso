@@ -1,9 +1,8 @@
-package validator
+package oauth
 
 import (
 	"errors"
 	"fmt"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 )
 
 // errors for OAuth request parameters validation.
@@ -24,6 +23,9 @@ var (
 
 // Error codes.
 const (
+	ErrorCodeServerError                = "server_error"
+	ErrorDescriptionInternalServerError = "internal server error"
+
 	errorCodeInvalidRequest          = "invalid_request"
 	errorCodeInvalidClient           = "invalid_client"
 	errorCodeUnauthorizedClient      = "unauthorized_client"
@@ -96,7 +98,7 @@ func InvalidScopeError(err error) *Error {
 }
 
 func ServerError(err error) *Error {
-	return newError(domain.ErrorCodeServerError, domain.ErrorDescriptionInternalServerError, "", err)
+	return newError(ErrorCodeServerError, ErrorDescriptionInternalServerError, "", err)
 }
 
 func InvalidUserCredentialsError(err error) *Error {

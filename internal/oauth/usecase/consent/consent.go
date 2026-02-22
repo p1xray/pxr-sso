@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
@@ -47,7 +48,15 @@ func New(log *slog.Logger, uriBuilder *builder.URI, repo Repository, redis Redis
 }
 
 // Execute executes the use-case for registering a new user.
-func (uc *UseCase) Execute(ctx context.Context, data Params) (string, error) {
+func (uc *UseCase) Execute(ctx context.Context, data Params) (oauth.ServiceData[string], error) {
+	output, err := oauth.Call(func() (string, error) {
+		return uc.consent(ctx, data)
+	})
+
+	return output, err
+}
+
+func (uc *UseCase) consent(ctx context.Context, data Params) (string, error) {
 	const op = "confirm consent"
 
 	log := uc.log.With(

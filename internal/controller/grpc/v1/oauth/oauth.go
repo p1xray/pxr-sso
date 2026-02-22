@@ -2,10 +2,8 @@ package oauth
 
 import (
 	"context"
-	"errors"
 	oauthpb "github.com/p1xray/pxr-sso-protos/gen/go/oauth"
 	"github.com/p1xray/pxr-sso/internal/controller"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/consent"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
@@ -57,12 +55,19 @@ func (s *serverAPI) Authorize(
 		State:               req.GetState(),
 		Scope:               req.GetScope(),
 	}
-	redirectURI := s.authorizeUseCase.Execute(ctx, authorizeParams)
 
+	authorizeData, err := s.authorizeUseCase.Execute(ctx, authorizeParams)
 	response := &oauthpb.AuthorizeResponse{
-		RedirectUri: redirectURI,
+		RedirectUri: authorizeData.Data(),
+		
+		Error: &oauthpb.ErrorResponse{
+			Code:        authorizeData.ErrorCode(),
+			Description: authorizeData.ErrorDescription(),
+			Uri:         authorizeData.ErrorURI(),
+		},
 	}
-	return response, nil
+
+	return response, err
 }
 
 // Login is a gRPC handler for OAuth login.
@@ -80,24 +85,19 @@ func (s *serverAPI) Login(
 		Username:     req.GetUsername(),
 		Password:     req.GetPassword(),
 	}
-	redirectURI, err := s.loginUseCase.Execute(ctx, loginParams)
-	if err != nil {
-		var validationErr *validator.Error
-		if errors.As(err, &validationErr) && !validationErr.IsInvalidUserCredentials() {
-			errResponse := &oauthpb.LoginResponse{
-				DisplayErrorMessage: validationErr.Description,
-			}
 
-			return errResponse, err
-		}
-
-		return nil, err
-	}
-
+	loginData, err := s.loginUseCase.Execute(ctx, loginParams)
 	response := &oauthpb.LoginResponse{
-		RedirectUri: redirectURI,
+		RedirectUri: loginData.Data(),
+
+		Error: &oauthpb.ErrorResponse{
+			Code:        loginData.ErrorCode(),
+			Description: loginData.ErrorDescription(),
+			Uri:         loginData.ErrorURI(),
+		},
 	}
-	return response, nil
+
+	return response, err
 }
 
 // Register is a gRPC handler for OAuth register.
@@ -116,24 +116,19 @@ func (s *serverAPI) Register(
 		Password:     req.GetPassword(),
 		FullName:     req.GetFullName(),
 	}
-	redirectURI, err := s.registerUseCase.Execute(ctx, registerParams)
-	if err != nil {
-		var validationErr *validator.Error
-		if errors.As(err, &validationErr) && !validationErr.IsInvalidUserCredentials() {
-			errResponse := &oauthpb.RegisterResponse{
-				DisplayErrorMessage: validationErr.Description,
-			}
 
-			return errResponse, err
-		}
-
-		return nil, err
-	}
-
+	registerData, err := s.registerUseCase.Execute(ctx, registerParams)
 	response := &oauthpb.RegisterResponse{
-		RedirectUri: redirectURI,
+		RedirectUri: registerData.Data(),
+
+		Error: &oauthpb.ErrorResponse{
+			Code:        registerData.ErrorCode(),
+			Description: registerData.ErrorDescription(),
+			Uri:         registerData.ErrorURI(),
+		},
 	}
-	return response, nil
+
+	return response, err
 }
 
 // Consent is a gRPC handler for OAuth confirming consent.
@@ -149,15 +144,19 @@ func (s *serverAPI) Consent(
 		State:        req.GetState(),
 		Scope:        req.GetScope(),
 	}
-	redirectURI, err := s.consentUseCase.Execute(ctx, consentParams)
-	if err != nil {
-		return nil, err
+
+	consentData, err := s.consentUseCase.Execute(ctx, consentParams)
+	response := &oauthpb.ConsentResponse{
+		RedirectUri: consentData.Data(),
+
+		Error: &oauthpb.ErrorResponse{
+			Code:        consentData.ErrorCode(),
+			Description: consentData.ErrorDescription(),
+			Uri:         consentData.ErrorURI(),
+		},
 	}
 
-	response := &oauthpb.ConsentResponse{
-		RedirectUri: redirectURI,
-	}
-	return response, nil
+	return response, err
 }
 
 // Token is a gRPC handler for OAuth exchange token.
@@ -176,17 +175,23 @@ func (s *serverAPI) Token(
 		// Audience:          req.GetAudience(),
 		Scope: req.GetScope(),
 	}
-	tokens, err := s.tokenUseCase.Execute(ctx, tokenParams)
-	if err != nil {
-		return nil, err
-	}
 
+	tokenData, err := s.tokenUseCase.Execute(ctx, tokenParams)
+
+	tokens := tokenData.Data()
 	response := &oauthpb.TokenResponse{
 		AccessToken:  tokens.AccessToken(),
 		TokenType:    tokens.TokenType(),
 		ExpiresIn:    tokens.ExpiresIn(),
 		RefreshToken: tokens.RefreshToken(),
 		IdToken:      tokens.IDToken(),
+
+		Error: &oauthpb.ErrorResponse{
+			Code:        tokenData.ErrorCode(),
+			Description: tokenData.ErrorDescription(),
+			Uri:         tokenData.ErrorURI(),
+		},
 	}
-	return response, nil
+
+	return response, err
 }

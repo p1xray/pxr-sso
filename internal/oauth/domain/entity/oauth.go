@@ -22,7 +22,6 @@ type OAuth struct {
 	flow   nullable.Nullable[dto.Flow]
 	user   nullable.Nullable[dto.User]
 
-	// err         *domain.OAuthError
 	redirectURI string
 }
 

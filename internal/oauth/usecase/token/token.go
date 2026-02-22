@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/generator"
@@ -49,7 +50,15 @@ func New(log *slog.Logger, tokenGenerator *generator.Token, repo Repository, red
 }
 
 // Execute executes the use-case for exchange token.
-func (uc *UseCase) Execute(ctx context.Context, data Params) (dto.Token, error) {
+func (uc *UseCase) Execute(ctx context.Context, data Params) (oauth.ServiceData[dto.Token], error) {
+	output, err := oauth.Call(func() (dto.Token, error) {
+		return uc.exchangeToken(ctx, data)
+	})
+
+	return output, err
+}
+
+func (uc *UseCase) exchangeToken(ctx context.Context, data Params) (dto.Token, error) {
 	const op = "exchange token"
 
 	log := uc.log.With(

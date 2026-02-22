@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/consent"
@@ -13,26 +14,26 @@ import (
 type (
 	// Authorize is a use-case for OAuth authorize.
 	Authorize interface {
-		Execute(ctx context.Context, data authorize.Params) string
+		Execute(ctx context.Context, data authorize.Params) (oauth.ServiceData[string], error)
 	}
 
 	// Login is a use-case for logging in a user.
 	Login interface {
-		Execute(ctx context.Context, data login.Params) (string, error)
+		Execute(ctx context.Context, data login.Params) (oauth.ServiceData[string], error)
 	}
 
 	// Register is a use-case for registering a new user.
 	Register interface {
-		Execute(ctx context.Context, data register.Params) (string, error)
+		Execute(ctx context.Context, data register.Params) (oauth.ServiceData[string], error)
 	}
 
 	// Consent is a use-case for confirming consent.
 	Consent interface {
-		Execute(ctx context.Context, data consent.Params) (string, error)
+		Execute(ctx context.Context, data consent.Params) (oauth.ServiceData[string], error)
 	}
 
 	// Token is a use-case for exchange token.
 	Token interface {
-		Execute(ctx context.Context, data token.Params) (dto.Token, error)
+		Execute(ctx context.Context, data token.Params) (oauth.ServiceData[dto.Token], error)
 	}
 )
