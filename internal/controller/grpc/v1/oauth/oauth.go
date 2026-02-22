@@ -2,8 +2,10 @@ package oauth
 
 import (
 	"context"
+	"errors"
 	oauthpb "github.com/p1xray/pxr-sso-protos/gen/go/oauth"
 	"github.com/p1xray/pxr-sso/internal/controller"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/consent"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
@@ -80,11 +82,16 @@ func (s *serverAPI) Login(
 	}
 	redirectURI, err := s.loginUseCase.Execute(ctx, loginParams)
 	if err != nil {
-		errResponse := &oauthpb.LoginResponse{
-			DisplayErrorMessage:  err.DisplayMessage,
-			InternalErrorMessage: err.InternalMessage,
+		var validationErr *validator.Error
+		if errors.As(err, &validationErr) && !validationErr.IsInvalidUserCredentials() {
+			errResponse := &oauthpb.LoginResponse{
+				DisplayErrorMessage: validationErr.Description,
+			}
+
+			return errResponse, err
 		}
-		return errResponse, err.Unwrap()
+
+		return nil, err
 	}
 
 	response := &oauthpb.LoginResponse{
@@ -111,12 +118,16 @@ func (s *serverAPI) Register(
 	}
 	redirectURI, err := s.registerUseCase.Execute(ctx, registerParams)
 	if err != nil {
-		errResponse := &oauthpb.RegisterResponse{
-			DisplayErrorMessage:  err.DisplayMessage,
-			InternalErrorMessage: err.InternalMessage,
+		var validationErr *validator.Error
+		if errors.As(err, &validationErr) && !validationErr.IsInvalidUserCredentials() {
+			errResponse := &oauthpb.RegisterResponse{
+				DisplayErrorMessage: validationErr.Description,
+			}
+
+			return errResponse, err
 		}
 
-		return errResponse, err.Unwrap()
+		return nil, err
 	}
 
 	response := &oauthpb.RegisterResponse{

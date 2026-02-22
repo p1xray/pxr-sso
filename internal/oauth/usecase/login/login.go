@@ -3,10 +3,10 @@ package login
 import (
 	"context"
 	"errors"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
@@ -44,7 +44,7 @@ func New(log *slog.Logger, uriBuilder *builder.URI, repo Repository, redis Redis
 }
 
 // Execute executes the use-case for logging in a user.
-func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.DisplayableError) {
+func (uc *UseCase) Execute(ctx context.Context, data Params) (string, error) {
 	log := uc.log.With(
 		slog.String("flow_id", data.FlowID),
 		slog.String("response_type", data.ResponseType),
@@ -61,7 +61,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get flow", sl.Err(err))
 
-		return "", domain.InternalError(err)
+		return "", err
 	}
 
 	// get client from storage
@@ -69,7 +69,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get client by code", sl.Err(err))
 
-		return "", domain.InternalError(err)
+		return "", err
 	}
 
 	// get user from storage
@@ -77,7 +77,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get user by username", sl.Err(err))
 
-		return "", domain.InternalError(err)
+		return "", err
 	}
 
 	// login logic
@@ -98,12 +98,13 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 		data.Password,
 		data.Scope,
 	)
-	if displayableErr := oauthEntity.Login(loginParams); displayableErr != nil {
-		if displayableErr.IsInternal() {
-			log.Error(logTag+" login process", sl.Err(displayableErr.Unwrap()))
+	if err = oauthEntity.Login(loginParams); err != nil {
+		var validationErr *validator.Error
+		if errors.As(err, &validationErr) && !validationErr.IsInvalidUserCredentials() {
+			log.Error(logTag+" login process", sl.Err(err))
 		}
 
-		return "", displayableErr
+		return "", err
 	}
 
 	// update flow data in redis
@@ -111,13 +112,13 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) (string, *domain.Di
 	if err != nil {
 		log.Error(logTag+" get the updated flow", sl.Err(err))
 
-		return "", domain.InternalError(err)
+		return "", err
 	}
 
 	if err = uc.redis.SaveFlow(ctx, updatedFlow); err != nil {
 		log.Error(logTag+" save flow", sl.Err(err))
 
-		return "", domain.InternalError(err)
+		return "", err
 	}
 
 	log.Debug(logTag + " user logged in successfully")

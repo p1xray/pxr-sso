@@ -3,7 +3,6 @@ package entity
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/generator"
@@ -23,7 +22,7 @@ type OAuth struct {
 	flow   nullable.Nullable[dto.Flow]
 	user   nullable.Nullable[dto.User]
 
-	err         *domain.OAuthError
+	// err         *domain.OAuthError
 	redirectURI string
 }
 
@@ -57,69 +56,73 @@ func (o *OAuth) Authorize(data dto.Authorize) error {
 	validatedData := validator.ValidatedData()
 	err := o.createFlow(validatedData)
 	if err != nil {
+		o.HandleError(err, validatedData.RedirectURI())
+
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	// build redirect URI to login page
 	if err = o.createLoginRedirectURI(); err != nil {
+		o.HandleError(err, validatedData.RedirectURI())
+
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
 }
 
-func (o *OAuth) Login(data dto.Login) *domain.DisplayableError {
+func (o *OAuth) Login(data dto.Login) error {
 	const op = "oauth login"
 
 	// validate request parameters
 	validator := login.NewValidator(data, o.client, o.flow, o.user)
 	if err := validator.Validate(); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err := o.setFlowUsername(); err != nil {
-		return domain.InternalError(err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	// generate authorization code
 	if err := o.setFlowAuthorizationCode(); err != nil {
-		return domain.InternalError(err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	// build callback redirect URI
 	if err := o.createConsentRedirectURI(); err != nil {
-		return domain.InternalError(err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
 }
 
-func (o *OAuth) Register(data dto.Register) *domain.DisplayableError {
+func (o *OAuth) Register(data dto.Register) error {
 	const op = "oauth register"
 
 	// validate request parameters
 	validator := register.NewValidator(data, o.client, o.flow, o.user)
 	if err := validator.Validate(); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	// create new user
 	if err := o.createNewUser(data); err != nil {
-		return domain.InternalError(err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err := o.setFlowUsername(); err != nil {
-		return domain.InternalError(err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	// generate authorization code
 	if err := o.setFlowAuthorizationCode(); err != nil {
-		return domain.InternalError(err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	// build callback redirect URI
 	if err := o.createConsentRedirectURI(); err != nil {
-		return domain.InternalError(err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
@@ -196,23 +199,14 @@ func (o *OAuth) generateTokens(scope []string, audiences string) (dto.Token, err
 	return tokens, nil
 }
 
-func (o *OAuth) HandleError(err *domain.OAuthError, redirectURI string) {
-	o.setError(err)
-
-	errorRedirectURI := o.uriBuilder.BuildErrorRedirectURI(redirectURI, o.err)
+func (o *OAuth) HandleError(err error, redirectURI string) {
+	errorRedirectURI := o.uriBuilder.BuildErrorRedirectURI(redirectURI, err)
 	o.setRedirectURI(errorRedirectURI)
-}
-
-func (o *OAuth) setError(err *domain.OAuthError) {
-	o.err = err
 }
 
 func (o *OAuth) createLoginRedirectURI() error {
 	flow, err := o.Flow()
 	if err != nil {
-		oauthErr := domain.ServerErrorOAuthError(err)
-		o.HandleError(oauthErr, "")
-
 		return fmt.Errorf("%s: %w", "create login redirect URI", err)
 	}
 
@@ -257,9 +251,6 @@ func (o *OAuth) RedirectURI() string {
 func (o *OAuth) createFlow(validatedData dto.ValidatedAuthorize) error {
 	id, err := o.generateFlowID()
 	if err != nil {
-		oauthErr := domain.ServerErrorOAuthError(err)
-		o.HandleError(oauthErr, validatedData.RedirectURI())
-
 		return fmt.Errorf("%s: %w", "create flow", err)
 	}
 

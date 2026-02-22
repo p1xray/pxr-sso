@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure"
 	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/converter"
@@ -19,6 +18,8 @@ const pkgTag = "redis storage"
 
 type Redis struct {
 	client *redis.Client
+
+	flowTTL time.Duration
 }
 
 func New(cfg Config) (*Redis, error) {
@@ -29,7 +30,8 @@ func New(cfg Config) (*Redis, error) {
 	client := redis.NewClient(opt)
 
 	return &Redis{
-		client: client,
+		client:  client,
+		flowTTL: cfg.FlowTTL,
 	}, nil
 }
 
@@ -64,7 +66,7 @@ func (r *Redis) SaveFlow(ctx context.Context, flow dto.Flow) error {
 	redisFlow := converter.ToFlowRedis(flow)
 	redisFlowKey := builder.BuildRedisFlowKey(redisFlow.ID)
 
-	cmd := r.client.Set(ctx, redisFlowKey, redisFlow, oauth.RedisFlowTTL*time.Minute)
+	cmd := r.client.Set(ctx, redisFlowKey, redisFlow, r.flowTTL)
 	if err := cmd.Err(); err != nil {
 		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}

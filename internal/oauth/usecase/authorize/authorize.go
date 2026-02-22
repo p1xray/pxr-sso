@@ -3,7 +3,6 @@ package authorize
 import (
 	"context"
 	"errors"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
@@ -62,7 +61,7 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 		if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 			log.Error(logTag+" get client by code", sl.Err(err))
 
-			redirectURI := uc.uriBuilder.BuildErrorRedirectURI("", domain.ServerErrorOAuthError(err))
+			redirectURI := uc.uriBuilder.BuildErrorRedirectURI("", err)
 			return redirectURI
 
 		}
@@ -95,14 +94,14 @@ func (uc *UseCase) Execute(ctx context.Context, data Params) string {
 	if err != nil {
 		log.Error(logTag+" get the generated flow", sl.Err(err))
 
-		oauthEntity.HandleError(domain.ServerErrorOAuthError(err), "")
+		oauthEntity.HandleError(err, "")
 		return oauthEntity.RedirectURI()
 	}
 
 	if err = uc.redis.SaveFlow(ctx, flow); err != nil {
 		log.Error(logTag+" save flow", sl.Err(err))
 
-		oauthEntity.HandleError(domain.ServerErrorOAuthError(err), "")
+		oauthEntity.HandleError(err, "")
 		return oauthEntity.RedirectURI()
 	}
 

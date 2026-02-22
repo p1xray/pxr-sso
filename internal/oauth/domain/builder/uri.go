@@ -1,9 +1,10 @@
 package builder
 
 import (
-	"github.com/p1xray/pxr-sso/internal/oauth"
+	"errors"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
 	"net/url"
 	"strings"
 )
@@ -23,87 +24,74 @@ func NewURI(cfg URIBuilderConfig) *URI {
 }
 
 func (u *URI) BuildLoginRedirectURI(flow dto.Flow) string {
-	queryValues := map[string]string{
-		oauth.RequestParameterNameFlowID:       flow.ID().String(),
-		oauth.RequestParameterNameResponseType: flow.ResponseType(),
-		oauth.RequestParameterNameClientID:     flow.ClientID(),
-		oauth.RequestParameterNameRedirectURI:  flow.RedirectURI(),
-		oauth.RequestParameterNameState:        flow.State(),
-		oauth.RequestParameterNameScope:        strings.Join(flow.Scope(), " "),
-	}
+	queryValues := newLoginQueryParameters(
+		flow.ID().String(),
+		flow.ResponseType(),
+		flow.ClientID(),
+		flow.RedirectURI(),
+		flow.State(),
+		strings.Join(flow.Scope(), " "),
+	)
 
 	redirectURI := u.buildRedirectURI(u.loginRedirectURI, queryValues)
 	return redirectURI
 }
 
 func (u *URI) BuildConsentRedirectURI(flow dto.Flow) string {
-	queryValues := map[string]string{
-		oauth.RequestParameterNameFlowID:       flow.ID().String(),
-		oauth.RequestParameterNameResponseType: flow.ResponseType(),
-		oauth.RequestParameterNameClientID:     flow.ClientID(),
-		oauth.RequestParameterNameRedirectURI:  flow.RedirectURI(),
-		oauth.RequestParameterNameState:        flow.State(),
-		oauth.RequestParameterNameScope:        strings.Join(flow.Scope(), " "),
-	}
+	queryValues := newConsentQueryParameters(
+		flow.ID().String(),
+		flow.ResponseType(),
+		flow.ClientID(),
+		flow.RedirectURI(),
+		flow.State(),
+		strings.Join(flow.Scope(), " "),
+	)
 
 	redirectURI := u.buildRedirectURI(u.consentRedirectURI, queryValues)
 	return redirectURI
 }
 
 func (u *URI) BuildCallbackRedirectURI(flow dto.Flow) string {
-	queryValues := map[string]string{
-		oauth.RequestParameterNameAuthorizationCode: flow.AuthorizationCode(),
-		oauth.RequestParameterNameState:             flow.State(),
-	}
+	queryValues := newCallbackQueryParameters(flow.AuthorizationCode(), flow.State())
 
 	redirectURI := u.buildRedirectURI(flow.RedirectURI(), queryValues)
 	return redirectURI
 }
 
-func (u *URI) BuildErrorRedirectURI(rawURL string, oauthErr *domain.OAuthError) string {
-	// build error redirect URI on redirect URI from request parameters
-	errorRedirectURI := u.buildErrorRedirectURIByOAuthError(rawURL, oauthErr)
+func (u *URI) BuildErrorRedirectURI(rawURL string, err error) string {
+	baseRedirectURI := u.fetchErrorRedirectURI(rawURL)
+	parameters := u.fetchErrorQueryParameters(err)
 
-	if errorRedirectURI == "" {
-		// otherwise build error redirect URI on authorize service default error page
-		errorRedirectURI = u.buildErrorRedirectURIByOAuthError(u.defaultErrorRedirectURI, oauthErr)
-	}
-
+	errorRedirectURI := u.buildRedirectURI(baseRedirectURI, parameters)
 	return errorRedirectURI
 }
 
-func (u *URI) buildErrorRedirectURIByOAuthError(rawURL string, oauthErr *domain.OAuthError) string {
-	if rawURL == "" {
-		return ""
+func (u *URI) fetchErrorRedirectURI(rawURL string) string {
+	_, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return u.defaultErrorRedirectURI
 	}
 
-	if oauthErr == nil {
-		// build redirect URI with internal server error
-		return u.buildErrorRedirectURI(rawURL, domain.ErrorCodeServerError, domain.ErrorDescriptionInternalServerError, "")
-	}
-
-	return u.buildErrorRedirectURI(rawURL, oauthErr.Code, oauthErr.Description, oauthErr.URI)
+	return rawURL
 }
 
-func (u *URI) buildErrorRedirectURI(rawURL, code, description, errURI string) string {
-	queryValues := map[string]string{
-		oauth.RequestParameterNameError:            code,
-		oauth.RequestParameterNameErrorDescription: description,
-		oauth.RequestParameterNameErrorURI:         errURI,
+func (u *URI) fetchErrorQueryParameters(err error) queryParameters {
+	var validationErr *validator.Error
+	if errors.As(err, &validationErr) {
+		return newErrorQueryParameters(validationErr.Code, validationErr.Description, validationErr.URI)
 	}
 
-	redirectURI := u.buildRedirectURI(rawURL, queryValues)
-	return redirectURI
+	return newErrorQueryParameters(domain.ErrorCodeServerError, domain.ErrorDescriptionInternalServerError, "")
 }
 
-func (u *URI) buildRedirectURI(rawURL string, queryValues map[string]string) string {
-	uri, err := url.Parse(rawURL)
+func (u *URI) buildRedirectURI(rawURL string, parameters queryParameters) string {
+	uri, err := url.ParseRequestURI(rawURL)
 	if err != nil {
 		return ""
 	}
 
 	query := uri.Query()
-	for k, v := range queryValues {
+	for k, v := range parameters {
 		query.Set(k, v)
 	}
 

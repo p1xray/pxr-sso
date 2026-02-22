@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/p1xray/pxr-sso/internal/oauth"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
 	"github.com/p1xray/pxr-sso/pkg/extslices"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 	"golang.org/x/crypto/bcrypt"
@@ -33,7 +33,7 @@ func NewValidator(
 	}
 }
 
-func (v *Validator) Validate() *domain.DisplayableError {
+func (v *Validator) Validate() error {
 	if err := v.validateFlowID(); err != nil {
 		return err
 	}
@@ -69,17 +69,17 @@ func (v *Validator) Validate() *domain.DisplayableError {
 	return nil
 }
 
-func (v *Validator) validateFlowID() *domain.DisplayableError {
+func (v *Validator) validateFlowID() *validator.Error {
 	if err := v.validateFlowIDRequired(); err != nil {
-		return domain.InternalError(err)
+		return validator.InvalidRequestError(err)
 	}
 
 	if err := v.validateFlowIDValue(); err != nil {
-		return domain.InternalError(err)
+		return validator.InvalidRequestError(err)
 	}
 
 	if err := v.validateFlowIDExistsFlow(); err != nil {
-		return domain.InternalError(err)
+		return validator.InvalidRequestError(err)
 	}
 
 	return nil
@@ -87,7 +87,7 @@ func (v *Validator) validateFlowID() *domain.DisplayableError {
 
 func (v *Validator) validateFlowIDRequired() error {
 	if v.params.FlowID() == "" {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameFlowID)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameFlowID)
 	}
 
 	return nil
@@ -95,7 +95,7 @@ func (v *Validator) validateFlowIDRequired() error {
 
 func (v *Validator) validateFlowIDValue() error {
 	if err := uuid.Validate(v.params.FlowID()); err != nil {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameFlowID)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameFlowID)
 	}
 
 	return nil
@@ -103,34 +103,34 @@ func (v *Validator) validateFlowIDValue() error {
 
 func (v *Validator) validateFlowIDExistsFlow() error {
 	if v.flow.IsNone() {
-		return domain.ErrOAuthFlowNotExists
+		return validator.ErrOAuthFlowNotExists
 	}
 
 	flow := v.flow.Unwrap()
 
 	paramFlowID, err := uuid.Parse(v.params.FlowID())
 	if err != nil {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameFlowID)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameFlowID)
 	}
 
 	if paramFlowID != flow.ID() {
-		return domain.ErrOAuthFlowNotExists
+		return validator.ErrOAuthFlowNotExists
 	}
 
 	return nil
 }
 
-func (v *Validator) validateResponseType() *domain.DisplayableError {
+func (v *Validator) validateResponseType() *validator.Error {
 	if err := v.validateResponseTypeRequired(); err != nil {
-		return domain.InternalError(err)
+		return validator.InvalidRequestError(err)
 	}
 
 	if err := v.validateResponseTypeValue(); err != nil {
-		return domain.InternalError(err)
+		return validator.UnsupportedResponseTypeError(err)
 	}
 
 	if err := v.validateResponseTypeEqualsFlowResponseType(); err != nil {
-		return domain.InternalError(err)
+		return validator.UnsupportedResponseTypeError(err)
 	}
 
 	return nil
@@ -138,15 +138,15 @@ func (v *Validator) validateResponseType() *domain.DisplayableError {
 
 func (v *Validator) validateResponseTypeRequired() error {
 	if v.params.ResponseType() == "" {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameResponseType)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameResponseType)
 	}
 
 	return nil
 }
 
 func (v *Validator) validateResponseTypeValue() error {
-	if v.params.ResponseType() != oauth.RequestParameterAllowValueResponseTypeCode {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameResponseType)
+	if v.params.ResponseType() != validator.RequestParameterAllowValueResponseTypeCode {
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameResponseType)
 	}
 
 	return nil
@@ -154,24 +154,24 @@ func (v *Validator) validateResponseTypeValue() error {
 
 func (v *Validator) validateResponseTypeEqualsFlowResponseType() error {
 	if v.flow.IsNone() {
-		return domain.ErrOAuthFlowNotExists
+		return validator.ErrOAuthFlowNotExists
 	}
 
 	flow := v.flow.Unwrap()
 	if v.params.ResponseType() != flow.ResponseType() {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameResponseType)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameResponseType)
 	}
 
 	return nil
 }
 
-func (v *Validator) validateClientID() *domain.DisplayableError {
+func (v *Validator) validateClientID() *validator.Error {
 	if err := v.validateClientIDRequired(); err != nil {
-		return domain.InternalError(err)
+		return validator.InvalidRequestError(err)
 	}
 
 	if err := v.validateClientIDExistsClient(); err != nil {
-		return domain.InternalError(err)
+		return validator.UnauthorizedClientError(err)
 	}
 
 	return nil
@@ -179,7 +179,7 @@ func (v *Validator) validateClientID() *domain.DisplayableError {
 
 func (v *Validator) validateClientIDRequired() error {
 	if v.params.ClientID() == "" {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameClientID)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameClientID)
 	}
 
 	return nil
@@ -187,29 +187,29 @@ func (v *Validator) validateClientIDRequired() error {
 
 func (v *Validator) validateClientIDExistsClient() error {
 	if v.client.IsNone() {
-		return domain.ErrOAuthClientNotRegistered
+		return validator.ErrOAuthClientNotRegistered
 	}
 
 	client := v.client.Unwrap()
 
 	if v.params.ClientID() != client.Code() {
-		return domain.ErrOAuthClientNotRegistered
+		return validator.ErrOAuthClientNotRegistered
 	}
 
 	return nil
 }
 
-func (v *Validator) validateRedirectURI() *domain.DisplayableError {
+func (v *Validator) validateRedirectURI() *validator.Error {
 	if err := v.validateRedirectURIRequired(); err != nil {
-		return domain.InternalError(err)
+		return validator.InvalidRequestError(err)
 	}
 
 	if err := v.validateRedirectURIRegisteredForClient(); err != nil {
-		return domain.InternalError(err)
+		return validator.UnauthorizedClientError(err)
 	}
 
 	if err := v.validateRedirectURIEqualsFlowRedirectURI(); err != nil {
-		return domain.InternalError(err)
+		return validator.UnauthorizedClientError(err)
 	}
 
 	return nil
@@ -217,7 +217,7 @@ func (v *Validator) validateRedirectURI() *domain.DisplayableError {
 
 func (v *Validator) validateRedirectURIRequired() error {
 	if v.params.RedirectURI() == "" {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameRedirectURI)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameRedirectURI)
 	}
 
 	return nil
@@ -225,12 +225,12 @@ func (v *Validator) validateRedirectURIRequired() error {
 
 func (v *Validator) validateRedirectURIEqualsFlowRedirectURI() error {
 	if v.flow.IsNone() {
-		return domain.ErrOAuthFlowNotExists
+		return validator.ErrOAuthFlowNotExists
 	}
 
 	flow := v.flow.Unwrap()
 	if v.params.RedirectURI() != flow.RedirectURI() {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameRedirectURI)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameRedirectURI)
 	}
 
 	return nil
@@ -238,7 +238,7 @@ func (v *Validator) validateRedirectURIEqualsFlowRedirectURI() error {
 
 func (v *Validator) validateRedirectURIRegisteredForClient() error {
 	if v.redirectURIRegisteredForClient() == false {
-		return domain.ErrOAuthRedirectURINotRegisteredForClient
+		return validator.ErrOAuthRedirectURINotRegisteredForClient
 	}
 
 	return nil
@@ -253,13 +253,13 @@ func (v *Validator) redirectURIRegisteredForClient() bool {
 	return slices.Contains(client.RedirectURI(), v.params.RedirectURI())
 }
 
-func (v *Validator) validateState() *domain.DisplayableError {
+func (v *Validator) validateState() *validator.Error {
 	if err := v.validateStateRequired(); err != nil {
-		return domain.InternalError(err)
+		return validator.InvalidRequestError(err)
 	}
 
 	if err := v.validateStateEqualsFlowState(); err != nil {
-		return domain.InternalError(err)
+		return validator.InvalidRequestError(err)
 	}
 
 	return nil
@@ -267,7 +267,7 @@ func (v *Validator) validateState() *domain.DisplayableError {
 
 func (v *Validator) validateStateRequired() error {
 	if v.params.State() == "" {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameState)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameState)
 	}
 
 	return nil
@@ -275,20 +275,20 @@ func (v *Validator) validateStateRequired() error {
 
 func (v *Validator) validateStateEqualsFlowState() error {
 	if v.flow.IsNone() {
-		return domain.ErrOAuthFlowNotExists
+		return validator.ErrOAuthFlowNotExists
 	}
 
 	flow := v.flow.Unwrap()
 	if v.params.State() != flow.State() {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameState)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameState)
 	}
 
 	return nil
 }
 
-func (v *Validator) validateScope() *domain.DisplayableError {
+func (v *Validator) validateScope() *validator.Error {
 	if err := v.validateScopeEqualsFlowScope(); err != nil {
-		return domain.InternalError(err)
+		return validator.InvalidScopeError(err)
 	}
 
 	return nil
@@ -296,25 +296,25 @@ func (v *Validator) validateScope() *domain.DisplayableError {
 
 func (v *Validator) validateScopeEqualsFlowScope() error {
 	if v.flow.IsNone() {
-		return domain.ErrOAuthFlowNotExists
+		return validator.ErrOAuthFlowNotExists
 	}
 
 	flow := v.flow.Unwrap()
 	equals := extslices.Any(flow.Scope(), v.params.Scope())
 	if !equals {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameScope)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameScope)
 	}
 
 	return nil
 }
 
-func (v *Validator) validateUsername() *domain.DisplayableError {
+func (v *Validator) validateUsername() *validator.Error {
 	if err := v.validateUsernameRequired(); err != nil {
-		return domain.DisplayError(domain.ErrorDescriptionUsernameRequired, err)
+		return validator.InvalidUserCredentialsError(err)
 	}
 
 	if err := v.validateUsernameUserExists(); err != nil {
-		return domain.DisplayError(domain.ErrorDescriptionInvalidUserCredentials, err)
+		return validator.InvalidUserCredentialsError(err)
 	}
 
 	return nil
@@ -322,7 +322,7 @@ func (v *Validator) validateUsername() *domain.DisplayableError {
 
 func (v *Validator) validateUsernameRequired() error {
 	if v.params.Username() == "" {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameUsername)
+		return validator.ErrOAuthUsernameRequired
 	}
 
 	return nil
@@ -330,24 +330,24 @@ func (v *Validator) validateUsernameRequired() error {
 
 func (v *Validator) validateUsernameUserExists() error {
 	if v.user.IsNone() {
-		return domain.ErrOAuthInvalidUserCredentials
+		return validator.ErrOAuthInvalidUserCredentials
 	}
 
 	user := v.user.Unwrap()
 	if v.params.Username() != user.Username() {
-		return domain.ErrOAuthInvalidUserCredentials
+		return validator.ErrOAuthInvalidUserCredentials
 	}
 
 	return nil
 }
 
-func (v *Validator) validatePassword() *domain.DisplayableError {
+func (v *Validator) validatePassword() *validator.Error {
 	if err := v.validatePasswordRequired(); err != nil {
-		return domain.DisplayError(domain.ErrorDescriptionPasswordRequired, err)
+		return validator.InvalidUserCredentialsError(err)
 	}
 
 	if err := v.validatePasswordUserExists(); err != nil {
-		return domain.DisplayError(domain.ErrorDescriptionInvalidUserCredentials, err)
+		return validator.InvalidUserCredentialsError(err)
 	}
 
 	return nil
@@ -355,7 +355,7 @@ func (v *Validator) validatePassword() *domain.DisplayableError {
 
 func (v *Validator) validatePasswordRequired() error {
 	if v.params.Password() == "" {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNamePassword)
+		return validator.ErrOAuthPasswordRequired
 	}
 
 	return nil
@@ -363,12 +363,12 @@ func (v *Validator) validatePasswordRequired() error {
 
 func (v *Validator) validatePasswordUserExists() error {
 	if v.user.IsNone() {
-		return domain.ErrOAuthInvalidUserCredentials
+		return validator.ErrOAuthInvalidUserCredentials
 	}
 
 	user := v.user.Unwrap()
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash()), []byte(v.params.Password())); err != nil {
-		return domain.ErrOAuthInvalidUserCredentials
+		return validator.ErrOAuthInvalidUserCredentials
 	}
 
 	return nil

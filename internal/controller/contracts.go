@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
 	"github.com/p1xray/pxr-sso/internal/oauth/usecase/consent"
@@ -19,12 +18,12 @@ type (
 
 	// Login is a use-case for logging in a user.
 	Login interface {
-		Execute(ctx context.Context, data login.Params) (string, *domain.DisplayableError)
+		Execute(ctx context.Context, data login.Params) (string, error)
 	}
 
 	// Register is a use-case for registering a new user.
 	Register interface {
-		Execute(ctx context.Context, data register.Params) (string, *domain.DisplayableError)
+		Execute(ctx context.Context, data register.Params) (string, error)
 	}
 
 	// Consent is a use-case for confirming consent.

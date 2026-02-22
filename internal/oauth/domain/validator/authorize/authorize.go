@@ -3,8 +3,8 @@ package authorize
 import (
 	"fmt"
 	"github.com/p1xray/pxr-sso/internal/oauth"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
+	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
 	"github.com/p1xray/pxr-sso/pkg/extslices"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 )
@@ -13,7 +13,7 @@ type Validator struct {
 	params dto.Authorize
 	client nullable.Nullable[dto.Client]
 
-	err *domain.OAuthError
+	err *validator.Error
 
 	isValidatingExecuted     bool
 	responseTypeValid        bool
@@ -31,7 +31,7 @@ func NewValidator(
 	return &Validator{params: params, client: client}
 }
 
-func (v *Validator) Validate() *domain.OAuthError {
+func (v *Validator) Validate() *validator.Error {
 	v.isValidatingExecuted = true
 
 	v.validateResponseType()
@@ -72,15 +72,15 @@ func (v *Validator) ValidatedData() dto.ValidatedAuthorize {
 
 func (v *Validator) validateResponseType() {
 	if err := v.validateResponseTypeRequired(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateResponseTypeMoreThenOnce(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateResponseTypeValue(); err != nil {
-		v.setErrorIfEmpty(domain.UnsupportedResponseTypeOAuthError(err))
+		v.setErrorIfEmpty(validator.UnsupportedResponseTypeError(err))
 	}
 
 	v.responseTypeValid = true
@@ -88,7 +88,7 @@ func (v *Validator) validateResponseType() {
 
 func (v *Validator) validateResponseTypeRequired() error {
 	if len(v.params.ResponseType()) == 0 {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameResponseType)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameResponseType)
 	}
 
 	return nil
@@ -96,7 +96,7 @@ func (v *Validator) validateResponseTypeRequired() error {
 
 func (v *Validator) validateResponseTypeMoreThenOnce() error {
 	if len(v.params.ResponseType()) > 1 {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterIncludedMoreThanOnce, oauth.RequestParameterNameResponseType)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterIncludedMoreThanOnce, oauth.RequestParameterNameResponseType)
 	}
 
 	return nil
@@ -104,8 +104,8 @@ func (v *Validator) validateResponseTypeMoreThenOnce() error {
 
 func (v *Validator) validateResponseTypeValue() error {
 	paramResponseType := v.params.ResponseType()
-	if len(paramResponseType) == 1 && paramResponseType[0] != oauth.RequestParameterAllowValueResponseTypeCode {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameResponseType)
+	if len(paramResponseType) == 1 && paramResponseType[0] != validator.RequestParameterAllowValueResponseTypeCode {
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameResponseType)
 	}
 
 	return nil
@@ -132,15 +132,15 @@ func (v *Validator) validatedResponseType() string {
 
 func (v *Validator) validateClientID() {
 	if err := v.validateClientIDRequired(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateClientIDMoreThenOnce(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateClientIDExistClient(); err != nil {
-		v.setErrorIfEmpty(domain.UnauthorizedClientOAuthError(err))
+		v.setErrorIfEmpty(validator.UnauthorizedClientError(err))
 	}
 
 	v.clientIDValid = true
@@ -148,7 +148,7 @@ func (v *Validator) validateClientID() {
 
 func (v *Validator) validateClientIDRequired() error {
 	if len(v.params.ClientID()) == 0 {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameClientID)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameClientID)
 	}
 
 	return nil
@@ -156,7 +156,7 @@ func (v *Validator) validateClientIDRequired() error {
 
 func (v *Validator) validateClientIDMoreThenOnce() error {
 	if len(v.params.ClientID()) > 1 {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterIncludedMoreThanOnce, oauth.RequestParameterNameClientID)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterIncludedMoreThanOnce, oauth.RequestParameterNameClientID)
 	}
 
 	return nil
@@ -164,7 +164,7 @@ func (v *Validator) validateClientIDMoreThenOnce() error {
 
 func (v *Validator) validateClientIDExistClient() error {
 	if v.client.IsNone() {
-		return domain.ErrOAuthClientNotRegistered
+		return validator.ErrOAuthClientNotRegistered
 	}
 
 	client := v.client.Unwrap()
@@ -173,7 +173,7 @@ func (v *Validator) validateClientIDExistClient() error {
 		return nil
 	}
 
-	return domain.ErrOAuthClientNotRegistered
+	return validator.ErrOAuthClientNotRegistered
 }
 
 func (v *Validator) isClientIDValid() bool {
@@ -197,15 +197,15 @@ func (v *Validator) validatedClientID() string {
 
 func (v *Validator) validateRedirectURI() {
 	if err := v.validateRedirectURIRequired(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateRedirectURIMoreThenOnce(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateRedirectURIRegisteredForClient(); err != nil {
-		v.setErrorIfEmpty(domain.UnauthorizedClientOAuthError(err))
+		v.setErrorIfEmpty(validator.UnauthorizedClientError(err))
 	}
 
 	v.redirectURIValid = true
@@ -213,7 +213,7 @@ func (v *Validator) validateRedirectURI() {
 
 func (v *Validator) validateRedirectURIRequired() error {
 	if len(v.params.RedirectURI()) == 0 {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameRedirectURI)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameRedirectURI)
 	}
 
 	return nil
@@ -221,7 +221,7 @@ func (v *Validator) validateRedirectURIRequired() error {
 
 func (v *Validator) validateRedirectURIMoreThenOnce() error {
 	if len(v.params.RedirectURI()) > 1 {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterIncludedMoreThanOnce, oauth.RequestParameterNameRedirectURI)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterIncludedMoreThanOnce, oauth.RequestParameterNameRedirectURI)
 	}
 
 	return nil
@@ -229,7 +229,7 @@ func (v *Validator) validateRedirectURIMoreThenOnce() error {
 
 func (v *Validator) validateRedirectURIRegisteredForClient() error {
 	if v.redirectURIRegisteredForClient() == false {
-		return domain.ErrOAuthRedirectURINotRegisteredForClient
+		return validator.ErrOAuthRedirectURINotRegisteredForClient
 	}
 
 	return nil
@@ -265,15 +265,15 @@ func (v *Validator) validatedRedirectURI() string {
 
 func (v *Validator) validateCodeChallenge() {
 	if err := v.validateCodeChallengeRequired(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateCodeChallengeMoreThenOnce(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateCodeChallengeValue(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	v.codeChallengeValid = true
@@ -283,7 +283,7 @@ func (v *Validator) validateCodeChallengeRequired() error {
 	if len(v.params.CodeChallenge()) == 0 {
 		return fmt.Errorf(
 			"%w: %s",
-			domain.ErrOAuthMissingRequiredParameter,
+			validator.ErrOAuthMissingRequiredParameter,
 			oauth.RequestParameterNameCodeChallenge)
 	}
 
@@ -294,7 +294,7 @@ func (v *Validator) validateCodeChallengeMoreThenOnce() error {
 	if len(v.params.CodeChallenge()) > 1 {
 		return fmt.Errorf(
 			"%w: %s",
-			domain.ErrOAuthParameterIncludedMoreThanOnce,
+			validator.ErrOAuthParameterIncludedMoreThanOnce,
 			oauth.RequestParameterNameCodeChallenge)
 	}
 
@@ -304,7 +304,7 @@ func (v *Validator) validateCodeChallengeMoreThenOnce() error {
 func (v *Validator) validateCodeChallengeValue() error {
 	paramCodeChallengeMethod := v.params.CodeChallenge()
 	if len(paramCodeChallengeMethod) == 1 && paramCodeChallengeMethod[0] == "" {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameCodeChallenge)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameCodeChallenge)
 	}
 
 	return nil
@@ -331,15 +331,15 @@ func (v *Validator) validatedCodeChallenge() string {
 
 func (v *Validator) validateCodeChallengeMethod() {
 	if err := v.validateCodeChallengeMethodRequired(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateCodeChallengeMethodMoreThenOnce(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateCodeChallengeMethodValue(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	v.codeChallengeMethodValid = true
@@ -349,7 +349,7 @@ func (v *Validator) validateCodeChallengeMethodRequired() error {
 	if len(v.params.CodeChallengeMethod()) == 0 {
 		return fmt.Errorf(
 			"%w: %s",
-			domain.ErrOAuthMissingRequiredParameter,
+			validator.ErrOAuthMissingRequiredParameter,
 			oauth.RequestParameterNameCodeChallengeMethod)
 	}
 
@@ -360,7 +360,7 @@ func (v *Validator) validateCodeChallengeMethodMoreThenOnce() error {
 	if len(v.params.CodeChallengeMethod()) > 1 {
 		return fmt.Errorf(
 			"%w: %s",
-			domain.ErrOAuthParameterIncludedMoreThanOnce,
+			validator.ErrOAuthParameterIncludedMoreThanOnce,
 			oauth.RequestParameterNameCodeChallengeMethod)
 	}
 
@@ -370,8 +370,8 @@ func (v *Validator) validateCodeChallengeMethodMoreThenOnce() error {
 func (v *Validator) validateCodeChallengeMethodValue() error {
 	paramCodeChallengeMethod := v.params.CodeChallengeMethod()
 	if len(paramCodeChallengeMethod) == 1 &&
-		paramCodeChallengeMethod[0] != oauth.RequestParameterAllowValueCodeChallengeMethod {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameCodeChallengeMethod)
+		paramCodeChallengeMethod[0] != validator.RequestParameterAllowValueCodeChallengeMethod {
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameCodeChallengeMethod)
 	}
 
 	return nil
@@ -398,15 +398,15 @@ func (v *Validator) validatedCodeChallengeMethod() string {
 
 func (v *Validator) validateState() {
 	if err := v.validateStateRequired(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateStateMoreThenOnce(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	if err := v.validateStateValue(); err != nil {
-		v.setErrorIfEmpty(domain.InvalidRequestOAuthError(err))
+		v.setErrorIfEmpty(validator.InvalidRequestError(err))
 	}
 
 	v.stateValid = true
@@ -414,7 +414,7 @@ func (v *Validator) validateState() {
 
 func (v *Validator) validateStateRequired() error {
 	if len(v.params.State()) == 0 {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameState)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameState)
 	}
 
 	return nil
@@ -422,7 +422,7 @@ func (v *Validator) validateStateRequired() error {
 
 func (v *Validator) validateStateMoreThenOnce() error {
 	if len(v.params.State()) > 1 {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterIncludedMoreThanOnce, oauth.RequestParameterNameState)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterIncludedMoreThanOnce, oauth.RequestParameterNameState)
 	}
 
 	return nil
@@ -431,7 +431,7 @@ func (v *Validator) validateStateMoreThenOnce() error {
 func (v *Validator) validateStateValue() error {
 	paramState := v.params.State()
 	if len(paramState) == 1 && paramState[0] == "" {
-		return fmt.Errorf("%w: %s", domain.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameState)
+		return fmt.Errorf("%w: %s", validator.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameState)
 	}
 
 	return nil
@@ -467,7 +467,7 @@ func (v *Validator) validatedScope() []string {
 	return scope
 }
 
-func (v *Validator) setErrorIfEmpty(err *domain.OAuthError) {
+func (v *Validator) setErrorIfEmpty(err *validator.Error) {
 	if v.err == nil {
 		v.err = err
 	}
