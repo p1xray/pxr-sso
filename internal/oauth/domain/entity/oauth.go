@@ -18,18 +18,20 @@ type OAuth struct {
 	uriBuilder     *builder.URI
 	tokenGenerator *generator.Token
 
-	client nullable.Nullable[dto.Client]
-	flow   nullable.Nullable[dto.Flow]
-	user   nullable.Nullable[dto.User]
+	client        nullable.Nullable[dto.Client]
+	flow          nullable.Nullable[dto.Flow]
+	authorization nullable.Nullable[dto.Authorization]
+	user          nullable.Nullable[dto.User]
 
 	redirectURI string
 }
 
 func NewOAuth(setters ...OAuthOption) *OAuth {
 	oauth := &OAuth{
-		client: nullable.None[dto.Client](),
-		flow:   nullable.None[dto.Flow](),
-		user:   nullable.None[dto.User](),
+		client:        nullable.None[dto.Client](),
+		flow:          nullable.None[dto.Flow](),
+		authorization: nullable.None[dto.Authorization](),
+		user:          nullable.None[dto.User](),
 	}
 
 	for _, setter := range setters {
@@ -83,11 +85,6 @@ func (o *OAuth) Login(data dto.Login) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	// generate authorization code
-	if err := o.setFlowAuthorizationCode(); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
 	// build callback redirect URI
 	if err := o.createConsentRedirectURI(); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -114,11 +111,6 @@ func (o *OAuth) Register(data dto.Register) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	// generate authorization code
-	if err := o.setFlowAuthorizationCode(); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
 	// build callback redirect URI
 	if err := o.createConsentRedirectURI(); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -136,8 +128,8 @@ func (o *OAuth) Consent(data dto.Consent) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	// generate authorization code
-	if err := o.setFlowAuthorizationCode(); err != nil {
+	// create authorization for redis
+	if err := o.createAuthorization(); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -153,7 +145,7 @@ func (o *OAuth) ExchangeToken(data dto.ExchangeToken) (dto.Token, error) {
 	const op = "oauth exchange token"
 
 	// validate request parameters
-	validator := token.NewValidator(data, o.client, o.flow)
+	validator := token.NewValidator(data, o.client, o.authorization)
 	if err := validator.Validate(); err != nil {
 		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -233,7 +225,15 @@ func (o *OAuth) createCallbackRedirectURI() error {
 		return fmt.Errorf("%s: %w", "create callback redirect URI", err)
 	}
 
-	callbackRedirectURI := o.uriBuilder.BuildCallbackRedirectURI(flow)
+	authorization, err := o.Authorization()
+	if err != nil {
+		return fmt.Errorf("%s: %w", "create callback redirect URI", err)
+	}
+
+	callbackRedirectURI := o.uriBuilder.BuildCallbackRedirectURI(
+		authorization.RedirectURI(),
+		authorization.Code(),
+		flow.State())
 	o.setRedirectURI(callbackRedirectURI)
 
 	return nil
@@ -290,15 +290,6 @@ func (o *OAuth) updateFlow(setters ...dto.FlowOption) error {
 	return nil
 }
 
-func (o *OAuth) setFlowAuthorizationCode() error {
-	code := generator.AuthorizationCode()
-	if err := o.updateFlow(dto.WithAuthorizationCode(code)); err != nil {
-		return fmt.Errorf("set flow authorization code: %w", err)
-	}
-
-	return nil
-}
-
 func (o *OAuth) setFlowUsername() error {
 	user, err := o.User()
 	if err != nil {
@@ -318,10 +309,44 @@ func (o *OAuth) setFlow(flow dto.Flow) {
 
 func (o *OAuth) Flow() (dto.Flow, error) {
 	if o.flow.IsNone() {
-		return dto.Flow{}, fmt.Errorf("get flow: flow not initialized")
+		return dto.Flow{}, fmt.Errorf("flow not initialized")
 	}
 
 	return o.flow.Unwrap(), nil
+}
+
+func (o *OAuth) createAuthorization() error {
+	flow, err := o.Flow()
+	if err != nil {
+		return fmt.Errorf("%s: %w", "create authorization", err)
+	}
+
+	code := generator.AuthorizationCode()
+
+	authorization := dto.NewAuthorization(
+		code,
+		flow.Username(),
+		flow.ClientID(),
+		flow.RedirectURI(),
+		flow.CodeChallenge(),
+		flow.Scope(),
+	)
+
+	o.setAuthorization(authorization)
+
+	return nil
+}
+
+func (o *OAuth) setAuthorization(authorization dto.Authorization) {
+	o.authorization = nullable.Some(authorization)
+}
+
+func (o *OAuth) Authorization() (dto.Authorization, error) {
+	if o.authorization.IsNone() {
+		return dto.Authorization{}, fmt.Errorf("authorization not initialized")
+	}
+
+	return o.authorization.Unwrap(), nil
 }
 
 func (o *OAuth) createNewUser(data dto.Register) error {

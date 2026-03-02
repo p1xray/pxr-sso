@@ -19,7 +19,8 @@ const pkgTag = "redis storage"
 type Redis struct {
 	client *redis.Client
 
-	flowTTL time.Duration
+	flowTTL          time.Duration
+	authorizationTTL time.Duration
 }
 
 func New(cfg Config) (*Redis, error) {
@@ -30,8 +31,9 @@ func New(cfg Config) (*Redis, error) {
 	client := redis.NewClient(opt)
 
 	return &Redis{
-		client:  client,
-		flowTTL: cfg.FlowTTL,
+		client:           client,
+		flowTTL:          cfg.FlowTTL,
+		authorizationTTL: cfg.AuthorizationTTL,
 	}, nil
 }
 
@@ -49,8 +51,6 @@ func (r *Redis) Flow(ctx context.Context, id string) (dto.Flow, error) {
 
 		return dto.Flow{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
-
-	fmt.Printf("redis flow: %v", redisFlow)
 
 	flow, err := converter.ToFlowDTO(redisFlow)
 	if err != nil {
@@ -80,6 +80,48 @@ func (r *Redis) RemoveFlow(ctx context.Context, id uuid.UUID) error {
 	redisFlowKey := builder.BuildRedisFlowKey(id.String())
 
 	cmd := r.client.Del(ctx, redisFlowKey)
+	if err := cmd.Err(); err != nil {
+		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
+	return nil
+}
+
+func (r *Redis) Authorization(ctx context.Context, id string) (dto.Authorization, error) {
+	const op = "get authorization"
+
+	cmd := r.client.Get(ctx, id)
+
+	redisAuthorization := models.Authorization{}
+	if err := cmd.Scan(&redisAuthorization); err != nil {
+		if errors.Is(err, redis.Nil) {
+			return dto.Authorization{}, fmt.Errorf("%s: %s: %w", pkgTag, op, infrastructure.ErrEntityNotFound)
+		}
+
+		return dto.Authorization{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
+	authorization := converter.ToAuthorizationDTO(redisAuthorization)
+	return authorization, nil
+}
+
+func (r *Redis) SaveAuthorization(ctx context.Context, authorization dto.Authorization) error {
+	const op = "save authorization"
+
+	redisAuthorization := converter.ToAuthorizationRedis(authorization)
+
+	cmd := r.client.Set(ctx, redisAuthorization.Code, redisAuthorization, r.authorizationTTL)
+	if err := cmd.Err(); err != nil {
+		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
+	return nil
+}
+
+func (r *Redis) RemoveAuthorization(ctx context.Context, id string) error {
+	const op = "remove authorization"
+
+	cmd := r.client.Del(ctx, id)
 	if err := cmd.Err(); err != nil {
 		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}

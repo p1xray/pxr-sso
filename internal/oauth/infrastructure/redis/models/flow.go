@@ -14,7 +14,6 @@ type Flow struct {
 	State               string `json:"state" required:"true"`
 	Scope               string `json:"scope" required:"true"`
 	Username            string `json:"username"`
-	AuthorizationCode   string `json:"authorization_code"`
 }
 
 //goland:noinspection GoMixedReceiverTypes

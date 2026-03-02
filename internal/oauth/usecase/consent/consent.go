@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
@@ -26,7 +27,9 @@ type Repository interface {
 
 type Redis interface {
 	Flow(ctx context.Context, id string) (dto.Flow, error)
-	SaveFlow(ctx context.Context, flow dto.Flow) error
+	RemoveFlow(ctx context.Context, id uuid.UUID) error
+	
+	SaveAuthorization(ctx context.Context, authorization dto.Authorization) error
 }
 
 // UseCase is a use-case for confirming consent.
@@ -104,16 +107,30 @@ func (uc *UseCase) consent(ctx context.Context, data Params) (string, error) {
 		return "", fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
-	// update flow data in redis
-	updatedFlow, err := oauthEntity.Flow()
+	// save authorization data to redis
+	authorization, err := oauthEntity.Authorization()
 	if err != nil {
-		log.Error(logTag+" get the updated flow", sl.Err(err))
+		log.Error(logTag+" get authorization", sl.Err(err))
 
 		return "", fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
-	if err = uc.redis.SaveFlow(ctx, updatedFlow); err != nil {
-		log.Error(logTag+" save flow", sl.Err(err))
+	if err = uc.redis.SaveAuthorization(ctx, authorization); err != nil {
+		log.Error(logTag+" save authorization", sl.Err(err))
+
+		return "", fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
+	// remove flow data from redis
+	flowToRemove, err := oauthEntity.Flow()
+	if err != nil {
+		log.Error(logTag+" get flow", sl.Err(err))
+
+		return "", fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
+	if err = uc.redis.RemoveFlow(ctx, flowToRemove.ID()); err != nil {
+		log.Error(logTag+" remove flow", sl.Err(err))
 
 		return "", fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}

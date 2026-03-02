@@ -51,3 +51,10 @@ func WithUser(user dto.User) OAuthOption {
 		a.user = nullable.Some(user)
 	}
 }
+
+// WithAuthorization is an option which sets up the authorization for the OAuth.
+func WithAuthorization(authorization dto.Authorization) OAuthOption {
+	return func(a *OAuth) {
+		a.authorization = nullable.Some(authorization)
+	}
+}

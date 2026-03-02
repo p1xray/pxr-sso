@@ -59,7 +59,7 @@ func (s *serverAPI) Authorize(
 	authorizeData, err := s.authorizeUseCase.Execute(ctx, authorizeParams)
 	response := &oauthpb.AuthorizeResponse{
 		RedirectUri: authorizeData.Data(),
-		
+
 		Error: &oauthpb.ErrorResponse{
 			Code:        authorizeData.ErrorCode(),
 			Description: authorizeData.ErrorDescription(),
@@ -165,15 +165,14 @@ func (s *serverAPI) Token(
 	req *oauthpb.TokenRequest,
 ) (*oauthpb.TokenResponse, error) {
 	tokenParams := token.Params{
-		FlowID:            req.GetFlowId(),
 		GrantType:         req.GetGrantType(),
 		ClientID:          req.GetClientId(),
+		ClientSecret:      req.GetClientSecret(),
 		AuthorizationCode: req.GetCode(),
 		RedirectURI:       req.GetRedirectUri(),
 		CodeVerifier:      req.GetCodeVerifier(),
-		// TODO: add audience to proto
-		// Audience:          req.GetAudience(),
-		Scope: req.GetScope(),
+		Audience:          req.GetAudience(),
+		Scope:             req.GetScope(),
 	}
 
 	tokenData, err := s.tokenUseCase.Execute(ctx, tokenParams)

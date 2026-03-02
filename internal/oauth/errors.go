@@ -14,6 +14,7 @@ var (
 	ErrOAuthAudienceNotRegisteredForClient    = errors.New("the audience used in the request is not registered for the client being used")
 	ErrOAuthClientNotRegistered               = errors.New("the client with the provided client_id is not registered")
 	ErrOAuthFlowNotExists                     = errors.New("the flow with the provided flow_id is not exists")
+	ErrOAuthAuthorizationNotExists            = errors.New("the authorization with the provided code is not exists")
 	ErrOAuthUsernameRequired                  = errors.New("username is required")
 	ErrOAuthPasswordRequired                  = errors.New("password is required")
 	ErrOAuthFullNameRequired                  = errors.New("full name is required")

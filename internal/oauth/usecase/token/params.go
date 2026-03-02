@@ -1,9 +1,9 @@
 package token
 
 type Params struct {
-	FlowID            string
 	GrantType         string
 	ClientID          string
+	ClientSecret      string
 	AuthorizationCode string
 	RedirectURI       string
 	CodeVerifier      string

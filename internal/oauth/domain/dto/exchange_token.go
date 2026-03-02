@@ -1,9 +1,9 @@
 package dto
 
 type ExchangeToken struct {
-	flowID            string
 	grantType         string
 	clientID          string
+	clientSecret      string
 	authorizationCode string
 	redirectURI       string
 	codeVerifier      string
@@ -12,9 +12,9 @@ type ExchangeToken struct {
 }
 
 func NewExchangeToken(
-	flowID,
 	grantType,
 	clientID,
+	clientSecret,
 	authorizationCode,
 	redirectURI,
 	codeVerifier,
@@ -22,9 +22,9 @@ func NewExchangeToken(
 	scope []string,
 ) ExchangeToken {
 	return ExchangeToken{
-		flowID:            flowID,
 		grantType:         grantType,
 		clientID:          clientID,
+		clientSecret:      clientSecret,
 		authorizationCode: authorizationCode,
 		redirectURI:       redirectURI,
 		codeVerifier:      codeVerifier,
@@ -33,16 +33,16 @@ func NewExchangeToken(
 	}
 }
 
-func (t *ExchangeToken) FlowID() string {
-	return t.flowID
-}
-
 func (t *ExchangeToken) GrantType() string {
 	return t.grantType
 }
 
 func (t *ExchangeToken) ClientID() string {
 	return t.clientID
+}
+
+func (t *ExchangeToken) ClientSecret() string {
+	return t.clientSecret
 }
 
 func (t *ExchangeToken) AuthorizationCode() string {

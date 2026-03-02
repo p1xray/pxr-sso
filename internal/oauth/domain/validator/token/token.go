@@ -2,7 +2,6 @@ package token
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
@@ -13,33 +12,33 @@ import (
 )
 
 type Validator struct {
-	params dto.ExchangeToken
-	client nullable.Nullable[dto.Client]
-	flow   nullable.Nullable[dto.Flow]
+	params        dto.ExchangeToken
+	client        nullable.Nullable[dto.Client]
+	authorization nullable.Nullable[dto.Authorization]
 }
 
 func NewValidator(
 	params dto.ExchangeToken,
 	client nullable.Nullable[dto.Client],
-	flow nullable.Nullable[dto.Flow],
+	authorization nullable.Nullable[dto.Authorization],
 ) *Validator {
 	return &Validator{
-		params: params,
-		client: client,
-		flow:   flow,
+		params:        params,
+		client:        client,
+		authorization: authorization,
 	}
 }
 
 func (v *Validator) Validate() error {
-	if err := v.validateFlowID(); err != nil {
-		return err
-	}
-
 	if err := v.validateGrantType(); err != nil {
 		return err
 	}
 
 	if err := v.validateClientID(); err != nil {
+		return err
+	}
+
+	if err := v.validateClientSecret(); err != nil {
 		return err
 	}
 
@@ -63,65 +62,14 @@ func (v *Validator) Validate() error {
 }
 
 func (v *Validator) ValidatedScope() []string {
-	if v.flow.IsNone() {
+	if v.authorization.IsNone() {
 		return []string{}
 	}
 
-	flow := v.flow.Unwrap()
-	scope := extslices.Intersect(flow.Scope(), v.params.Scope())
+	authorization := v.authorization.Unwrap()
+	scope := extslices.Intersect(authorization.Scope(), v.params.Scope())
 
 	return scope
-}
-
-func (v *Validator) validateFlowID() *oauth.Error {
-	if err := v.validateFlowIDRequired(); err != nil {
-		return oauth.InvalidRequestError(err)
-	}
-
-	if err := v.validateFlowIDValue(); err != nil {
-		return oauth.InvalidRequestError(err)
-	}
-
-	if err := v.validateFlowIDExistFlow(); err != nil {
-		return oauth.InvalidRequestError(err)
-	}
-
-	return nil
-}
-
-func (v *Validator) validateFlowIDRequired() error {
-	if v.params.FlowID() == "" {
-		return fmt.Errorf("%w: %s", oauth.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameFlowID)
-	}
-
-	return nil
-}
-
-func (v *Validator) validateFlowIDValue() error {
-	if err := uuid.Validate(v.params.FlowID()); err != nil {
-		return fmt.Errorf("%w: %s", oauth.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameFlowID)
-	}
-
-	return nil
-}
-
-func (v *Validator) validateFlowIDExistFlow() error {
-	if v.flow.IsNone() {
-		return oauth.ErrOAuthFlowNotExists
-	}
-
-	flow := v.flow.Unwrap()
-
-	paramFlowID, err := uuid.Parse(v.params.FlowID())
-	if err != nil {
-		return fmt.Errorf("%w: %s", oauth.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameFlowID)
-	}
-
-	if paramFlowID != flow.ID() {
-		return oauth.ErrOAuthFlowNotExists
-	}
-
-	return nil
 }
 
 func (v *Validator) validateGrantType() *oauth.Error {
@@ -186,12 +134,45 @@ func (v *Validator) validateClientIDExistClient() error {
 	return nil
 }
 
+func (v *Validator) validateClientSecret() *oauth.Error {
+	if err := v.validateClientSecretRequired(); err != nil {
+		return oauth.InvalidRequestError(err)
+	}
+
+	if err := v.validateClientSecretValue(); err != nil {
+		return oauth.UnauthorizedClientError(err)
+	}
+
+	return nil
+}
+
+func (v *Validator) validateClientSecretRequired() error {
+	if v.params.ClientSecret() == "" {
+		return fmt.Errorf("%w: %s", oauth.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameClientSecret)
+	}
+
+	return nil
+}
+
+func (v *Validator) validateClientSecretValue() error {
+	if v.client.IsNone() {
+		return oauth.ErrOAuthClientNotRegistered
+	}
+
+	client := v.client.Unwrap()
+	if client.SecretKey() != v.params.ClientSecret() {
+		return fmt.Errorf("%w: %s", oauth.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameClientSecret)
+	}
+
+	return nil
+}
+
 func (v *Validator) validateAuthorizationCode() *oauth.Error {
 	if err := v.validateAuthorizationCodeRequired(); err != nil {
 		return oauth.InvalidRequestError(err)
 	}
 
-	if err := v.validateAuthorizationCodeEqualsFlowAuthorizationCode(); err != nil {
+	if err := v.validateAuthorizationCodeValue(); err != nil {
 		return oauth.InvalidGrantError(err)
 	}
 
@@ -206,13 +187,13 @@ func (v *Validator) validateAuthorizationCodeRequired() error {
 	return nil
 }
 
-func (v *Validator) validateAuthorizationCodeEqualsFlowAuthorizationCode() error {
-	if v.flow.IsNone() {
-		return oauth.ErrOAuthFlowNotExists
+func (v *Validator) validateAuthorizationCodeValue() error {
+	if v.authorization.IsNone() {
+		return oauth.ErrOAuthAuthorizationNotExists
 	}
 
-	flow := v.flow.Unwrap()
-	if v.params.AuthorizationCode() != flow.AuthorizationCode() {
+	authorization := v.authorization.Unwrap()
+	if v.params.AuthorizationCode() != authorization.Code() {
 		return fmt.Errorf("%w: %s", oauth.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameAuthorizationCode)
 	}
 
@@ -228,7 +209,7 @@ func (v *Validator) validateRedirectURI() *oauth.Error {
 		return oauth.UnauthorizedClientError(err)
 	}
 
-	if err := v.validateRedirectURIEqualsFlowRedirectURI(); err != nil {
+	if err := v.validateRedirectURIValue(); err != nil {
 		return oauth.UnauthorizedClientError(err)
 	}
 
@@ -243,13 +224,13 @@ func (v *Validator) validateRedirectURIRequired() error {
 	return nil
 }
 
-func (v *Validator) validateRedirectURIEqualsFlowRedirectURI() error {
-	if v.flow.IsNone() {
-		return oauth.ErrOAuthFlowNotExists
+func (v *Validator) validateRedirectURIValue() error {
+	if v.authorization.IsNone() {
+		return oauth.ErrOAuthAuthorizationNotExists
 	}
 
-	flow := v.flow.Unwrap()
-	if v.params.RedirectURI() != flow.RedirectURI() {
+	authorization := v.authorization.Unwrap()
+	if v.params.RedirectURI() != authorization.RedirectURI() {
 		return fmt.Errorf("%w: %s", oauth.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameRedirectURI)
 	}
 
@@ -278,7 +259,7 @@ func (v *Validator) validateCodeVerifier() *oauth.Error {
 		return oauth.InvalidRequestError(err)
 	}
 
-	if err := v.validateCodeVerifierHashEqualsFlowCodeChallenge(); err != nil {
+	if err := v.validateCodeVerifierValue(); err != nil {
 		return oauth.InvalidRequestError(err)
 	}
 
@@ -293,14 +274,14 @@ func (v *Validator) validateCodeVerifierRequired() error {
 	return nil
 }
 
-func (v *Validator) validateCodeVerifierHashEqualsFlowCodeChallenge() error {
-	if v.flow.IsNone() {
-		return oauth.ErrOAuthFlowNotExists
+func (v *Validator) validateCodeVerifierValue() error {
+	if v.authorization.IsNone() {
+		return oauth.ErrOAuthAuthorizationNotExists
 	}
 
-	flow := v.flow.Unwrap()
+	authorization := v.authorization.Unwrap()
 	hashCodeVerifier := sha256.Base64URLHash(v.params.CodeVerifier())
-	codeChallenge := flow.CodeChallenge()
+	codeChallenge := authorization.CodeChallenge()
 	if hashCodeVerifier != codeChallenge {
 		return fmt.Errorf("%w: %s", oauth.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameCodeVerifier)
 	}

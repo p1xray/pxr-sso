@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/entity"
@@ -27,8 +26,8 @@ type Repository interface {
 }
 
 type Redis interface {
-	Flow(ctx context.Context, id string) (dto.Flow, error)
-	RemoveFlow(ctx context.Context, id uuid.UUID) error
+	Authorization(ctx context.Context, id string) (dto.Authorization, error)
+	RemoveAuthorization(ctx context.Context, id string) error
 }
 
 // UseCase is a use-case for exchange token.
@@ -62,26 +61,26 @@ func (uc *UseCase) exchangeToken(ctx context.Context, data Params) (dto.Token, e
 	const op = "exchange token"
 
 	log := uc.log.With(
-		slog.String("flow_id", data.FlowID),
 		slog.String("grant_type", data.GrantType),
 		slog.String("client_id", data.ClientID),
 		slog.String("authorization_code", data.AuthorizationCode),
 		slog.String("redirect_uri", data.RedirectURI),
 		slog.String("code_verifier", data.CodeVerifier),
+		slog.String("audience", data.Audience),
 		sl.Strings("scope", data.Scope),
 	)
 	log.Debug(logTag + " attempting to exchange token")
 
-	// get flow from redis.
-	flow, err := uc.redis.Flow(ctx, data.FlowID)
+	// get authorization from redis.
+	authorization, err := uc.redis.Authorization(ctx, data.AuthorizationCode)
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
-		log.Error(logTag+" get flow", sl.Err(err))
+		log.Error(logTag+" get authorization", sl.Err(err))
 
 		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
 	// get user from storage.
-	user, err := uc.repo.UserByUsername(ctx, flow.Username())
+	user, err := uc.repo.UserByUsername(ctx, authorization.Username(), repository.WithRoles())
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get user by username", sl.Err(err))
 
@@ -89,7 +88,12 @@ func (uc *UseCase) exchangeToken(ctx context.Context, data Params) (dto.Token, e
 	}
 
 	// get client from storage.
-	client, err := uc.repo.ClientByCode(ctx, data.ClientID)
+	client, err := uc.repo.ClientByCode(
+		ctx,
+		data.ClientID,
+		repository.WithAudiences(),
+		repository.WithRedirectURIs(),
+		repository.WithScopes())
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get client by code", sl.Err(err))
 
@@ -99,15 +103,15 @@ func (uc *UseCase) exchangeToken(ctx context.Context, data Params) (dto.Token, e
 	// exchange token logic.
 	oauthEntity := entity.NewOAuth(
 		entity.WithTokenGenerator(uc.tokenGenerator),
-		entity.WithFlow(flow),
+		entity.WithAuthorization(authorization),
 		entity.WithUser(user),
 		entity.WithClient(client),
 	)
 
 	exchangeTokenParams := dto.NewExchangeToken(
-		data.FlowID,
 		data.GrantType,
 		data.ClientID,
+		data.ClientSecret,
 		data.AuthorizationCode,
 		data.RedirectURI,
 		data.CodeVerifier,
@@ -119,12 +123,21 @@ func (uc *UseCase) exchangeToken(ctx context.Context, data Params) (dto.Token, e
 		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
-	// remove flow from redis.
-	if err = uc.redis.RemoveFlow(ctx, flow.ID()); err != nil {
-		log.Error(logTag+" save flow", sl.Err(err))
+	// remove authorization data from redis.
+	authorizationToRemove, err := oauthEntity.Authorization()
+	if err != nil {
+		log.Error(logTag+" get authorization", sl.Err(err))
 
 		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
+
+	if err = uc.redis.RemoveAuthorization(ctx, authorizationToRemove.Code()); err != nil {
+		log.Error(logTag+" remove authorization", sl.Err(err))
+
+		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
+	log.Debug(logTag + " exchanging tokens successfully")
 
 	return tokens, nil
 }

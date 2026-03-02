@@ -12,7 +12,6 @@ type Flow struct {
 	codeChallenge       string
 	codeChallengeMethod string
 	state               string
-	authorizationCode   string
 	username            string
 	scope               []string
 }
@@ -74,10 +73,6 @@ func (f *Flow) State() string {
 	return f.state
 }
 
-func (f *Flow) AuthorizationCode() string {
-	return f.authorizationCode
-}
-
 func (f *Flow) Username() string {
 	return f.username
 }
@@ -88,13 +83,6 @@ func (f *Flow) Scope() []string {
 
 // FlowOption is how options for the Flow are set up.
 type FlowOption func(*Flow)
-
-// WithAuthorizationCode is an option which sets up the authorization code for the Flow.
-func WithAuthorizationCode(authorizationCode string) FlowOption {
-	return func(a *Flow) {
-		a.authorizationCode = authorizationCode
-	}
-}
 
 // WithUsername is an option which sets up the username for the Flow.
 func WithUsername(username string) FlowOption {

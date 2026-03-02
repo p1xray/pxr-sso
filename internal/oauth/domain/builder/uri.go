@@ -50,10 +50,10 @@ func (u *URI) BuildConsentRedirectURI(flow dto.Flow) string {
 	return redirectURI
 }
 
-func (u *URI) BuildCallbackRedirectURI(flow dto.Flow) string {
-	queryValues := newCallbackQueryParameters(flow.AuthorizationCode(), flow.State())
+func (u *URI) BuildCallbackRedirectURI(rawURL, authorizationCode, state string) string {
+	queryValues := newCallbackQueryParameters(authorizationCode, state)
 
-	redirectURI := u.buildRedirectURI(flow.RedirectURI(), queryValues)
+	redirectURI := u.buildRedirectURI(rawURL, queryValues)
 	return redirectURI
 }
 

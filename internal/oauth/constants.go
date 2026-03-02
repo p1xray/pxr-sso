@@ -4,6 +4,7 @@ package oauth
 const (
 	RequestParameterNameResponseType        = "response_type"
 	RequestParameterNameClientID            = "client_id"
+	RequestParameterNameClientSecret        = "client_secret"
 	RequestParameterNameRedirectURI         = "redirect_uri"
 	RequestParameterNameCodeChallenge       = "code_challenge"
 	RequestParameterNameCodeChallengeMethod = "code_challenge_method"
