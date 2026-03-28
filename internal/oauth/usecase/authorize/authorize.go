@@ -59,6 +59,7 @@ func (uc *UseCase) authorize(ctx context.Context, data Params) (string, error) {
 		sl.Strings("code_challenge", data.CodeChallenge),
 		sl.Strings("code_challenge_method", data.CodeChallengeMethod),
 		sl.Strings("state", data.State),
+		sl.Strings("audience", data.Audience),
 		sl.Strings("scope", data.Scope),
 	)
 	log.Debug(logTag + " attempting to initiate user authorization")
@@ -66,7 +67,13 @@ func (uc *UseCase) authorize(ctx context.Context, data Params) (string, error) {
 	// get client from storage
 	nullableClient := nullable.None[dto.Client]()
 	if len(data.ClientID) == 1 {
-		client, err := uc.repo.ClientByCode(ctx, data.ClientID[0])
+		client, err := uc.repo.ClientByCode(
+			ctx,
+			data.ClientID[0],
+			repository.WithRedirectURIs(),
+			repository.WithAudiences(),
+			repository.WithScopes())
+
 		if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 			log.Error(logTag+" get client by code", sl.Err(err))
 
@@ -91,6 +98,7 @@ func (uc *UseCase) authorize(ctx context.Context, data Params) (string, error) {
 		data.CodeChallenge,
 		data.CodeChallengeMethod,
 		data.State,
+		data.Audience,
 		data.Scope,
 	)
 	err := oauthEntity.Authorize(authorizeParams)

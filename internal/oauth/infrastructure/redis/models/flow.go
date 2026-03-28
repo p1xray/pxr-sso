@@ -13,6 +13,7 @@ type Flow struct {
 	CodeChallengeMethod string `json:"code_challenge_method" required:"true"`
 	State               string `json:"state" required:"true"`
 	Scope               string `json:"scope" required:"true"`
+	Audience            string `json:"audience" required:"true"`
 	Username            string `json:"username"`
 }
 

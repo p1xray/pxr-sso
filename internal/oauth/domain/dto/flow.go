@@ -13,6 +13,7 @@ type Flow struct {
 	codeChallengeMethod string
 	state               string
 	username            string
+	audience            string
 	scope               []string
 }
 
@@ -23,7 +24,8 @@ func NewFlow(
 	redirectURI,
 	codeChallenge,
 	codeChallengeMethod,
-	state string,
+	state,
+	audience string,
 	scope []string,
 	setters ...FlowOption,
 ) Flow {
@@ -35,6 +37,7 @@ func NewFlow(
 		codeChallenge:       codeChallenge,
 		codeChallengeMethod: codeChallengeMethod,
 		state:               state,
+		audience:            audience,
 		scope:               scope,
 	}
 
@@ -75,6 +78,10 @@ func (f *Flow) State() string {
 
 func (f *Flow) Username() string {
 	return f.username
+}
+
+func (f *Flow) Audience() string {
+	return f.audience
 }
 
 func (f *Flow) Scope() []string {

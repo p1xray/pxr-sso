@@ -261,6 +261,7 @@ func (o *OAuth) createFlow(validatedData dto.ValidatedAuthorize) error {
 		validatedData.CodeChallenge(),
 		validatedData.CodeChallengeMethod(),
 		validatedData.State(),
+		validatedData.Audience(),
 		validatedData.Scope(),
 	)
 	o.setFlow(flow)
@@ -282,6 +283,7 @@ func (o *OAuth) updateFlow(setters ...dto.FlowOption) error {
 		flow.CodeChallenge(),
 		flow.CodeChallengeMethod(),
 		flow.State(),
+		flow.Audience(),
 		flow.Scope(),
 		setters...,
 	)
@@ -329,6 +331,7 @@ func (o *OAuth) createAuthorization() error {
 		flow.ClientID(),
 		flow.RedirectURI(),
 		flow.CodeChallenge(),
+		flow.Audience(),
 		flow.Scope(),
 	)
 

@@ -10,6 +10,7 @@ type Authorization struct {
 	ClientID      string `json:"client_id" required:"true"`
 	RedirectURI   string `json:"redirect_uri" required:"true"`
 	CodeChallenge string `json:"code_challenge" required:"true"`
+	Audience      string `json:"audience" required:"true"`
 	Scope         string `json:"scope" required:"true"`
 }
 

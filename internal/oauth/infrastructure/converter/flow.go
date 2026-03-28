@@ -17,6 +17,7 @@ func ToFlowRedis(flow dto.Flow) models.Flow {
 		CodeChallenge:       flow.CodeChallenge(),
 		CodeChallengeMethod: flow.CodeChallengeMethod(),
 		State:               flow.State(),
+		Audience:            flow.Audience(),
 		Scope:               strings.Join(flow.Scope(), " "),
 		Username:            flow.Username(),
 	}
@@ -38,6 +39,7 @@ func ToFlowDTO(flow models.Flow) (dto.Flow, error) {
 		flow.CodeChallenge,
 		flow.CodeChallengeMethod,
 		flow.State,
+		flow.Audience,
 		strings.Split(flow.Scope, " "),
 		dto.WithUsername(flow.Username),
 	), nil

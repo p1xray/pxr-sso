@@ -5,7 +5,6 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
-	"github.com/p1xray/pxr-sso/pkg/extslices"
 	"github.com/p1xray/pxr-sso/pkg/hasher/sha256"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
 	"slices"
@@ -38,10 +37,6 @@ func (v *Validator) Validate() error {
 		return err
 	}
 
-	if err := v.validateClientSecret(); err != nil {
-		return err
-	}
-
 	if err := v.validateAuthorizationCode(); err != nil {
 		return err
 	}
@@ -54,22 +49,7 @@ func (v *Validator) Validate() error {
 		return err
 	}
 
-	if err := v.validateAudience(); err != nil {
-		return err
-	}
-
 	return nil
-}
-
-func (v *Validator) ValidatedScope() []string {
-	if v.authorization.IsNone() {
-		return []string{}
-	}
-
-	authorization := v.authorization.Unwrap()
-	scope := extslices.Intersect(authorization.Scope(), v.params.Scope())
-
-	return scope
 }
 
 func (v *Validator) validateGrantType() *oauth.Error {
@@ -129,39 +109,6 @@ func (v *Validator) validateClientIDExistClient() error {
 
 	if v.params.ClientID() != client.Code() {
 		return oauth.ErrOAuthClientNotRegistered
-	}
-
-	return nil
-}
-
-func (v *Validator) validateClientSecret() *oauth.Error {
-	if err := v.validateClientSecretRequired(); err != nil {
-		return oauth.InvalidRequestError(err)
-	}
-
-	if err := v.validateClientSecretValue(); err != nil {
-		return oauth.UnauthorizedClientError(err)
-	}
-
-	return nil
-}
-
-func (v *Validator) validateClientSecretRequired() error {
-	if v.params.ClientSecret() == "" {
-		return fmt.Errorf("%w: %s", oauth.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameClientSecret)
-	}
-
-	return nil
-}
-
-func (v *Validator) validateClientSecretValue() error {
-	if v.client.IsNone() {
-		return oauth.ErrOAuthClientNotRegistered
-	}
-
-	client := v.client.Unwrap()
-	if client.SecretKey() != v.params.ClientSecret() {
-		return fmt.Errorf("%w: %s", oauth.ErrOAuthParameterInvalidValue, oauth.RequestParameterNameClientSecret)
 	}
 
 	return nil
@@ -287,41 +234,4 @@ func (v *Validator) validateCodeVerifierValue() error {
 	}
 
 	return nil
-}
-
-func (v *Validator) validateAudience() *oauth.Error {
-	if err := v.validateAudienceRequired(); err != nil {
-		return oauth.InvalidRequestError(err)
-	}
-
-	if err := v.validateAudienceRegisteredForClient(); err != nil {
-		return oauth.UnauthorizedClientError(err)
-	}
-
-	return nil
-}
-
-func (v *Validator) validateAudienceRequired() error {
-	if v.params.Audience() == "" {
-		return fmt.Errorf("%w: %s", oauth.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameAudience)
-	}
-
-	return nil
-}
-
-func (v *Validator) validateAudienceRegisteredForClient() error {
-	if v.audienceRegisteredForClient() == false {
-		return oauth.ErrOAuthAudienceNotRegisteredForClient
-	}
-
-	return nil
-}
-
-func (v *Validator) audienceRegisteredForClient() bool {
-	if v.client.IsNone() {
-		return false
-	}
-
-	client := v.client.Unwrap()
-	return slices.Contains(client.Audiences(), v.params.Audience())
 }

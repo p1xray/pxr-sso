@@ -7,6 +7,6 @@ import (
 
 func Base64URLHash(v string) string {
 	sum := sha256.Sum256([]byte(v))
-	hash := base64.URLEncoding.EncodeToString(sum[:])
+	hash := base64.RawURLEncoding.EncodeToString(sum[:])
 	return hash
 }

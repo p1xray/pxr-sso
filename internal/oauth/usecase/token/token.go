@@ -66,8 +66,6 @@ func (uc *UseCase) exchangeToken(ctx context.Context, data Params) (dto.Token, e
 		slog.String("authorization_code", data.AuthorizationCode),
 		slog.String("redirect_uri", data.RedirectURI),
 		slog.String("code_verifier", data.CodeVerifier),
-		slog.String("audience", data.Audience),
-		sl.Strings("scope", data.Scope),
 	)
 	log.Debug(logTag + " attempting to exchange token")
 
@@ -111,12 +109,9 @@ func (uc *UseCase) exchangeToken(ctx context.Context, data Params) (dto.Token, e
 	exchangeTokenParams := dto.NewExchangeToken(
 		data.GrantType,
 		data.ClientID,
-		data.ClientSecret,
 		data.AuthorizationCode,
 		data.RedirectURI,
 		data.CodeVerifier,
-		data.Audience,
-		data.Scope,
 	)
 	tokens, err := oauthEntity.ExchangeToken(exchangeTokenParams)
 	if err != nil {

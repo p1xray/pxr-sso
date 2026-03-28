@@ -73,7 +73,7 @@ func (uc *UseCase) login(ctx context.Context, data Params) (string, error) {
 	}
 
 	// get client from storage
-	client, err := uc.repo.ClientByCode(ctx, data.ClientID)
+	client, err := uc.repo.ClientByCode(ctx, data.ClientID, repository.WithRedirectURIs())
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get client by code", sl.Err(err))
 
@@ -81,7 +81,7 @@ func (uc *UseCase) login(ctx context.Context, data Params) (string, error) {
 	}
 
 	// get user from storage
-	user, err := uc.repo.UserByUsername(ctx, data.Username)
+	user, err := uc.repo.UserByUsername(ctx, data.Username, repository.WithRoles())
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get user by username", sl.Err(err))
 

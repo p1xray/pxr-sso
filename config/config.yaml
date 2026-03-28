@@ -5,7 +5,8 @@ grpc:
 token:
   access_token_ttl: 1h
   refresh_token_ttl: 24h
-  issuer: 'http://localhost:6003'
+  id_token_ttl: 1h
+  issuer: 'http://localhost:6003/'
 postgres:
   connection_url: 'postgresql://postgres:admin@127.0.0.1:5432/sso?sslmode=disable'
 redis:

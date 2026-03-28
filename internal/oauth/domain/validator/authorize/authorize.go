@@ -7,6 +7,7 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oauth/domain/validator"
 	"github.com/p1xray/pxr-sso/pkg/extslices"
 	"github.com/p1xray/pxr-sso/pkg/nullable"
+	"slices"
 )
 
 type Validator struct {
@@ -22,6 +23,7 @@ type Validator struct {
 	codeChallengeValid       bool
 	codeChallengeMethodValid bool
 	stateValid               bool
+	audienceValid            bool
 }
 
 func NewValidator(
@@ -40,6 +42,7 @@ func (v *Validator) Validate() *oauth.Error {
 	v.validateCodeChallenge()
 	v.validateCodeChallengeMethod()
 	v.validateState()
+	v.validateAudience()
 
 	return v.err
 }
@@ -55,6 +58,7 @@ func (v *Validator) ValidatedData() dto.ValidatedAuthorize {
 	codeChallenge := v.validatedCodeChallenge()
 	codeChallengeMethod := v.validatedCodeChallengeMethod()
 	state := v.validatedState()
+	audience := v.validatedAudience()
 	scope := v.validatedScope()
 
 	validatedData := dto.NewValidatedAuthorize(
@@ -64,6 +68,7 @@ func (v *Validator) ValidatedData() dto.ValidatedAuthorize {
 		codeChallenge,
 		codeChallengeMethod,
 		state,
+		audience,
 		scope,
 	)
 
@@ -454,6 +459,80 @@ func (v *Validator) validatedState() string {
 	state := paramState[0]
 
 	return state
+}
+
+func (v *Validator) validateAudience() {
+	if err := v.validateAudienceRequired(); err != nil {
+		v.setErrorIfEmpty(oauth.InvalidRequestError(err))
+	}
+
+	if err := v.validateAudienceMoreThenOnce(); err != nil {
+		v.setErrorIfEmpty(oauth.InvalidRequestError(err))
+	}
+
+	if err := v.validateAudienceRegisteredForClient(); err != nil {
+		v.setErrorIfEmpty(oauth.UnauthorizedClientError(err))
+	}
+
+	v.audienceValid = true
+}
+
+func (v *Validator) validateAudienceRequired() error {
+	if len(v.params.Audience()) == 0 {
+		return fmt.Errorf("%w: %s", oauth.ErrOAuthMissingRequiredParameter, oauth.RequestParameterNameAudience)
+	}
+
+	return nil
+}
+
+func (v *Validator) validateAudienceMoreThenOnce() error {
+	if len(v.params.Audience()) > 1 {
+		return fmt.Errorf("%w: %s", oauth.ErrOAuthParameterIncludedMoreThanOnce, oauth.RequestParameterNameAudience)
+	}
+
+	return nil
+}
+
+func (v *Validator) validateAudienceRegisteredForClient() error {
+	if v.audienceRegisteredForClient() == false {
+		return oauth.ErrOAuthAudienceNotRegisteredForClient
+	}
+
+	return nil
+}
+
+func (v *Validator) audienceRegisteredForClient() bool {
+	if v.client.IsNone() {
+		return false
+	}
+
+	client := v.client.Unwrap()
+
+	paramAudience := v.params.Audience()
+	if len(paramAudience) == 0 {
+		return false
+	}
+
+	return slices.Contains(client.Audiences(), paramAudience[0])
+}
+
+func (v *Validator) isAudienceValid() bool {
+	if !v.isValidatingExecuted {
+		v.validateAudience()
+	}
+
+	return v.audienceValid
+}
+
+func (v *Validator) validatedAudience() string {
+	if !v.isAudienceValid() {
+		return ""
+	}
+
+	paramAudience := v.params.Audience()
+	audience := paramAudience[0]
+
+	return audience
 }
 
 func (v *Validator) validatedScope() []string {

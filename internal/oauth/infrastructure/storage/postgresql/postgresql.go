@@ -570,10 +570,10 @@ func (s *Storage) UserRoleLinks(ctx context.Context, userID int64) ([]models.Use
 			 link.created_at,
 			 link.updated_at
 		 from sso.user_role_links link
-		 where link.role_id = any(@ids);`
+		 where link.user_id = @user_id;`
 
 	args := pgx.NamedArgs{
-		"ids": userID,
+		"user_id": userID,
 	}
 
 	rows, err := s.pg.Pool.Query(ctx, stmt, args)

@@ -6,6 +6,7 @@ type Authorization struct {
 	clientID      string
 	redirectURI   string
 	codeChallenge string
+	audience      string
 	scope         []string
 }
 
@@ -14,7 +15,8 @@ func NewAuthorization(
 	username,
 	clientID,
 	redirectURI,
-	codeChallenge string,
+	codeChallenge,
+	audience string,
 	scope []string,
 ) Authorization {
 	return Authorization{
@@ -23,6 +25,7 @@ func NewAuthorization(
 		clientID:      clientID,
 		redirectURI:   redirectURI,
 		codeChallenge: codeChallenge,
+		audience:      audience,
 		scope:         scope,
 	}
 }
@@ -45,6 +48,10 @@ func (a *Authorization) RedirectURI() string {
 
 func (a *Authorization) CodeChallenge() string {
 	return a.codeChallenge
+}
+
+func (a *Authorization) Audience() string {
+	return a.audience
 }
 
 func (a *Authorization) Scope() []string {

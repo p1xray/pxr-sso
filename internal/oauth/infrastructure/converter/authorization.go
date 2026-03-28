@@ -13,6 +13,7 @@ func ToAuthorizationRedis(authorization dto.Authorization) models.Authorization 
 		ClientID:      authorization.ClientID(),
 		RedirectURI:   authorization.RedirectURI(),
 		CodeChallenge: authorization.CodeChallenge(),
+		Audience:      authorization.Audience(),
 		Scope:         strings.Join(authorization.Scope(), " "),
 	}
 }
@@ -24,6 +25,7 @@ func ToAuthorizationDTO(authorization models.Authorization) dto.Authorization {
 		authorization.ClientID,
 		authorization.RedirectURI,
 		authorization.CodeChallenge,
+		authorization.Audience,
 		strings.Split(authorization.Scope, " "),
 	)
 }

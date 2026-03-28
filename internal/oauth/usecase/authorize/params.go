@@ -7,5 +7,6 @@ type Params struct {
 	CodeChallenge       []string
 	CodeChallengeMethod []string
 	State               []string
+	Audience            []string
 	Scope               []string
 }

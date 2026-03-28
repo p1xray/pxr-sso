@@ -53,6 +53,7 @@ func (s *serverAPI) Authorize(
 		CodeChallenge:       req.GetCodeChallenge(),
 		CodeChallengeMethod: req.GetCodeChallengeMethod(),
 		State:               req.GetState(),
+		Audience:            req.GetAudience(),
 		Scope:               req.GetScope(),
 	}
 
@@ -167,12 +168,9 @@ func (s *serverAPI) Token(
 	tokenParams := token.Params{
 		GrantType:         req.GetGrantType(),
 		ClientID:          req.GetClientId(),
-		ClientSecret:      req.GetClientSecret(),
 		AuthorizationCode: req.GetCode(),
 		RedirectURI:       req.GetRedirectUri(),
 		CodeVerifier:      req.GetCodeVerifier(),
-		Audience:          req.GetAudience(),
-		Scope:             req.GetScope(),
 	}
 
 	tokenData, err := s.tokenUseCase.Execute(ctx, tokenParams)

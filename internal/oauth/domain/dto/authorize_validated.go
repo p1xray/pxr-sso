@@ -7,6 +7,7 @@ type ValidatedAuthorize struct {
 	codeChallenge       string
 	codeChallengeMethod string
 	state               string
+	audience            string
 	scope               []string
 }
 
@@ -16,7 +17,8 @@ func NewValidatedAuthorize(
 	redirectURI,
 	codeChallenge,
 	codeChallengeMethod,
-	state string,
+	state,
+	audience string,
 	scope []string,
 ) ValidatedAuthorize {
 	return ValidatedAuthorize{
@@ -26,6 +28,7 @@ func NewValidatedAuthorize(
 		codeChallenge:       codeChallenge,
 		codeChallengeMethod: codeChallengeMethod,
 		state:               state,
+		audience:            audience,
 		scope:               scope,
 	}
 }
@@ -52,6 +55,10 @@ func (va *ValidatedAuthorize) CodeChallengeMethod() string {
 
 func (va *ValidatedAuthorize) State() string {
 	return va.state
+}
+
+func (va *ValidatedAuthorize) Audience() string {
+	return va.audience
 }
 
 func (va *ValidatedAuthorize) Scope() []string {

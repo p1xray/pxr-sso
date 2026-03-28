@@ -81,7 +81,7 @@ func (uc *UseCase) consent(ctx context.Context, data Params) (string, error) {
 	}
 
 	// get client from storage
-	client, err := uc.repo.ClientByCode(ctx, data.ClientID)
+	client, err := uc.repo.ClientByCode(ctx, data.ClientID, repository.WithRedirectURIs(), repository.WithScopes())
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get client by code", sl.Err(err))
 
