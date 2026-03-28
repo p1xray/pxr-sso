@@ -151,8 +151,7 @@ func (o *OAuth) ExchangeToken(data dto.ExchangeToken) (dto.Token, error) {
 	}
 
 	// generate tokens
-	scope := validator.ValidatedScope()
-	tokens, err := o.generateTokens(scope, data.Audience())
+	tokens, err := o.generateTokens()
 	if err != nil {
 		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -169,7 +168,7 @@ func (o *OAuth) generateFlowID() (uuid.UUID, error) {
 	return id, nil
 }
 
-func (o *OAuth) generateTokens(scope []string, audiences string) (dto.Token, error) {
+func (o *OAuth) generateTokens() (dto.Token, error) {
 	const op = "generate tokens"
 
 	user, err := o.User()
@@ -182,7 +181,12 @@ func (o *OAuth) generateTokens(scope []string, audiences string) (dto.Token, err
 		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	tokens, err := o.tokenGenerator.GenerateTokens(scope, audiences, user, client)
+	authorization, err := o.Authorization()
+	if err != nil {
+		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	tokens, err := o.tokenGenerator.GenerateTokens(authorization.Scope(), authorization.Audience(), user, client)
 	if err != nil {
 		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}

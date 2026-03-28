@@ -30,6 +30,18 @@ type RefreshTokenClaims struct {
 	Expiry    *jwt.NumericDate `json:"exp,omitempty"`
 }
 
+// IDTokenClaims are ID token claims of the current SSO project.
+type IDTokenClaims struct {
+	jwt.Claims
+	TokenType string           `json:"token_type,omitempty"`
+	AuthTime  *jwt.NumericDate `json:"auth_time,omitempty"`
+	Username  string           `json:"username,omitempty"`
+	Name      string           `json:"name,omitempty"`
+	Gender    string           `json:"gender,omitempty"`
+	Birthdate string           `json:"birthdate,omitempty"`
+	Picture   string           `json:"picture,omitempty"`
+}
+
 // CustomClaims defines any custom data / claims wanted.
 type CustomClaims interface {
 	Validate(ctx context.Context) error

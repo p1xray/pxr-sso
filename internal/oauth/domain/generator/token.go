@@ -13,6 +13,7 @@ import (
 type Token struct {
 	accessTokenTTL  time.Duration
 	refreshTokenTTL time.Duration
+	idTokenTTL      time.Duration
 	issuer          string
 }
 
@@ -20,6 +21,8 @@ func NewToken(cfg TokenConfig) *Token {
 	return &Token{
 		accessTokenTTL:  cfg.AccessTokenTTL,
 		refreshTokenTTL: cfg.RefreshTokenTTL,
+		idTokenTTL:      cfg.IDTokenTTL,
+		issuer:          cfg.Issuer,
 	}
 }
 
@@ -41,7 +44,7 @@ func (t *Token) GenerateTokens(
 		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
-	_, idToken, err := t.generateIDToken(scope)
+	_, idToken, err := t.generateIDToken(user, client)
 	if err != nil {
 		return dto.Token{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
@@ -98,9 +101,26 @@ func (t *Token) generateRefreshToken(key string) (jwtclaims.RefreshTokenClaims, 
 	return claims, refreshToken, nil
 }
 
-func (t *Token) generateIDToken(scope []string) (jwtclaims.RefreshTokenClaims, string, error) {
+func (t *Token) generateIDToken(user dto.User, client dto.Client) (jwtclaims.IDTokenClaims, string, error) {
 	const op = "id token"
 
-	// TODO: implement this
-	return jwtclaims.RefreshTokenClaims{}, "", nil
+	createIDTokenData := jwtcreator.IDTokenCreateData{
+		Subject:   user.IDString(),
+		ClientID:  client.Code(),
+		Issuer:    t.issuer,
+		AuthTime:  time.Now(),
+		Username:  user.Username(),
+		Name:      user.FullName(),
+		Gender:    "",                                                       // TODO: implement user.Gender(),
+		Birthdate: time.Date(2000, time.November, 12, 0, 0, 0, 0, time.UTC), // TODO: implement user.Birthdate(),
+		Picture:   "",                                                       // TODO: implement user.PictureURL(),
+		TTL:       t.idTokenTTL,
+		Key:       []byte(client.SecretKey()),
+	}
+	claims, idToken, err := jwtcreator.NewIDToken(createIDTokenData)
+	if err != nil {
+		return jwtclaims.IDTokenClaims{}, "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return claims, idToken, nil
 }
