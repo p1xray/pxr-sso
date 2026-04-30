@@ -16,4 +16,5 @@ redis:
 uri_builder:
   login: 'http://localhost:3000/login'
   consent: 'http://localhost:3000/consent'
+  select_account: 'http://localhost:3000/selectaccount'
   error: 'http://localhost:3000/error'

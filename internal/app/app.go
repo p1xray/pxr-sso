@@ -1,17 +1,8 @@
 package app
 
 import (
-	grpcapp "github.com/p1xray/pxr-sso/internal/app/grpc"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain/builder"
-	"github.com/p1xray/pxr-sso/internal/oauth/domain/generator"
-	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/redis"
-	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/repository"
-	"github.com/p1xray/pxr-sso/internal/oauth/infrastructure/storage/postgresql"
-	"github.com/p1xray/pxr-sso/internal/oauth/usecase/authorize"
-	"github.com/p1xray/pxr-sso/internal/oauth/usecase/consent"
-	"github.com/p1xray/pxr-sso/internal/oauth/usecase/login"
-	"github.com/p1xray/pxr-sso/internal/oauth/usecase/register"
-	"github.com/p1xray/pxr-sso/internal/oauth/usecase/token"
+	"github.com/p1xray/pxr-sso/pkg/grpcserver"
+	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -20,76 +11,78 @@ import (
 
 const componentTag = "[pxr-sso-app]"
 
-// App is an application.
+// App is the application structure.
 type App struct {
-	log     *slog.Logger
-	grpcApp *grpcapp.App
+	di         *diContainer
+	grpcServer grpcserver.Server
 }
 
-// New creates a new application.
-func New(
-	log *slog.Logger,
-	cfg Config,
-) *App {
-	// storages
-	storage, err := postgresql.New(cfg.Postgres)
-	if err != nil {
-		panic(err)
+// New creates the application and initializes all dependencies through the DI container.
+func New() *App {
+	a := &App{
+		di: newDIContainer(),
 	}
 
-	redisStorage, err := redis.New(cfg.Redis)
-	if err != nil {
-		panic(err)
-	}
+	a.initDeps()
 
-	// repositories
-	oauthRepository := repository.NewRepository(storage)
-
-	// builders
-	uriBuilder := builder.NewURI(cfg.URIBuilder)
-
-	// generators
-	tokenGenerator := generator.NewToken(cfg.Token)
-
-	// use cases
-	authorizeUseCase := authorize.New(log, uriBuilder, oauthRepository, redisStorage)
-	loginUseCase := login.New(log, uriBuilder, oauthRepository, redisStorage)
-	registerUseCase := register.New(log, uriBuilder, oauthRepository, redisStorage)
-	consentUseCase := consent.New(log, uriBuilder, oauthRepository, redisStorage)
-	tokenUseCase := token.New(log, tokenGenerator, oauthRepository, redisStorage)
-
-	grpcApp := grpcapp.New(
-		log,
-		cfg.GRPC,
-		authorizeUseCase,
-		loginUseCase,
-		registerUseCase,
-		consentUseCase,
-		tokenUseCase,
-	)
-
-	return &App{
-		log:     log,
-		grpcApp: grpcApp,
-	}
+	return a
 }
 
-// Start - starts the application.
+// Start launches the application.
 func (a *App) Start() {
-	a.log.Debug(componentTag + " starting application")
+	log := a.di.Logger()
 
-	a.grpcApp.Start()
+	log.Info(componentTag + " starting application")
+	log.Debug("application configuration", slog.Any("config", a.di.Config()))
+
+	a.grpcServer.Start()
+	a.handleError()
 }
 
-// GracefulStop - gracefully stops the application.
+// GracefulStop gracefully stops the application.
 func (a *App) GracefulStop() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 
 	s := <-stop
 
-	a.log.Debug(componentTag + " signal received from OS: " + s.String())
-	a.log.Debug(componentTag + " stopping application")
+	log := a.di.Logger()
+	log.Debug(componentTag + " signal received from OS: " + s.String())
+	log.Info(componentTag + " stopping application...")
 
-	a.grpcApp.Stop()
+	a.grpcServer.Stop()
+
+	log.Info(componentTag + " application stopped")
+}
+
+func (a *App) handleError() {
+	go func() {
+		for {
+			select {
+			case err := <-a.grpcServer.Notify():
+				if err != nil {
+					a.di.Logger().Error(componentTag+" received an error from the gRPC server:", sl.Err(err))
+				}
+			default:
+			}
+		}
+	}()
+}
+
+// initDeps sequentially calls initialization functions.
+// If you need to add a new step (migration, metrics, etc.),
+// you must add the function to the inits slice.
+func (a *App) initDeps() {
+	inits := []func(){
+		a.initGRPCServer,
+	}
+
+	for _, fn := range inits {
+		fn()
+	}
+}
+
+// initGRPCServer initializes the GRPC server.
+func (a *App) initGRPCServer() {
+	a.grpcServer = a.di.GRPCServer()
 }
