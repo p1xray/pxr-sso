@@ -47,7 +47,7 @@ type diContainer struct {
 
 	// 	use cases:
 	//		grant
-	authorizedGrantUseCase grant.AuthorizedGrant
+	authorizedGrantUseCase grant.AuthorizationGrantFlow
 
 	//		authorize
 	authorizeLoginFlowProcessor         authorize.LoginFlowProcessor
@@ -138,7 +138,7 @@ func (d *diContainer) Repository() repository.Repository {
 	return d.repo
 }
 
-// URIBuilder returns the uri builder.
+// URIBuilder returns the URI builder to redirect the user agent to a specified URI.
 func (d *diContainer) URIBuilder() builder.URIBuilder {
 	if d.uriBuilder == nil {
 		d.uriBuilder = builder.NewURIBuilder(d.Config().URIBuilder)
@@ -166,7 +166,7 @@ func (d *diContainer) TokensGenerator() generator.TokensGenerator {
 }
 
 // AuthorizedGrantUseCase returns the use case for processing authorized grant.
-func (d *diContainer) AuthorizedGrantUseCase() grant.AuthorizedGrant {
+func (d *diContainer) AuthorizedGrantUseCase() grant.AuthorizationGrantFlow {
 	if d.authorizedGrantUseCase == nil {
 		d.authorizedGrantUseCase = grant.NewUseCase(d.URIBuilder(), d.Repository(), d.Cache())
 	}
@@ -192,7 +192,7 @@ func (d *diContainer) AuthorizeNoneFlowProcessor() authorize.NoneFlowProcessor {
 	return d.authorizeNoneFlowProcessor
 }
 
-// AuthorizeConsentFlowProcessor returns the processor for authorize flow with consent confirming interaction.
+// AuthorizeConsentFlowProcessor returns the processor for authorize flow with confirming consent interaction.
 func (d *diContainer) AuthorizeConsentFlowProcessor() authorize.ConsentFlowProcessor {
 	if d.authorizeConsentFlowProcessor == nil {
 		d.authorizeConsentFlowProcessor = authorize.NewConsentFlowProcessor(d.URIBuilder(), d.Cache())
@@ -227,7 +227,13 @@ func (d *diContainer) AuthorizeFlowSwitcher() authorize.FlowSwitcher {
 // AuthorizeUseCase returns the use case for processing authorize request.
 func (d *diContainer) AuthorizeUseCase() authorize.Authorize {
 	if d.authorizeUseCase == nil {
-		d.authorizeUseCase = authorize.NewUseCase(d.Logger(), d.Repository(), d.URIBuilder(), d.AuthorizeFlowSwitcher())
+		d.authorizeUseCase = authorize.NewUseCase(
+			d.Logger(),
+			d.URIBuilder(),
+			d.Repository(),
+			d.Repository(),
+			d.AuthorizeFlowSwitcher(),
+		)
 	}
 
 	return d.authorizeUseCase

@@ -26,7 +26,7 @@ const (
 	envVarEnvironmentConfigPath = "PXR_SSO_ENV_CONFIG_PATH"
 )
 
-// Config is the project configuration.
+// Config is the application configuration.
 type Config struct {
 	Env           string                   `yaml:"env" env:"ENV" env-default:"local" env-upd:""`
 	Port          string                   `yaml:"port" evn:"PXR_SSO_PORT" env-required:"true" env-upd:""`

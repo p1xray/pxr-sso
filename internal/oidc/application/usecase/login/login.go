@@ -14,36 +14,50 @@ import (
 	"log/slog"
 )
 
+// URIBuilder is the URI builder to redirect the user agent to a specified URI.
 type URIBuilder interface {
+	// BuildConsentRedirectURI return the URI to redirect to the confirming consent page.
 	BuildConsentRedirectURI(requestURI string) (string, error)
+
+	// BuildCallbackRedirectURI return the URI to redirect to the client's callback page.
 	BuildCallbackRedirectURI(rawURL, authorizationCode, state string) (string, error)
 }
 
+// UserReader is the user data reader from storage.
 type UserReader interface {
 	UserByUsername(ctx context.Context, username string, opts ...repository.UserOption) (dto.User, error)
 }
 
+// ClientReader is the client data reader from storage.
 type ClientReader interface {
 	ClientByCode(ctx context.Context, code string, opts ...repository.ClientOption) (dto.Client, error)
 }
 
+// SessionSaver is the saver session data to the storage.
 type SessionSaver interface {
+	// SaveSession saves the session data to the storage.
 	SaveSession(ctx context.Context, session entity.Session) (dto.Session, error)
 }
 
+// AuthorizationRequestReader is the authorization request data reader from storage.
 type AuthorizationRequestReader interface {
+	// AuthorizationRequest returns the authorization request data reader from storage.
 	AuthorizationRequest(ctx context.Context, requestURI string) (dto.ValidatedAuthorizeRequest, error)
 }
 
+// SessionCookieEncoder is the session cookie data encoder.
 type SessionCookieEncoder interface {
+	// Encode encodes the session cookie data.
 	Encode(session dto.AuthorizedSession) (string, error)
 }
 
+// Login is the handler for logging in user request.
 type Login interface {
+	// Execute processes a logging in user request.
 	Execute(ctx context.Context, loginRequest dto.LoginRequest) (dto.LoginResponse, error)
 }
 
-// usecase is a use-case for logging in a user.
+// usecase is the use case which handles the processing of logging in user request.
 type usecase struct {
 	log                        *slog.Logger
 	uriBuilder                 URIBuilder
@@ -54,7 +68,7 @@ type usecase struct {
 	sessionCookieEncoder       SessionCookieEncoder
 }
 
-// New returns new log in use-case.
+// New creates a new use case which handles the processing of logging in user request.
 func New(
 	log *slog.Logger,
 	uriBuilder URIBuilder,
@@ -75,7 +89,11 @@ func New(
 	}
 }
 
-// Execute executes the use-case for logging in a user.
+// Execute processes a logging in user request.
+//
+// This method validating request parameters and check user credentials.
+// If successful, creates a new session and redirects the user agent to the consent confirmation page
+// or the client callback page. Otherwise, returns an error.
 func (u *usecase) Execute(ctx context.Context, loginRequest dto.LoginRequest) (dto.LoginResponse, error) {
 	const op = "processing of log in a user"
 	const logTag = "[pxr-sso-use-case-login]"

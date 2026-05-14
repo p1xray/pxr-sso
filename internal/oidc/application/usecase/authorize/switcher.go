@@ -7,22 +7,31 @@ import (
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/dto"
 )
 
+// LoginFlowProcessor is the processor for authorize flow with logging in interaction.
 type LoginFlowProcessor interface {
+	// AuthorizeWithLogin handles authorize flow with logging in interaction.
 	AuthorizeWithLogin(ctx context.Context, data dto.AuthorizeContext) (string, error)
 }
 
+// NoneFlowProcessor is the processor for authorize without interaction flow.
 type NoneFlowProcessor interface {
+	// AuthorizeWithoutInteraction handles authorize without interaction flow.
 	AuthorizeWithoutInteraction(ctx context.Context, data dto.AuthorizeContext) (string, error)
 }
 
+// ConsentFlowProcessor is the processor for authorize flow with consent confirming interaction.
 type ConsentFlowProcessor interface {
+	// AuthorizeWithConsent handles authorize flow with consent confirming interaction.
 	AuthorizeWithConsent(ctx context.Context, data dto.AuthorizeContext) (string, error)
 }
 
+// SelectAccountFlowProcessor is the processor for authorize flow with selecting account interaction.
 type SelectAccountFlowProcessor interface {
+	// AuthorizeWithSelectAccount handles authorize flow with selecting account interaction.
 	AuthorizeWithSelectAccount(ctx context.Context, data dto.AuthorizeContext) (string, error)
 }
 
+// switcher is the processor for defining the interaction flow.
 type switcher struct {
 	login         LoginFlowProcessor
 	none          NoneFlowProcessor
@@ -30,7 +39,7 @@ type switcher struct {
 	selectAccount SelectAccountFlowProcessor
 }
 
-// NewFlowSwitcher returns new authorize switcher.
+// NewFlowSwitcher creates a new processor for defining the interaction flow.
 func NewFlowSwitcher(
 	login LoginFlowProcessor,
 	none NoneFlowProcessor,
@@ -45,7 +54,10 @@ func NewFlowSwitcher(
 	}
 }
 
-// Switch executes the authorize switcher.
+// Switch processes the authorize context to decide which interaction flow to execute.
+//
+// This method analyze authorize request, sessions, granted and pending scopes to decide which interaction flow
+// to execute or which error are return.
 func (s *switcher) Switch(ctx context.Context, data dto.AuthorizeContext) (string, error) {
 	request := data.Request()
 	prompt := request.Prompt()

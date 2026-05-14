@@ -11,54 +11,62 @@ import (
 	"google.golang.org/grpc"
 )
 
-// AuthorizeUseCase is the use case which handles the processing of authorization requests by validating and
-// then processing these requests based on defined business logic. It also includes
-// the fetching of authorization requests when necessary.
-type AuthorizeUseCase interface {
+// Authorize is the handler for authorization requests, ensuring they are processed according to OAuth 2.0
+// and OpenID Connect protocol specifications.
+type Authorize interface {
+	// Execute processes an authorization request.
 	Execute(ctx context.Context, req dto.AuthorizeRequest) (string, error)
 }
 
-type LoginUseCase interface {
+// Login is the handler for logging in user request.
+type Login interface {
+	// Execute processes a logging in user request.
 	Execute(ctx context.Context, loginRequest dto.LoginRequest) (dto.LoginResponse, error)
 }
 
-type RegisterUseCase interface {
+// Register
+type Register interface {
+	// Execute
 	Execute(ctx context.Context, registerRequest dto.RegisterRequest) (dto.RegisterResponse, error)
 }
 
-type ConsentUseCase interface {
+// Consent
+type Consent interface {
+	// Execute
 	Execute(ctx context.Context, consentRequest dto.ConsentRequest) (string, error)
 }
 
-type TokenUseCase interface {
+// Token
+type Token interface {
+	// Execute
 	Execute(ctx context.Context, tokenRequest dto.TokenRequest) (dto.TokenResponse, error)
 }
 
 // server handles authentication-related processes in the context of OpenID Connect and OAuth2 protocols.
 type server struct {
 	oauthpb.UnimplementedOauthServer
-	authorize       AuthorizeUseCase
-	loginUseCase    LoginUseCase
-	registerUseCase RegisterUseCase
-	consentUseCase  ConsentUseCase
-	tokenUseCase    TokenUseCase
+	authorize Authorize
+	login     Login
+	register  Register
+	consent   Consent
+	token     Token
 }
 
 // RegisterOIDCServer registers the implementation of the OIDC API handlers with the gRPC server.
 func RegisterOIDCServer(
 	registrar grpc.ServiceRegistrar,
-	authorize AuthorizeUseCase,
-	loginUseCase LoginUseCase,
-	registerUseCase RegisterUseCase,
-	consentUseCase ConsentUseCase,
-	tokenUseCase TokenUseCase,
+	authorize Authorize,
+	login Login,
+	register Register,
+	consent Consent,
+	token Token,
 ) {
 	srv := &server{
-		authorize:       authorize,
-		loginUseCase:    loginUseCase,
-		registerUseCase: registerUseCase,
-		consentUseCase:  consentUseCase,
-		tokenUseCase:    tokenUseCase,
+		authorize: authorize,
+		login:     login,
+		register:  register,
+		consent:   consent,
+		token:     token,
 	}
 
 	oauthpb.RegisterOauthServer(registrar, srv)

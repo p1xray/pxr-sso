@@ -9,7 +9,7 @@ import (
 	"syscall"
 )
 
-const componentTag = "[pxr-sso-app]"
+const logTag = "[pxr-sso-app]"
 
 // App is the application structure.
 type App struct {
@@ -17,7 +17,7 @@ type App struct {
 	grpcServer grpcserver.Server
 }
 
-// New creates the application and initializes all dependencies through the DI container.
+// New creates a new application and initializes all dependencies through the DI container.
 func New() *App {
 	a := &App{
 		di: newDIContainer(),
@@ -32,7 +32,7 @@ func New() *App {
 func (a *App) Start() {
 	log := a.di.Logger()
 
-	log.Info(componentTag + " starting application")
+	log.Info(logTag + " starting application")
 	log.Debug("application configuration", slog.Any("config", a.di.Config()))
 
 	a.grpcServer.Start()
@@ -47,12 +47,12 @@ func (a *App) GracefulStop() {
 	s := <-stop
 
 	log := a.di.Logger()
-	log.Debug(componentTag + " signal received from OS: " + s.String())
-	log.Info(componentTag + " stopping application...")
+	log.Debug(logTag + " signal received from OS: " + s.String())
+	log.Info(logTag + " stopping application...")
 
 	a.grpcServer.Stop()
 
-	log.Info(componentTag + " application stopped")
+	log.Info(logTag + " application stopped")
 }
 
 func (a *App) handleError() {
@@ -61,7 +61,7 @@ func (a *App) handleError() {
 			select {
 			case err := <-a.grpcServer.Notify():
 				if err != nil {
-					a.di.Logger().Error(componentTag+" received an error from the gRPC server:", sl.Err(err))
+					a.di.Logger().Error(logTag+" received an error from the gRPC server:", sl.Err(err))
 				}
 			default:
 			}

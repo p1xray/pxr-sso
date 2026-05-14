@@ -13,57 +13,74 @@ import (
 	"log/slog"
 )
 
+// ErrorURIBuilder is the URI builder to redirect the user agent to the error page.
 type ErrorURIBuilder interface {
+	// BuildErrorRedirectURI return the URI to redirect to the error page.
 	BuildErrorRedirectURI(rawURL string, err error) (string, error)
 }
 
+// FlowSwitcher is the handler for defining the interaction flow.
 type FlowSwitcher interface {
+	// Switch processes the authorize context to decide which interaction flow to execute.
 	Switch(ctx context.Context, data dto.AuthorizeContext) (string, error)
 }
 
-type Repository interface {
+// ClientReader is the client data reader from storage.
+type ClientReader interface {
+	// ClientByCode returns a client data by code.
 	ClientByCode(ctx context.Context, code string, opts ...repository.ClientOption) (dto.Client, error)
+}
+
+// SessionReader is the session data reader from storage.
+type SessionReader interface {
+	// SessionsByCode returns a sessions by code.
 	SessionsByCode(ctx context.Context, codes []string) ([]dto.Session, error)
 }
 
+// Authorize is the handler for authorization requests, ensuring they are processed according to OAuth 2.0
+// and OpenID Connect protocol specifications.
 type Authorize interface {
+	// Execute processes an authorization request.
 	Execute(ctx context.Context, req dto.AuthorizeRequest) (string, error)
 }
 
-// authorize is the use case which handles the processing of authorization requests by validating and
-// then processing these requests based on defined business logic. It also includes
-// the fetching of authorization requests when necessary.
-type authorize struct {
-	log        *slog.Logger
-	repo       Repository
-	uriBuilder ErrorURIBuilder
-	switcher   FlowSwitcher
+// usecase is the use case which handles the processing of authorization requests by validating and
+// then processing these requests.
+type usecase struct {
+	log           *slog.Logger
+	clientReader  ClientReader
+	sessionReader SessionReader
+	uriBuilder    ErrorURIBuilder
+	switcher      FlowSwitcher
 }
 
-// NewUseCase returns new use case for processing of authorization request.
+// NewUseCase creates a new use case for processing of authorization request.
 func NewUseCase(
 	log *slog.Logger,
-	repo Repository,
 	uriBuilder ErrorURIBuilder,
+	clientReader ClientReader,
+	sessionReader SessionReader,
 	switcher FlowSwitcher,
-) *authorize {
-	return &authorize{
-		log:        log,
-		repo:       repo,
-		uriBuilder: uriBuilder,
-		switcher:   switcher,
+) *usecase {
+	return &usecase{
+		log:           log,
+		clientReader:  clientReader,
+		sessionReader: sessionReader,
+		uriBuilder:    uriBuilder,
+		switcher:      switcher,
 	}
 }
 
-// Execute executes the processing of authorization request.
+// Execute processes the authorization request, validating its parameters and generating an appropriate
+// response that either grants or denies the authorization.
 //
 // This method ensures that only requests meeting the necessary validation criteria are processed,
 // maintaining the integrity and security of the authorization flow.
-func (uc *authorize) Execute(ctx context.Context, req dto.AuthorizeRequest) (string, error) {
+func (u *usecase) Execute(ctx context.Context, req dto.AuthorizeRequest) (string, error) {
 	const op = "processing of authorization request"
 	const logTag = "[pxr-sso-use-case-authorize]"
 
-	log := uc.log.With(
+	log := u.log.With(
 		sl.Strings("response_type", req.ResponseType()),
 		sl.Strings("client_id", req.ClientID()),
 		sl.Strings("redirect_uri", req.RedirectURI()),
@@ -78,7 +95,7 @@ func (uc *authorize) Execute(ctx context.Context, req dto.AuthorizeRequest) (str
 
 	nullableClient := nullable.None[dto.Client]()
 	if len(req.ClientID()) == 1 {
-		client, err := uc.repo.ClientByCode(
+		client, err := u.clientReader.ClientByCode(
 			ctx,
 			req.ClientID()[0],
 			repository.WithRedirectURIs(),
@@ -88,7 +105,7 @@ func (uc *authorize) Execute(ctx context.Context, req dto.AuthorizeRequest) (str
 		if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 			log.Error(logTag+" get client by code", sl.Err(err))
 
-			errorRedirectURI, buildErr := uc.uriBuilder.BuildErrorRedirectURI("", err)
+			errorRedirectURI, buildErr := u.uriBuilder.BuildErrorRedirectURI("", err)
 			if buildErr != nil {
 				log.Error(logTag+" build error redirect URI", sl.Err(err))
 
@@ -101,11 +118,11 @@ func (uc *authorize) Execute(ctx context.Context, req dto.AuthorizeRequest) (str
 		nullableClient = nullable.Some(client)
 	}
 
-	sessions, err := uc.repo.SessionsByCode(ctx, req.Session())
+	sessions, err := u.sessionReader.SessionsByCode(ctx, req.Session())
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get session by code", sl.Err(err))
 
-		errorRedirectURI, buildErr := uc.uriBuilder.BuildErrorRedirectURI("", err)
+		errorRedirectURI, buildErr := u.uriBuilder.BuildErrorRedirectURI("", err)
 		if buildErr != nil {
 			log.Error(logTag+" build error redirect URI", sl.Err(err))
 
@@ -120,7 +137,7 @@ func (uc *authorize) Execute(ctx context.Context, req dto.AuthorizeRequest) (str
 	if err != nil {
 		log.Warn(logTag+" validate authorization request", sl.Err(err))
 
-		errorRedirectURI, buildErr := uc.uriBuilder.BuildErrorRedirectURI("", err)
+		errorRedirectURI, buildErr := u.uriBuilder.BuildErrorRedirectURI("", err)
 		if buildErr != nil {
 			log.Error(logTag+" build error redirect URI", sl.Err(err))
 
@@ -131,11 +148,11 @@ func (uc *authorize) Execute(ctx context.Context, req dto.AuthorizeRequest) (str
 	}
 
 	authorizeCtx := dto.NewAuthorizeContext(validatedAuthorizationRequest, nullableClient.Unwrap(), sessions)
-	redirectURI, err := uc.switcher.Switch(ctx, authorizeCtx)
+	redirectURI, err := u.switcher.Switch(ctx, authorizeCtx)
 	if err != nil {
 		log.Error(logTag+" process authorize flow", sl.Err(err))
 
-		errorRedirectURI, buildErr := uc.uriBuilder.BuildErrorRedirectURI("", err)
+		errorRedirectURI, buildErr := u.uriBuilder.BuildErrorRedirectURI("", err)
 		if buildErr != nil {
 			log.Error(logTag+" build error redirect URI", sl.Err(err))
 
