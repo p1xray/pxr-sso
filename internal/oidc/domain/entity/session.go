@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/dto"
+	"github.com/p1xray/pxr-sso/internal/oidc/domain/enum"
 	"time"
 )
 
@@ -16,7 +17,9 @@ type Session struct {
 	user             dto.User
 	authTime         time.Time
 	identityProvider string
-	scopes           []string
+	scopes           []dto.Scope
+
+	dataStatus enum.DataStatus
 }
 
 func NewSession(client dto.Client, user dto.User) (Session, error) {
@@ -32,7 +35,8 @@ func NewSession(client dto.Client, user dto.User) (Session, error) {
 		user:             user,
 		authTime:         time.Now(),
 		identityProvider: "pxr.sso",
-		scopes:           make([]string, 0),
+		scopes:           make([]dto.Scope, 0),
+		dataStatus:       enum.DataStatusToCreate,
 	}
 
 	return session, nil
@@ -50,13 +54,15 @@ func NewExistSession(data dto.Session) Session {
 	}
 }
 
-func (s *Session) Update(authTime time.Time, scopes []string) {
+func (s *Session) Update(authTime time.Time, scopes []dto.Scope) {
 	s.authTime = authTime
 	s.scopes = scopes
+	s.dataStatus = enum.DataStatusToUpdate
 }
 
-func (s *Session) UpdateScopes(scopes []string) {
+func (s *Session) UpdateScopes(scopes []dto.Scope) {
 	s.scopes = scopes
+	s.dataStatus = enum.DataStatusToUpdate
 }
 
 func (s *Session) ID() int64 {
@@ -87,6 +93,10 @@ func (s *Session) IdentityProvider() string {
 	return s.identityProvider
 }
 
-func (s *Session) Scopes() []string {
+func (s *Session) Scopes() []dto.Scope {
 	return s.scopes
+}
+
+func (s *Session) DataStatus() enum.DataStatus {
+	return s.dataStatus
 }

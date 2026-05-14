@@ -12,7 +12,7 @@ type Session struct {
 	user             User
 	authTime         time.Time
 	identityProvider string
-	scopes           []string
+	scopes           []Scope
 }
 
 func NewSession(
@@ -22,7 +22,7 @@ func NewSession(
 	user User,
 	authTime time.Time,
 	identityProvider string,
-	scopes []string,
+	scopes []Scope,
 ) Session {
 	return Session{
 		id:               id,
@@ -67,7 +67,7 @@ func (s *Session) IdentityProvider() string {
 	return s.identityProvider
 }
 
-func (s *Session) Scopes() []string {
+func (s *Session) Scopes() []Scope {
 	return s.scopes
 }
 

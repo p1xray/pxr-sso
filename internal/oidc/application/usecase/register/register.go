@@ -126,6 +126,7 @@ func (u *usecase) Execute(ctx context.Context, registerRequest dto.RegisterReque
 		registerRequest.Username(),
 		registerRequest.Password(),
 		registerRequest.FullName(),
+		client.ID(),
 		client.DefaultRoles(),
 	)
 	if err != nil {

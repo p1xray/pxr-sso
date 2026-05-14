@@ -1,13 +1,13 @@
 package enum
 
-// DataStatusEnum is type for data status enum.
+// DataStatus is type for data status enum.
 // Used to determine the status of an entity when its data is saved to storage.
-type DataStatusEnum int16
+type DataStatus int16
 
-// DataStatusEnum enum.
+// DataStatus enum.
 const (
-	None DataStatusEnum = iota
-	ToCreate
-	ToUpdate
-	ToRemove
+	DataStatusNone DataStatus = iota
+	DataStatusToCreate
+	DataStatusToUpdate
+	DataStatusToRemove
 )

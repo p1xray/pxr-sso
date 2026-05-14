@@ -8,22 +8,38 @@ import (
 type Storage interface {
 	WithTransaction(ctx context.Context, f func() error) error
 
+	Client(ctx context.Context, id int64) (models.Client, error)
 	ClientByCode(ctx context.Context, code string) (models.Client, error)
 	ClientAudiences(ctx context.Context, clientID int64) ([]models.Audience, error)
 	ClientRedirectURIs(ctx context.Context, clientID int64) ([]models.RedirectURI, error)
 	ClientScopeLinks(ctx context.Context, clientID int64) ([]models.ClientScopeLink, error)
 	ClientDefaultRoleLinks(ctx context.Context, clientID int64) ([]models.ClientDefaultRoleLink, error)
 
+	User(ctx context.Context, id int64) (models.User, error)
+	IsUserExistByUsername(ctx context.Context, username string) (bool, error)
 	UserByUsername(ctx context.Context, username string) (models.User, error)
 	UserRoleLinks(ctx context.Context, userID int64) ([]models.UserRoleLink, error)
 
 	CreateUser(ctx context.Context, user models.User) (int64, error)
 	CreateUserClientLink(ctx context.Context, link models.UserClientLink) (int64, error)
-	CreateUserRoleLink(ctx context.Context, link models.UserRoleLink) (int64, error)
+	CreateUserRoleLinks(ctx context.Context, links []models.UserRoleLink) error
 
 	RolePermissionLinks(ctx context.Context, roleIDs []int64) ([]models.RolePermissionLink, error)
 
 	Scopes(ctx context.Context, ids []int64) ([]models.Scope, error)
 	Roles(ctx context.Context, ids []int64) ([]models.Role, error)
 	Permissions(ctx context.Context, ids []int64) ([]models.Permission, error)
+
+	Session(ctx context.Context, id int64) (models.Session, error)
+	SessionsByCode(ctx context.Context, codes []string) ([]models.Session, error)
+	SessionByCode(ctx context.Context, code string) (models.Session, error)
+
+	SessionGrantedScopeLinks(ctx context.Context, sessionID int64) ([]models.SessionGrantedScopeLink, error)
+	CreateSessionGrantedScopeLinks(ctx context.Context, links []models.SessionGrantedScopeLink) error
+	RemoveSessionGrantedScopeLinks(ctx context.Context, links []int64) error
+	RemoveSessionGrantedScopeLinksBySessionID(ctx context.Context, sessionID int64) error
+
+	CreateSession(ctx context.Context, session models.Session) (int64, error)
+	UpdateSession(ctx context.Context, session models.Session) error
+	RemoveSession(ctx context.Context, sessionID int64) error
 }
