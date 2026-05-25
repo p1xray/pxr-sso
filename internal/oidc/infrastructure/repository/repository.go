@@ -18,7 +18,6 @@ type Repository interface {
 	UserByUsername(ctx context.Context, username string, opts ...UserOption) (dto.User, error)
 	IsUserExistByUsername(ctx context.Context, username string) (bool, error)
 	SaveUser(ctx context.Context, user entity.User) (dto.User, error)
-	CreateUser(ctx context.Context, user dto.User, clientID int64) error
 
 	SessionsByCode(ctx context.Context, codes []string) ([]dto.Session, error)
 	SessionByCode(ctx context.Context, code string, opts ...SessionOption) (dto.Session, error)

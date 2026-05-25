@@ -67,6 +67,6 @@ func (s *server) Stop() {
 	s.innerServer.GracefulStop()
 }
 
-func (s *server) Registrar() *grpc.Server {
+func (s *server) Registrar() grpc.ServiceRegistrar {
 	return s.innerServer
 }

@@ -28,7 +28,7 @@ const (
 
 // Config is the application configuration.
 type Config struct {
-	Env           string                   `yaml:"env" env:"ENV" env-default:"local" env-upd:""`
+	Env           string                   `yaml:"env" env:"PXR_SSO_ENV" env-default:"local" env-upd:""`
 	Port          string                   `yaml:"port" evn:"PXR_SSO_PORT" env-required:"true" env-upd:""`
 	Timeout       time.Duration            `yaml:"timeout" env:"PXR_SSO_TIMEOUT" env-required:"true" env-upd:""`
 	Postgres      postgresql.Config        `yaml:"postgres" env-required:"true"`
@@ -46,7 +46,9 @@ type configLoader struct {
 }
 
 func newConfigLoader() *configLoader {
-	return &configLoader{}
+	return &configLoader{
+		cfg: &Config{},
+	}
 }
 
 // MustLoad loads config and panics if any error occurs.

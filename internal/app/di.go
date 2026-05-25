@@ -168,7 +168,7 @@ func (d *diContainer) TokensGenerator() generator.TokensGenerator {
 // AuthorizedGrantUseCase returns the use case for processing authorized grant.
 func (d *diContainer) AuthorizedGrantUseCase() grant.AuthorizationGrantFlow {
 	if d.authorizedGrantUseCase == nil {
-		d.authorizedGrantUseCase = grant.NewUseCase(d.URIBuilder(), d.Repository(), d.Cache())
+		d.authorizedGrantUseCase = grant.NewUseCase(d.URIBuilder(), d.Repository(), d.Repository(), d.Cache())
 	}
 
 	return d.authorizedGrantUseCase
@@ -319,6 +319,8 @@ func (d *diContainer) GRPCServer() grpcserver.Server {
 			d.ConsentUseCase(),
 			d.TokenUseCase(),
 		)
+
+		d.grpcServer = grpcServer
 	}
 
 	return d.grpcServer
