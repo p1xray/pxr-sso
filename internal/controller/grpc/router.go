@@ -9,11 +9,11 @@ import (
 // NewRouter creates a new router for the gRPC server controller.
 func NewRouter(
 	registrar grpc.ServiceRegistrar,
-	authorizeUseCase oidc.AuthorizeUseCase,
-	loginUseCase oidc.LoginUseCase,
-	registerUseCase oidc.RegisterUseCase,
-	consentUseCase oidc.ConsentUseCase,
-	tokenUseCase oidc.TokenUseCase,
+	authorizeUseCase oidc.Authorize,
+	loginUseCase oidc.Login,
+	registerUseCase oidc.Register,
+	consentUseCase oidc.Consent,
+	tokenUseCase oidc.Token,
 ) {
 	v1.NewRoutes(
 		registrar,

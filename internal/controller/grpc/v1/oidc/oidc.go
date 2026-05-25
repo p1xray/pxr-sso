@@ -3,10 +3,6 @@ package oidc
 import (
 	"context"
 	oauthpb "github.com/p1xray/pxr-sso-protos/gen/go/oauth"
-	"github.com/p1xray/pxr-sso/internal/oidc/application/usecase/consent"
-	"github.com/p1xray/pxr-sso/internal/oidc/application/usecase/login"
-	"github.com/p1xray/pxr-sso/internal/oidc/application/usecase/register"
-	"github.com/p1xray/pxr-sso/internal/oidc/application/usecase/token"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/dto"
 	"google.golang.org/grpc"
 )
@@ -107,29 +103,23 @@ func (s *server) Login(
 	ctx context.Context,
 	req *oauthpb.LoginRequest,
 ) (*oauthpb.LoginResponse, error) {
-	loginParams := login.Params{
-		FlowID:       req.GetFlowId(),
-		ResponseType: req.GetResponseType(),
-		ClientID:     req.GetClientId(),
-		RedirectURI:  req.GetRedirectUri(),
-		State:        req.GetState(),
-		Scope:        req.GetScope(),
-		Username:     req.GetUsername(),
-		Password:     req.GetPassword(),
+	loginRequest := dto.NewLoginRequest(
+		"pxr.sso:par:KJFGHDKJGHFKJDGHFJK", // TODO: get this from proto
+		req.GetUsername(),
+		req.GetPassword(),
+	)
+
+	loginResponse, err := s.login.Execute(ctx, loginRequest)
+	if err != nil {
+		return nil, err
 	}
 
-	loginData, err := s.loginUseCase.Execute(ctx, loginParams)
 	response := &oauthpb.LoginResponse{
-		RedirectUri: loginData.Data(),
-
-		Error: &oauthpb.ErrorResponse{
-			Code:        loginData.ErrorCode(),
-			Description: loginData.ErrorDescription(),
-			Uri:         loginData.ErrorURI(),
-		},
+		RedirectUri: loginResponse.RedirectURI(),
+		// Session:     loginResponse.Session(), TODO: add this to proto
 	}
 
-	return response, err
+	return response, nil
 }
 
 // Register is a gRPC handler for OAuth register.
@@ -137,30 +127,24 @@ func (s *server) Register(
 	ctx context.Context,
 	req *oauthpb.RegisterRequest,
 ) (*oauthpb.RegisterResponse, error) {
-	registerParams := register.Params{
-		FlowID:       req.GetFlowId(),
-		ResponseType: req.GetResponseType(),
-		ClientID:     req.GetClientId(),
-		RedirectURI:  req.GetRedirectUri(),
-		State:        req.GetState(),
-		Scope:        req.GetScope(),
-		Username:     req.GetUsername(),
-		Password:     req.GetPassword(),
-		FullName:     req.GetFullName(),
+	registerRequest := dto.NewRegisterRequest(
+		"pxr.sso:par:KJFGHDKJGHFKJDGHFJK", // TODO: get this from proto
+		req.GetUsername(),
+		req.GetPassword(),
+		req.GetFullName(),
+	)
+
+	registerResponse, err := s.register.Execute(ctx, registerRequest)
+	if err != nil {
+		return nil, err
 	}
 
-	registerData, err := s.registerUseCase.Execute(ctx, registerParams)
 	response := &oauthpb.RegisterResponse{
-		RedirectUri: registerData.Data(),
-
-		Error: &oauthpb.ErrorResponse{
-			Code:        registerData.ErrorCode(),
-			Description: registerData.ErrorDescription(),
-			Uri:         registerData.ErrorURI(),
-		},
+		RedirectUri: registerResponse.RedirectURI(),
+		// Session:     loginResponse.Session(), TODO: add this to proto
 	}
 
-	return response, err
+	return response, nil
 }
 
 // Consent is a gRPC handler for OAuth confirming consent.
@@ -168,27 +152,22 @@ func (s *server) Consent(
 	ctx context.Context,
 	req *oauthpb.ConsentRequest,
 ) (*oauthpb.ConsentResponse, error) {
-	consentParams := consent.Params{
-		FlowID:       req.GetFlowId(),
-		ResponseType: req.GetResponseType(),
-		ClientID:     req.GetClientId(),
-		RedirectURI:  req.GetRedirectUri(),
-		State:        req.GetState(),
-		Scope:        req.GetScope(),
+	consentRequest := dto.NewConsentRequest(
+		"pxr.sso:par:KJFGHDKJGHFKJDGHFJK", // TODO: get this from proto
+		req.GetScope(),                    // TODO: rename to scopes in proto
+		make([]dto.SessionCookie, 0),      // TODO: get this from proto
+	)
+
+	consentResponse, err := s.consent.Execute(ctx, consentRequest)
+	if err != nil {
+		return nil, err
 	}
 
-	consentData, err := s.consentUseCase.Execute(ctx, consentParams)
 	response := &oauthpb.ConsentResponse{
-		RedirectUri: consentData.Data(),
-
-		Error: &oauthpb.ErrorResponse{
-			Code:        consentData.ErrorCode(),
-			Description: consentData.ErrorDescription(),
-			Uri:         consentData.ErrorURI(),
-		},
+		RedirectUri: consentResponse,
 	}
 
-	return response, err
+	return response, nil
 }
 
 // Token is a gRPC handler for OAuth exchange token.
@@ -202,30 +181,26 @@ func (s *server) Token(
 	ctx context.Context,
 	req *oauthpb.TokenRequest,
 ) (*oauthpb.TokenResponse, error) {
-	tokenParams := token.Params{
-		GrantType:         req.GetGrantType(),
-		ClientID:          req.GetClientId(),
-		AuthorizationCode: req.GetCode(),
-		RedirectURI:       req.GetRedirectUri(),
-		CodeVerifier:      req.GetCodeVerifier(),
+	tokenRequest := dto.NewTokenRequest(
+		req.GetGrantType(),
+		req.GetCode(),
+		req.GetRedirectUri(),
+		req.GetCodeVerifier(),
+		req.GetClientId(),
+	)
+
+	tokenResponse, err := s.token.Execute(ctx, tokenRequest)
+	if err != nil {
+		return nil, err
 	}
 
-	tokenData, err := s.tokenUseCase.Execute(ctx, tokenParams)
-
-	tokens := tokenData.Data()
 	response := &oauthpb.TokenResponse{
-		AccessToken:  tokens.AccessToken(),
-		TokenType:    tokens.TokenType(),
-		ExpiresIn:    tokens.ExpiresIn(),
-		RefreshToken: tokens.RefreshToken(),
-		IdToken:      tokens.IDToken(),
-
-		Error: &oauthpb.ErrorResponse{
-			Code:        tokenData.ErrorCode(),
-			Description: tokenData.ErrorDescription(),
-			Uri:         tokenData.ErrorURI(),
-		},
+		AccessToken:  tokenResponse.AccessToken(),
+		TokenType:    tokenResponse.TokenType(),
+		ExpiresIn:    tokenResponse.ExpiresIn(),
+		RefreshToken: tokenResponse.RefreshToken(),
+		IdToken:      tokenResponse.IDToken(),
 	}
 
-	return response, err
+	return response, nil
 }

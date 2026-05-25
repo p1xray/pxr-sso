@@ -8,11 +8,11 @@ import (
 // NewRoutes creates a new routes for the gRPC server controller of version 1.
 func NewRoutes(
 	registrar grpc.ServiceRegistrar,
-	authorizeUseCase oidc.AuthorizeUseCase,
-	loginUseCase oidc.LoginUseCase,
-	registerUseCase oidc.RegisterUseCase,
-	consentUseCase oidc.ConsentUseCase,
-	tokenUseCase oidc.TokenUseCase,
+	authorizeUseCase oidc.Authorize,
+	loginUseCase oidc.Login,
+	registerUseCase oidc.Register,
+	consentUseCase oidc.Consent,
+	tokenUseCase oidc.Token,
 ) {
 	oidc.RegisterOIDCServer(
 		registrar,
