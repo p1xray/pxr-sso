@@ -12,6 +12,10 @@ func NewAuthorizedGrant(session AuthorizedSession, request ValidatedAuthorizeReq
 	}
 }
 
+func (a *AuthorizedGrant) Session() AuthorizedSession {
+	return a.session
+}
+
 func (a *AuthorizedGrant) Request() ValidatedAuthorizeRequest {
 	return a.request
 }

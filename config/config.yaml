@@ -11,8 +11,8 @@ postgres:
   connection_url: 'postgresql://postgres:admin@127.0.0.1:5432/sso?sslmode=disable'
 redis:
   connection_url: 'redis://test_redis_user:test_redis_user_pass@localhost:6380/0'
-  flow_ttl: 30m
-  authorization_ttl: 10m
+  authorization_request_ttl: 10m
+  authorized_grant_ttl: 10m
 uri_builder:
   login: 'http://localhost:3000/login'
   consent: 'http://localhost:3000/consent'

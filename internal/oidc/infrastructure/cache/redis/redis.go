@@ -2,8 +2,13 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/dto"
+	"github.com/p1xray/pxr-sso/internal/oidc/infrastructure"
+	"github.com/p1xray/pxr-sso/internal/oidc/infrastructure/cache/builder"
+	"github.com/p1xray/pxr-sso/internal/oidc/infrastructure/cache/models"
+	"github.com/p1xray/pxr-sso/internal/oidc/infrastructure/converter"
 	"github.com/redis/go-redis/v9"
 	"time"
 )
@@ -13,8 +18,8 @@ const pkgTag = "redis storage"
 type cache struct {
 	client *redis.Client
 
-	flowTTL          time.Duration
-	authorizationTTL time.Duration
+	authorizationRequestTTL time.Duration
+	authorizedGrantTTL      time.Duration
 }
 
 func New(cfg Config) (*cache, error) {
@@ -25,9 +30,9 @@ func New(cfg Config) (*cache, error) {
 	client := redis.NewClient(opt)
 
 	return &cache{
-		client:           client,
-		flowTTL:          cfg.FlowTTL,
-		authorizationTTL: cfg.AuthorizationTTL,
+		client:                  client,
+		authorizationRequestTTL: cfg.AuthorizationRequestTTL,
+		authorizedGrantTTL:      cfg.AuthorizedGrantTTL,
 	}, nil
 }
 
@@ -35,22 +40,24 @@ func (c *cache) AuthorizationRequest(
 	ctx context.Context,
 	requestURI string,
 ) (dto.ValidatedAuthorizeRequest, error) {
-	// TODO: implement this
+	const op = "get authorization request from redis storage"
 
-	//cmd := r.client.Get(ctx, id)
-	//
-	//redisAuthorization := models.Authorization{}
-	//if err := cmd.Scan(&redisAuthorization); err != nil {
-	//	if errors.Is(err, redis.Nil) {
-	//		return dto.Authorization{}, fmt.Errorf("%s: %s: %w", pkgTag, op, infrastructure.ErrEntityNotFound)
-	//	}
-	//
-	//	return dto.Authorization{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
-	//}
-	//
-	//authorization := converter.ToAuthorizationDTO(redisAuthorization)
+	key := builder.AuthorizationRequestKey(requestURI)
+	cmd := c.client.Get(ctx, key)
 
-	return dto.ValidatedAuthorizeRequest{}, nil
+	redisAuthorizationRequest := models.AuthorizationRequest{}
+	if err := cmd.Scan(&redisAuthorizationRequest); err != nil {
+		if errors.Is(err, redis.Nil) {
+			return dto.ValidatedAuthorizeRequest{},
+				fmt.Errorf("%s: %s: %w", pkgTag, op, infrastructure.ErrEntityNotFound)
+		}
+
+		return dto.ValidatedAuthorizeRequest{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
+	authorizationRequest := converter.ToAuthorizeRequestDTO(redisAuthorizationRequest)
+
+	return authorizationRequest, nil
 }
 
 func (c *cache) SaveAuthorizationRequest(
@@ -58,14 +65,15 @@ func (c *cache) SaveAuthorizationRequest(
 	requestURI string,
 	request dto.ValidatedAuthorizeRequest,
 ) error {
-	// TODO: implement this
+	const op = "save authorization request to redis storage"
 
-	//redisAuthorization := converter.ToAuthorizationRedis(authorization)
-	//
-	//cmd := r.client.Set(ctx, redisAuthorization.Code, redisAuthorization, r.authorizationTTL)
-	//if err := cmd.Err(); err != nil {
-	//	return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
-	//}
+	key := builder.AuthorizationRequestKey(requestURI)
+	redisAuthorizationRequest := converter.ToAuthorizationRequestStorage(request)
+
+	cmd := c.client.Set(ctx, key, redisAuthorizationRequest, c.authorizationRequestTTL)
+	if err := cmd.Err(); err != nil {
+		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
 
 	return nil
 }
@@ -74,12 +82,13 @@ func (c *cache) RemoveAuthorizationRequest(
 	ctx context.Context,
 	requestURI string,
 ) error {
-	// TODO: implement this
+	const op = "remove authorization request from redis storage"
 
-	//cmd := r.client.Del(ctx, id)
-	//if err := cmd.Err(); err != nil {
-	//	return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
-	//}
+	key := builder.AuthorizationRequestKey(requestURI)
+	cmd := c.client.Del(ctx, key)
+	if err := cmd.Err(); err != nil {
+		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
 
 	return nil
 }
@@ -88,8 +97,24 @@ func (c *cache) AuthorizedGrant(
 	ctx context.Context,
 	authorizationCode string,
 ) (dto.AuthorizedGrant, error) {
-	// TODO: implement this
-	return dto.AuthorizedGrant{}, nil
+	const op = "get authorized grant from redis storage"
+
+	key := builder.AuthorizedGrantKey(authorizationCode)
+	cmd := c.client.Get(ctx, key)
+
+	redisAuthorizedGrant := models.AuthorizedGrant{}
+	if err := cmd.Scan(&redisAuthorizedGrant); err != nil {
+		if errors.Is(err, redis.Nil) {
+			return dto.AuthorizedGrant{},
+				fmt.Errorf("%s: %s: %w", pkgTag, op, infrastructure.ErrEntityNotFound)
+		}
+
+		return dto.AuthorizedGrant{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
+	authorizedGrant := converter.ToAuthorizedGrantDTO(redisAuthorizedGrant)
+
+	return authorizedGrant, nil
 }
 
 func (c *cache) SaveAuthorizedGrant(
@@ -97,7 +122,16 @@ func (c *cache) SaveAuthorizedGrant(
 	authorizationCode string,
 	authorizedGrant dto.AuthorizedGrant,
 ) error {
-	// TODO: implement this
+	const op = "save authorized grant to redis storage"
+
+	key := builder.AuthorizedGrantKey(authorizationCode)
+	redisAuthorizedGrant := converter.ToAuthorizedGrantStorage(authorizedGrant)
+
+	cmd := c.client.Set(ctx, key, redisAuthorizedGrant, c.authorizedGrantTTL)
+	if err := cmd.Err(); err != nil {
+		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
 	return nil
 }
 
@@ -105,6 +139,13 @@ func (c *cache) RemoveAuthorizedGrant(
 	ctx context.Context,
 	authorizationCode string,
 ) error {
-	// TODO: implement this
+	const op = "remove authorized grant from redis storage"
+
+	key := builder.AuthorizedGrantKey(authorizationCode)
+	cmd := c.client.Del(ctx, key)
+	if err := cmd.Err(); err != nil {
+		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
 	return nil
 }
