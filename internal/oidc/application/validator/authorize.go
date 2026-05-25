@@ -548,7 +548,7 @@ func (v *authorizationRequestValidator) validatedScope() dto.ValidatedScopesRequ
 	scopesValidatedByClient := extslices.Intersect(client.AvailableScopes(), v.request.Scope())
 
 	if len(v.sessions) == 0 {
-		validateScopes := dto.NewValidatedScopesRequest(dto.WithGranted(scopesValidatedByClient))
+		validateScopes := dto.NewValidatedScopesRequest(dto.WithPending(scopesValidatedByClient))
 		return validateScopes
 	}
 

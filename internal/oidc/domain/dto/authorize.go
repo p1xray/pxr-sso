@@ -10,7 +10,7 @@ type AuthorizeRequest struct {
 	state               []string
 	audience            []string
 	scope               []string
-	session             []string
+	sessions            []SessionCookie
 }
 
 func NewAuthorizeRequest(
@@ -22,8 +22,8 @@ func NewAuthorizeRequest(
 	codeChallengeMethod,
 	state,
 	audience,
-	scope,
-	session []string,
+	scope []string,
+	sessions []SessionCookie,
 ) AuthorizeRequest {
 	return AuthorizeRequest{
 		responseType:        responseType,
@@ -35,7 +35,7 @@ func NewAuthorizeRequest(
 		state:               state,
 		audience:            audience,
 		scope:               scope,
-		session:             session,
+		sessions:            sessions,
 	}
 }
 
@@ -75,6 +75,6 @@ func (a *AuthorizeRequest) Scope() []string {
 	return a.scope
 }
 
-func (a *AuthorizeRequest) Session() []string {
-	return a.session
+func (a *AuthorizeRequest) Sessions() []SessionCookie {
+	return a.sessions
 }

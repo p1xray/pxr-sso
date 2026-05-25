@@ -232,6 +232,7 @@ func (d *diContainer) AuthorizeUseCase() authorize.Authorize {
 			d.URIBuilder(),
 			d.Repository(),
 			d.Repository(),
+			d.SessionCookieEncoding(),
 			d.AuthorizeFlowSwitcher(),
 		)
 	}

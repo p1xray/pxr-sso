@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"github.com/p1xray/pxr-sso/internal/controller/grpc/v1/auth"
 	"github.com/p1xray/pxr-sso/internal/controller/grpc/v1/oidc"
 	"google.golang.org/grpc"
 )
@@ -9,16 +10,11 @@ import (
 func NewRoutes(
 	registrar grpc.ServiceRegistrar,
 	authorizeUseCase oidc.Authorize,
-	loginUseCase oidc.Login,
-	registerUseCase oidc.Register,
-	consentUseCase oidc.Consent,
+	loginUseCase auth.Login,
+	registerUseCase auth.Register,
+	consentUseCase auth.Consent,
 	tokenUseCase oidc.Token,
 ) {
-	oidc.RegisterOIDCServer(
-		registrar,
-		authorizeUseCase,
-		loginUseCase,
-		registerUseCase,
-		consentUseCase,
-		tokenUseCase)
+	oidc.RegisterOIDCServer(registrar, authorizeUseCase, tokenUseCase)
+	auth.RegisterAuthServer(registrar, loginUseCase, registerUseCase, consentUseCase)
 }

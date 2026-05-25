@@ -10,7 +10,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
 	github.com/jackc/pgx/v5 v5.5.4
-	github.com/p1xray/pxr-sso-protos v0.0.13
+	github.com/p1xray/pxr-sso-protos v0.0.14
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/segmentio/kafka-go v0.4.49
 	github.com/stretchr/testify v1.10.0

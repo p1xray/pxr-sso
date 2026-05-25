@@ -37,6 +37,10 @@ type SessionReader interface {
 	SessionsByCode(ctx context.Context, codes []string) ([]dto.Session, error)
 }
 
+type SessionCookieDecoder interface {
+	Decode(encoded string) (dto.AuthorizedSession, error)
+}
+
 // Authorize is the handler for authorization requests, ensuring they are processed according to OAuth 2.0
 // and OpenID Connect protocol specifications.
 type Authorize interface {
@@ -47,11 +51,12 @@ type Authorize interface {
 // usecase is the use case which handles the processing of authorization requests by validating and
 // then processing these requests.
 type usecase struct {
-	log           *slog.Logger
-	clientReader  ClientReader
-	sessionReader SessionReader
-	uriBuilder    ErrorURIBuilder
-	switcher      FlowSwitcher
+	log                  *slog.Logger
+	clientReader         ClientReader
+	sessionReader        SessionReader
+	sessionCookieDecoder SessionCookieDecoder
+	uriBuilder           ErrorURIBuilder
+	switcher             FlowSwitcher
 }
 
 // NewUseCase creates a new use case for processing of authorization request.
@@ -60,14 +65,16 @@ func NewUseCase(
 	uriBuilder ErrorURIBuilder,
 	clientReader ClientReader,
 	sessionReader SessionReader,
+	sessionCookieDecoder SessionCookieDecoder,
 	switcher FlowSwitcher,
 ) *usecase {
 	return &usecase{
-		log:           log,
-		clientReader:  clientReader,
-		sessionReader: sessionReader,
-		uriBuilder:    uriBuilder,
-		switcher:      switcher,
+		log:                  log,
+		clientReader:         clientReader,
+		sessionReader:        sessionReader,
+		sessionCookieDecoder: sessionCookieDecoder,
+		uriBuilder:           uriBuilder,
+		switcher:             switcher,
 	}
 }
 
@@ -89,7 +96,7 @@ func (u *usecase) Execute(ctx context.Context, req dto.AuthorizeRequest) (string
 		sl.Strings("state", req.State()),
 		sl.Strings("audience", req.Audience()),
 		sl.Strings("scope", req.Scope()),
-		slog.Any("session", req.Session()),
+		slog.Any("session", req.Sessions()),
 	)
 	log.Info(logTag + " attempting to initiate user authorization")
 
@@ -118,7 +125,19 @@ func (u *usecase) Execute(ctx context.Context, req dto.AuthorizeRequest) (string
 		nullableClient = nullable.Some(client)
 	}
 
-	sessions, err := u.sessionReader.SessionsByCode(ctx, req.Session())
+	sessionCodes := make([]string, len(req.Sessions()))
+	for i, session := range req.Sessions() {
+		decodedSessionCookie, err := u.sessionCookieDecoder.Decode(session.Value())
+		if err != nil {
+			log.Error(logTag+" decode session", sl.Err(err))
+
+			return "", fmt.Errorf("%s: %w", op, err)
+		}
+
+		sessionCodes[i] = decodedSessionCookie.ID()
+	}
+
+	sessions, err := u.sessionReader.SessionsByCode(ctx, sessionCodes)
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get session by code", sl.Err(err))
 
