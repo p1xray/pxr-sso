@@ -27,6 +27,12 @@ type SessionSaver interface {
 	SaveSession(ctx context.Context, session entity.Session) (dto.Session, error)
 }
 
+// ScopeReader is the scopes data reader from storage.
+type ScopeReader interface {
+	// ScopesByCode returns a scopes data by code.
+	ScopesByCode(ctx context.Context, codes []string) ([]dto.Scope, error)
+}
+
 // AuthorizationGrantFlow is the processor for OAuth 2.0 authorization grant flow.
 type AuthorizationGrantFlow interface {
 	// Execute processes OAuth 2.0 authorization grant flow.
@@ -37,6 +43,7 @@ type AuthorizationGrantFlow interface {
 type usecase struct {
 	uriBuilder           CallbackURIBuilder
 	sessionSaver         SessionSaver
+	scopeReader          ScopeReader
 	authorizedGrantSaver AuthorizedGrantSaver
 }
 
@@ -44,11 +51,13 @@ type usecase struct {
 func NewUseCase(
 	uriBuilder CallbackURIBuilder,
 	sessionSaver SessionSaver,
+	scopeReader ScopeReader,
 	authorizedGrantSaver AuthorizedGrantSaver,
 ) *usecase {
 	return &usecase{
 		uriBuilder:           uriBuilder,
 		sessionSaver:         sessionSaver,
+		scopeReader:          scopeReader,
 		authorizedGrantSaver: authorizedGrantSaver,
 	}
 }
@@ -66,10 +75,15 @@ func (u *usecase) Execute(ctx context.Context, data dto.AuthorizeContext) (strin
 	}
 
 	authTime := time.Now()
-	scopes := data.RequestGrantedScopes()
+	scopeCodes := data.RequestGrantedScopes()
 	if data.RequestPrompt() == "none" {
 		authTime = session.AuthTime()
-		scopes = session.Scopes()
+		scopeCodes = session.ScopeCodes()
+	}
+
+	scopes, err := u.scopeReader.ScopesByCode(ctx, scopeCodes)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	sessionEntity := entity.NewExistSession(session)

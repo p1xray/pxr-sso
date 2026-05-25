@@ -52,3 +52,49 @@ func (s *storage) Scopes(ctx context.Context, ids []int64) ([]models.Scope, erro
 
 	return scopes, nil
 }
+
+func (s *storage) ScopesByCode(ctx context.Context, codes []string) ([]models.Scope, error) {
+	const op = "get scopes by code"
+
+	stmt :=
+		`select
+			 s.id,
+			 s.code,
+			 s.name,
+			 s.description,
+			 s.created_at,
+			 s.updated_at
+		 from sso.scopes s
+		 where s.code = any(@codes);`
+
+	args := pgx.NamedArgs{
+		"codes": codes,
+	}
+
+	rows, err := s.pg.Pool.Query(ctx, stmt, args)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+	defer rows.Close()
+
+	scopes := make([]models.Scope, 0)
+	for rows.Next() {
+		scope := models.Scope{}
+		err = rows.Scan(
+			&scope.ID,
+			&scope.Code,
+			&scope.Name,
+			&scope.Description,
+			&scope.CreatedAt,
+			&scope.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+		}
+
+		scopes = append(scopes, scope)
+	}
+
+	return scopes, nil
+}

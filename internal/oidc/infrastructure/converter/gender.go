@@ -6,7 +6,7 @@ import (
 )
 
 // GenderEnumToNullInt16 converts pointer of GenderEnum to null.Int16 type.
-func GenderEnumToNullInt16(ge *enum.GenderEnum) null.Int16 {
+func GenderEnumToNullInt16(ge *enum.Gender) null.Int16 {
 	if ge == nil {
 		return null.NewInt16(0, false)
 	}
@@ -14,11 +14,11 @@ func GenderEnumToNullInt16(ge *enum.GenderEnum) null.Int16 {
 }
 
 // GenderEnumFromNullInt16 converts null.Int16 type to pointer of GenderEnum.
-func GenderEnumFromNullInt16(value null.Int16) *enum.GenderEnum {
+func GenderEnumFromNullInt16(value null.Int16) *enum.Gender {
 	genderNumeric := value.Ptr()
-	var gender *enum.GenderEnum
+	var gender *enum.Gender
 	if genderNumeric != nil {
-		genderValue := enum.GenderEnum(*genderNumeric)
+		genderValue := enum.Gender(*genderNumeric)
 		gender = &genderValue
 	}
 

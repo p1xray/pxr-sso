@@ -23,6 +23,8 @@ type Repository interface {
 	SessionsByCode(ctx context.Context, codes []string) ([]dto.Session, error)
 	SessionByCode(ctx context.Context, code string, opts ...SessionOption) (dto.Session, error)
 	SaveSession(ctx context.Context, session entity.Session) (dto.Session, error)
+
+	ScopesByCode(ctx context.Context, codes []string) ([]dto.Scope, error)
 }
 
 type repository struct {

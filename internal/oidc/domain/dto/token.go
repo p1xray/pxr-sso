@@ -6,7 +6,6 @@ type TokenRequest struct {
 	redirectURI       string
 	codeVerifier      string
 	clientID          string
-	clientSecret      string
 }
 
 func NewTokenRequest(
@@ -14,8 +13,7 @@ func NewTokenRequest(
 	authorizationCode,
 	redirectURI,
 	codeVerifier,
-	clientID,
-	clientSecret string,
+	clientID string,
 ) TokenRequest {
 	return TokenRequest{
 		grantType:         grantType,
@@ -23,7 +21,6 @@ func NewTokenRequest(
 		redirectURI:       redirectURI,
 		codeVerifier:      codeVerifier,
 		clientID:          clientID,
-		clientSecret:      clientSecret,
 	}
 }
 
@@ -45,10 +42,6 @@ func (t *TokenRequest) CodeVerifier() string {
 
 func (t *TokenRequest) ClientID() string {
 	return t.clientID
-}
-
-func (t *TokenRequest) ClientSecret() string {
-	return t.clientSecret
 }
 
 type TokenResponse struct {

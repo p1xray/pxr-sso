@@ -12,7 +12,7 @@ type RegisterRequest struct {
 	fullName   string
 }
 
-func NewRegister(
+func NewRegisterRequest(
 	requestURI,
 	username,
 	password,

@@ -27,6 +27,8 @@ type Storage interface {
 	RolePermissionLinks(ctx context.Context, roleIDs []int64) ([]models.RolePermissionLink, error)
 
 	Scopes(ctx context.Context, ids []int64) ([]models.Scope, error)
+	ScopesByCode(ctx context.Context, codes []string) ([]models.Scope, error)
+
 	Roles(ctx context.Context, ids []int64) ([]models.Role, error)
 	Permissions(ctx context.Context, ids []int64) ([]models.Permission, error)
 

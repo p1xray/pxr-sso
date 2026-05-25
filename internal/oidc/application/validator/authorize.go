@@ -553,8 +553,10 @@ func (v *authorizationRequestValidator) validatedScope() dto.ValidatedScopesRequ
 	}
 
 	session := v.sessions[0]
-	pendingScopes := extslices.Except(scopesValidatedByClient, session.Scopes())
-	validatedScopes := dto.NewValidatedScopesRequest(dto.WithPending(session.Scopes()), dto.WithGranted(pendingScopes))
+
+	pendingScopes := extslices.Except(scopesValidatedByClient, session.ScopeCodes())
+	grantedScopes := extslices.Intersect(scopesValidatedByClient, session.ScopeCodes())
+	validatedScopes := dto.NewValidatedScopesRequest(dto.WithPending(pendingScopes), dto.WithGranted(grantedScopes))
 
 	return validatedScopes
 }

@@ -71,6 +71,15 @@ func (s *Session) Scopes() []Scope {
 	return s.scopes
 }
 
+func (s *Session) ScopeCodes() []string {
+	scopeCodes := make([]string, len(s.Scopes()))
+	for i, scope := range s.Scopes() {
+		scopeCodes[i] = scope.Code()
+	}
+
+	return scopeCodes
+}
+
 type SessionCookie struct {
 	name  string
 	value string
