@@ -55,10 +55,10 @@ func (s *storage) SessionGrantedScopeLinks(ctx context.Context, sessionID int64)
 	return links, nil
 }
 
-func (s *storage) CreateSessionGrantedScopeLinks(ctx context.Context, links []models.SessionGrantedScopeLink) error {
+func (s *storage) CreateSessionGrantedScopeLinks(ctx context.Context, tx pgx.Tx, links []models.SessionGrantedScopeLink) error {
 	const op = "create new session granted scope links"
 
-	_, err := s.pg.Pool.CopyFrom(
+	_, err := tx.CopyFrom(
 		ctx,
 		pgx.Identifier{"sso", "session_granted_scope_links"},
 		[]string{"session_id", "scope_id", "created_at", "updated_at"},
@@ -79,7 +79,7 @@ func (s *storage) CreateSessionGrantedScopeLinks(ctx context.Context, links []mo
 	return nil
 }
 
-func (s *storage) RemoveSessionGrantedScopeLinks(ctx context.Context, links []int64) error {
+func (s *storage) RemoveSessionGrantedScopeLinks(ctx context.Context, tx pgx.Tx, links []int64) error {
 	const op = "remove session granted scope links"
 
 	stmt := `delete from sso.session_granted_scope_links where id = any(@ids);`
@@ -88,7 +88,7 @@ func (s *storage) RemoveSessionGrantedScopeLinks(ctx context.Context, links []in
 		"ids": links,
 	}
 
-	_, err := s.pg.Pool.Exec(ctx, stmt, args)
+	_, err := tx.Exec(ctx, stmt, args)
 	if err != nil {
 		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
@@ -96,7 +96,7 @@ func (s *storage) RemoveSessionGrantedScopeLinks(ctx context.Context, links []in
 	return nil
 }
 
-func (s *storage) RemoveSessionGrantedScopeLinksBySessionID(ctx context.Context, sessionID int64) error {
+func (s *storage) RemoveSessionGrantedScopeLinksBySessionID(ctx context.Context, tx pgx.Tx, sessionID int64) error {
 	const op = "remove session granted scope links by session id"
 
 	stmt := `delete from sso.session_granted_scope_links where session_id = @session_id;`
@@ -105,7 +105,7 @@ func (s *storage) RemoveSessionGrantedScopeLinksBySessionID(ctx context.Context,
 		"session_id": sessionID,
 	}
 
-	_, err := s.pg.Pool.Exec(ctx, stmt, args)
+	_, err := tx.Exec(ctx, stmt, args)
 	if err != nil {
 		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}

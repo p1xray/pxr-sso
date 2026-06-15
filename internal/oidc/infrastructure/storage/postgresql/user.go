@@ -170,7 +170,7 @@ func (s *storage) UserRoleLinks(ctx context.Context, userID int64) ([]models.Use
 	return links, nil
 }
 
-func (s *storage) CreateUser(ctx context.Context, user models.User) (int64, error) {
+func (s *storage) CreateUser(ctx context.Context, tx pgx.Tx, user models.User) (int64, error) {
 	const op = "create new user"
 
 	stmt :=
@@ -208,7 +208,7 @@ func (s *storage) CreateUser(ctx context.Context, user models.User) (int64, erro
 		"updated_at":      user.UpdatedAt,
 	}
 
-	row := s.pg.Pool.QueryRow(ctx, stmt, args)
+	row := tx.QueryRow(ctx, stmt, args)
 
 	var id int64
 	err := row.Scan(&id)
@@ -224,7 +224,7 @@ func (s *storage) CreateUser(ctx context.Context, user models.User) (int64, erro
 	return id, nil
 }
 
-func (s *storage) CreateUserClientLink(ctx context.Context, link models.UserClientLink) (int64, error) {
+func (s *storage) CreateUserClientLink(ctx context.Context, tx pgx.Tx, link models.UserClientLink) (int64, error) {
 	const op = "create new user client link"
 
 	stmt :=
@@ -239,7 +239,7 @@ func (s *storage) CreateUserClientLink(ctx context.Context, link models.UserClie
 		"updated_at": link.UpdatedAt,
 	}
 
-	row := s.pg.Pool.QueryRow(ctx, stmt, args)
+	row := tx.QueryRow(ctx, stmt, args)
 
 	var id int64
 	err := row.Scan(&id)
@@ -255,10 +255,10 @@ func (s *storage) CreateUserClientLink(ctx context.Context, link models.UserClie
 	return id, nil
 }
 
-func (s *storage) CreateUserRoleLinks(ctx context.Context, links []models.UserRoleLink) error {
+func (s *storage) CreateUserRoleLinks(ctx context.Context, tx pgx.Tx, links []models.UserRoleLink) error {
 	const op = "create new user role links"
 
-	_, err := s.pg.Pool.CopyFrom(
+	_, err := tx.CopyFrom(
 		ctx,
 		pgx.Identifier{"sso", "user_role_links"},
 		[]string{"user_id", "role_id", "created_at", "updated_at"},

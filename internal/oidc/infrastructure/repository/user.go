@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/entity"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/enum"
@@ -122,8 +123,9 @@ func (r *repository) createUser(ctx context.Context, user entity.User) (int64, e
 	userToCreate := converter.ToUserStorage(user, models.UserCreated())
 
 	newUserID := int64(0)
-	err := r.storage.WithTransaction(ctx, func() error {
-		newUserID, err := r.storage.CreateUser(ctx, userToCreate)
+	err := r.storage.WithTransaction(ctx, func(tx pgx.Tx) error {
+		var err error
+		newUserID, err = r.storage.CreateUser(ctx, tx, userToCreate)
 		if err != nil {
 			return err
 		}
@@ -133,7 +135,7 @@ func (r *repository) createUser(ctx context.Context, user entity.User) (int64, e
 			user.ClientID(),
 			models.UserClientLinkCreated(),
 		)
-		if _, err = r.storage.CreateUserClientLink(ctx, userClientLinkToCreate); err != nil {
+		if _, err = r.storage.CreateUserClientLink(ctx, tx, userClientLinkToCreate); err != nil {
 			return err
 		}
 
@@ -143,7 +145,7 @@ func (r *repository) createUser(ctx context.Context, user entity.User) (int64, e
 			userRoleLinksToCreate = append(userRoleLinksToCreate, userRoleLinkToCreate)
 		}
 
-		if err = r.storage.CreateUserRoleLinks(ctx, userRoleLinksToCreate); err != nil {
+		if err = r.storage.CreateUserRoleLinks(ctx, tx, userRoleLinksToCreate); err != nil {
 			return err
 		}
 

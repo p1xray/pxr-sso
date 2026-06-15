@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/dto"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/entity"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/enum"
@@ -167,13 +168,21 @@ func (r *repository) createSession(ctx context.Context, session entity.Session) 
 	sessionStorageModel := converter.ToSessionStorage(session, models.SessionCreated())
 
 	newSessionID := int64(0)
-	err := r.storage.WithTransaction(ctx, func() error {
-		newSessionID, err := r.storage.CreateSession(ctx, sessionStorageModel)
+	err := r.storage.WithTransaction(ctx, func(tx pgx.Tx) error {
+		var err error
+		newSessionID, err = r.storage.CreateSession(ctx, tx, sessionStorageModel)
 		if err != nil {
 			return err
 		}
 
-		if err = r.actualizeSessionGrantedScopeLinks(ctx, newSessionID, session.Scopes()); err != nil {
+		err = r.actualizeSessionGrantedScopeLinks(
+			ctx,
+			tx,
+			[]models.SessionGrantedScopeLink{},
+			newSessionID,
+			session.Scopes(),
+		)
+		if err != nil {
 			return err
 		}
 
@@ -186,12 +195,24 @@ func (r *repository) createSession(ctx context.Context, session entity.Session) 
 func (r *repository) updateSession(ctx context.Context, session entity.Session) error {
 	sessionStorageModel := converter.ToSessionStorage(session, models.SessionUpdated())
 
-	err := r.storage.WithTransaction(ctx, func() error {
-		if err := r.storage.UpdateSession(ctx, sessionStorageModel); err != nil {
+	currentSessionGrantedScopeLinks, err := r.storage.SessionGrantedScopeLinks(ctx, session.ID())
+	if err != nil {
+		return err
+	}
+
+	err = r.storage.WithTransaction(ctx, func(tx pgx.Tx) error {
+		if err := r.storage.UpdateSession(ctx, tx, sessionStorageModel); err != nil {
 			return err
 		}
 
-		if err := r.actualizeSessionGrantedScopeLinks(ctx, session.ID(), session.Scopes()); err != nil {
+		err = r.actualizeSessionGrantedScopeLinks(
+			ctx,
+			tx,
+			currentSessionGrantedScopeLinks,
+			session.ID(),
+			session.Scopes(),
+		)
+		if err != nil {
 			return err
 		}
 
@@ -202,12 +223,12 @@ func (r *repository) updateSession(ctx context.Context, session entity.Session) 
 }
 
 func (r *repository) removeSession(ctx context.Context, session entity.Session) error {
-	err := r.storage.WithTransaction(ctx, func() error {
-		if err := r.storage.RemoveSessionGrantedScopeLinksBySessionID(ctx, session.ID()); err != nil {
+	err := r.storage.WithTransaction(ctx, func(tx pgx.Tx) error {
+		if err := r.storage.RemoveSessionGrantedScopeLinksBySessionID(ctx, tx, session.ID()); err != nil {
 			return err
 		}
 
-		if err := r.storage.RemoveSession(ctx, session.ID()); err != nil {
+		if err := r.storage.RemoveSession(ctx, tx, session.ID()); err != nil {
 			return err
 		}
 
@@ -217,12 +238,13 @@ func (r *repository) removeSession(ctx context.Context, session entity.Session) 
 	return err
 }
 
-func (r *repository) actualizeSessionGrantedScopeLinks(ctx context.Context, sessionID int64, scopes []dto.Scope) error {
-	currentLinks, err := r.storage.SessionGrantedScopeLinks(ctx, sessionID)
-	if err != nil {
-		return err
-	}
-
+func (r *repository) actualizeSessionGrantedScopeLinks(
+	ctx context.Context,
+	tx pgx.Tx,
+	currentLinks []models.SessionGrantedScopeLink,
+	sessionID int64,
+	scopes []dto.Scope,
+) error {
 	linksToRemove := make([]int64, 0)
 	for _, currentLink := range currentLinks {
 		found := false
@@ -237,7 +259,7 @@ func (r *repository) actualizeSessionGrantedScopeLinks(ctx context.Context, sess
 		}
 	}
 
-	if err = r.storage.RemoveSessionGrantedScopeLinks(ctx, linksToRemove); err != nil {
+	if err := r.storage.RemoveSessionGrantedScopeLinks(ctx, tx, linksToRemove); err != nil {
 		return err
 	}
 
@@ -259,7 +281,7 @@ func (r *repository) actualizeSessionGrantedScopeLinks(ctx context.Context, sess
 		}
 	}
 
-	if err = r.storage.CreateSessionGrantedScopeLinks(ctx, linksToCreate); err != nil {
+	if err := r.storage.CreateSessionGrantedScopeLinks(ctx, tx, linksToCreate); err != nil {
 		return err
 	}
 

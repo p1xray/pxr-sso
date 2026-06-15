@@ -150,7 +150,7 @@ func (s *storage) SessionByCode(ctx context.Context, code string) (models.Sessio
 	return session, nil
 }
 
-func (s *storage) CreateSession(ctx context.Context, session models.Session) (int64, error) {
+func (s *storage) CreateSession(ctx context.Context, tx pgx.Tx, session models.Session) (int64, error) {
 	const op = "create new session"
 
 	stmt :=
@@ -173,7 +173,7 @@ func (s *storage) CreateSession(ctx context.Context, session models.Session) (in
 		returning id;`
 
 	args := pgx.NamedArgs{
-		"code":              session.Code,
+		"code":              session.Code.String(),
 		"client_id":         session.ClientID,
 		"user_id":           session.UserID,
 		"auth_time":         session.AuthTime,
@@ -182,7 +182,7 @@ func (s *storage) CreateSession(ctx context.Context, session models.Session) (in
 		"updated_at":        session.UpdatedAt,
 	}
 
-	row := s.pg.Pool.QueryRow(ctx, stmt, args)
+	row := tx.QueryRow(ctx, stmt, args)
 
 	var id int64
 	err := row.Scan(&id)
@@ -198,7 +198,7 @@ func (s *storage) CreateSession(ctx context.Context, session models.Session) (in
 	return id, nil
 }
 
-func (s *storage) UpdateSession(ctx context.Context, session models.Session) error {
+func (s *storage) UpdateSession(ctx context.Context, tx pgx.Tx, session models.Session) error {
 	const op = "update session"
 
 	stmt :=
@@ -221,7 +221,7 @@ func (s *storage) UpdateSession(ctx context.Context, session models.Session) err
 		"updated_at":        session.UpdatedAt,
 	}
 
-	_, err := s.pg.Pool.Exec(ctx, stmt, args)
+	_, err := tx.Exec(ctx, stmt, args)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
@@ -234,7 +234,7 @@ func (s *storage) UpdateSession(ctx context.Context, session models.Session) err
 	return nil
 }
 
-func (s *storage) RemoveSession(ctx context.Context, sessionID int64) error {
+func (s *storage) RemoveSession(ctx context.Context, tx pgx.Tx, sessionID int64) error {
 	const op = "remove session"
 
 	stmt := `delete from sso.sessions where id = @id;`
@@ -243,7 +243,7 @@ func (s *storage) RemoveSession(ctx context.Context, sessionID int64) error {
 		"id": sessionID,
 	}
 
-	_, err := s.pg.Pool.Exec(ctx, stmt, args)
+	_, err := tx.Exec(ctx, stmt, args)
 	if err != nil {
 		return fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}

@@ -3,6 +3,7 @@ package postgresql
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"github.com/p1xray/pxr-sso/pkg/postgresql"
 )
 
@@ -30,13 +31,13 @@ func (s *storage) Close() {
 	s.pg.Close()
 }
 
-func (s *storage) WithTransaction(ctx context.Context, f func() error) error {
+func (s *storage) WithTransaction(ctx context.Context, f func(pgx.Tx) error) error {
 	tx, err := s.pg.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("%s: %s: %w", pkgTag, "begin transaction", err)
 	}
 
-	if err = f(); err != nil {
+	if err = f(tx); err != nil {
 		if rbErr := tx.Rollback(ctx); rbErr != nil {
 			return fmt.Errorf("%s: %s: %w", pkgTag, "rollback transaction", rbErr)
 		}
