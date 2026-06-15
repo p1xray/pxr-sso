@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/dto"
 	"io"
@@ -62,16 +61,11 @@ func (se *sessionEncoding) Encode(session dto.AuthorizedSession) (string, error)
 		return "", fmt.Errorf("encrypting session: %w", err)
 	}
 
-	return base64.StdEncoding.EncodeToString(encryptedSession), nil
+	return encryptedSession, nil
 }
 
 func (se *sessionEncoding) Decode(encoded string) (dto.AuthorizedSession, error) {
-	encodedAsBytes, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return dto.AuthorizedSession{}, fmt.Errorf("decoding session: %w", err)
-	}
-
-	decryptedSession, err := se.decrypt(encodedAsBytes)
+	decryptedSession, err := se.decrypt(encoded)
 	if err != nil {
 		return dto.AuthorizedSession{}, fmt.Errorf("decrypting session: %w", err)
 	}
@@ -92,43 +86,50 @@ func (se *sessionEncoding) Decode(encoded string) (dto.AuthorizedSession, error)
 	return authorizedSession, nil
 }
 
-func (se *sessionEncoding) encrypt(value []byte) ([]byte, error) {
+func (se *sessionEncoding) encrypt(value []byte) (string, error) {
 	block, err := aes.NewCipher(se.key)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	b := base64.StdEncoding.EncodeToString(value)
-	ciphertext := make([]byte, aes.BlockSize+len(b))
-	iv := ciphertext[:aes.BlockSize]
-	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-		return nil, err
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
 	}
 
-	cfb := cipher.NewCTR(block, iv)
-	cfb.XORKeyStream(ciphertext[aes.BlockSize:], []byte(b))
+	nonce := make([]byte, aesGCM.NonceSize())
+	_, err = io.ReadFull(rand.Reader, nonce)
+	if err != nil {
+		return "", err
+	}
 
-	return ciphertext, nil
+	cipherText := aesGCM.Seal(nonce, nonce, value, nil)
+	return base64.RawURLEncoding.EncodeToString(cipherText), nil
 }
 
-func (se *sessionEncoding) decrypt(value []byte) ([]byte, error) {
+func (se *sessionEncoding) decrypt(value string) ([]byte, error) {
+	cipherText, err := base64.RawURLEncoding.DecodeString(value)
+	if err != nil {
+		return nil, err
+	}
+
 	block, err := aes.NewCipher(se.key)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(value) < aes.BlockSize {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	iv := value[:aes.BlockSize]
-	value = value[aes.BlockSize:]
-	cfb := cipher.NewCTR(block, iv)
-	cfb.XORKeyStream(value, value)
-	data, err := base64.StdEncoding.DecodeString(string(value))
+	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, err
 	}
 
-	return data, nil
+	nonceSize := aesGCM.NonceSize()
+
+	nonce, actualCipherText := cipherText[:nonceSize], cipherText[nonceSize:]
+	plainTextBytes, err := aesGCM.Open(nil, nonce, actualCipherText, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return plainTextBytes, nil
 }
