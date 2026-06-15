@@ -14,7 +14,7 @@ type authorizationRequestValidator struct {
 	client   nullable.Nullable[dto.Client]
 	sessions []dto.Session
 
-	err *oidc.Error
+	err error
 
 	isResponseTypeValid        bool
 	isPromptValid              bool
@@ -35,6 +35,8 @@ func NewAuthorizationRequestValidator(
 		request:  request,
 		client:   client,
 		sessions: sessions,
+
+		err: nil,
 	}
 }
 

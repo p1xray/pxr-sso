@@ -30,12 +30,20 @@ func (r *repository) Session(ctx context.Context, id int64, opts ...SessionOptio
 	return sessionDTO, nil
 }
 
-func (r *repository) SessionsByCode(ctx context.Context, codes []string) ([]dto.Session, error) {
+func (r *repository) SessionsByCode(ctx context.Context, codes []string, opts ...SessionOption) ([]dto.Session, error) {
 	const op = "get sessions by code"
 
 	sessions, err := r.storage.SessionsByCode(ctx, codes)
 	if err != nil {
 		return []dto.Session{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	}
+
+	for _, opt := range opts {
+		for i := range sessions {
+			if err = opt(ctx, r, &sessions[i]); err != nil {
+				return []dto.Session{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+			}
+		}
 	}
 
 	sessionsDTO := converter.ToSessionsDTO(sessions)

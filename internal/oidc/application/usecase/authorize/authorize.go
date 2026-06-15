@@ -34,7 +34,7 @@ type ClientReader interface {
 // SessionReader is the session data reader from storage.
 type SessionReader interface {
 	// SessionsByCode returns a sessions by code.
-	SessionsByCode(ctx context.Context, codes []string) ([]dto.Session, error)
+	SessionsByCode(ctx context.Context, codes []string, opts ...repository.SessionOption) ([]dto.Session, error)
 }
 
 type SessionCookieDecoder interface {
@@ -137,7 +137,7 @@ func (u *usecase) Execute(ctx context.Context, req dto.AuthorizeRequest) (string
 		sessionCodes[i] = decodedSessionCookie.ID()
 	}
 
-	sessions, err := u.sessionReader.SessionsByCode(ctx, sessionCodes)
+	sessions, err := u.sessionReader.SessionsByCode(ctx, sessionCodes, repository.WithClient(), repository.WithUser())
 	if err != nil && !errors.Is(err, infrastructure.ErrEntityNotFound) {
 		log.Error(logTag+" get session by code", sl.Err(err))
 
@@ -156,7 +156,8 @@ func (u *usecase) Execute(ctx context.Context, req dto.AuthorizeRequest) (string
 	if err != nil {
 		log.Warn(logTag+" validate authorization request", sl.Err(err))
 
-		errorRedirectURI, buildErr := u.uriBuilder.BuildErrorRedirectURI("", err)
+		clientRedirectURI := validatedAuthorizationRequest.RedirectURI()
+		errorRedirectURI, buildErr := u.uriBuilder.BuildErrorRedirectURI(clientRedirectURI, err)
 		if buildErr != nil {
 			log.Error(logTag+" build error redirect URI", sl.Err(err))
 

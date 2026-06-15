@@ -33,7 +33,7 @@ func (a *App) Start() {
 	log := a.di.Logger()
 
 	log.Info(logTag + " starting application")
-	log.Debug("application configuration", slog.Any("config", a.di.Config()))
+	log.Debug(logTag+" application configuration", slog.Any("config", a.di.Config()))
 
 	a.grpcServer.Start()
 	a.handleError()

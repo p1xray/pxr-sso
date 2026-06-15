@@ -82,7 +82,7 @@ func (u *usecase) Execute(ctx context.Context, tokenRequest dto.TokenRequest) (d
 	}
 
 	clientID := authorizedGrant.RequestClientID()
-	client, err := u.clientReader.ClientByCode(ctx, clientID)
+	client, err := u.clientReader.ClientByCode(ctx, clientID, repository.WithRedirectURIs())
 	if err != nil {
 		log.Error(logTag+" get client by code", err.Error())
 
