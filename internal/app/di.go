@@ -66,6 +66,9 @@ type diContainer struct {
 	//		consent
 	consentUseCase consent.Consent
 
+	//		consent card
+	consentCardReaderUseCase consent.CardReader
+
 	//		token
 	tokenUseCase token.Token
 
@@ -291,6 +294,18 @@ func (d *diContainer) ConsentUseCase() consent.Consent {
 	return d.consentUseCase
 }
 
+func (d *diContainer) ConsentCardReaderUseCase() consent.CardReader {
+	if d.consentCardReaderUseCase == nil {
+		d.consentCardReaderUseCase = consent.NewCardReader(
+			d.Logger(),
+			d.Cache(),
+			d.Repository(),
+		)
+	}
+
+	return d.consentCardReaderUseCase
+}
+
 // TokenUseCase returns the use case for processing token request.
 func (d *diContainer) TokenUseCase() token.Token {
 	if d.tokenUseCase == nil {
@@ -318,6 +333,7 @@ func (d *diContainer) GRPCServer() grpcserver.Server {
 			d.LoginUseCase(),
 			d.RegisterUseCase(),
 			d.ConsentUseCase(),
+			d.ConsentCardReaderUseCase(),
 			d.TokenUseCase(),
 		)
 

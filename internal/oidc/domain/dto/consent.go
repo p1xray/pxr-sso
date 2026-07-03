@@ -64,3 +64,63 @@ func (c *ConsentRequest) SingleSessionCookie() (SessionCookie, error) {
 
 	return c.SessionCookies()[0], nil
 }
+
+type ConsentCardRequest struct {
+	requestURI string
+}
+
+func NewConsentCardRequest(requestURI string) ConsentCardRequest {
+	return ConsentCardRequest{
+		requestURI: requestURI,
+	}
+}
+
+func (c *ConsentCardRequest) RequestURI() string {
+	return c.requestURI
+}
+
+type ConsentCardResponse struct {
+	scopes []ConsentScope
+}
+
+func NewConsentCardResponse(scopes []ConsentScope) ConsentCardResponse {
+	return ConsentCardResponse{
+		scopes: scopes,
+	}
+}
+
+func (c *ConsentCardResponse) Scopes() []ConsentScope {
+	return c.scopes
+}
+
+type ConsentScope struct {
+	code        string
+	name        string
+	description string
+	isGranted   bool
+}
+
+func NewConsentScope(code, name, description string, isGranted bool) ConsentScope {
+	return ConsentScope{
+		code:        code,
+		name:        name,
+		description: description,
+		isGranted:   isGranted,
+	}
+}
+
+func (c *ConsentScope) Code() string {
+	return c.code
+}
+
+func (c *ConsentScope) Name() string {
+	return c.name
+}
+
+func (c *ConsentScope) Description() string {
+	return c.description
+}
+
+func (c *ConsentScope) IsGranted() bool {
+	return c.isGranted
+}

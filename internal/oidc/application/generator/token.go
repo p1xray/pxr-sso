@@ -6,7 +6,6 @@ import (
 	"github.com/p1xray/pxr-sso/pkg/extslices"
 	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
 	jwtcreator "github.com/p1xray/pxr-sso/pkg/jwt/creator"
-	"slices"
 	"time"
 )
 
@@ -53,13 +52,13 @@ func (t *tokens) Generate(
 		return dto.Tokens{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
-	tokens := dto.NewTokens(
+	generatedTokens := dto.NewTokens(
 		accessToken,
 		refreshToken,
 		idToken,
 	)
 
-	return tokens, nil
+	return generatedTokens, nil
 }
 
 func (t *tokens) generateAccessToken(
@@ -70,9 +69,11 @@ func (t *tokens) generateAccessToken(
 ) (dto.Token, error) {
 	const op = "access token"
 
-	permissions := make([]string, 0, len(user.Roles()))
+	permissions := make([]string, 0)
 	for _, role := range user.Roles() {
-		slices.Concat(permissions, role.Permissions())
+		for _, permission := range role.Permissions() {
+			permissions = append(permissions, permission.Code())
+		}
 	}
 	scopes := extslices.Union(scope, permissions)
 

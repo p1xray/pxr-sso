@@ -13,8 +13,9 @@ func NewRoutes(
 	loginUseCase auth.Login,
 	registerUseCase auth.Register,
 	consentUseCase auth.Consent,
+	consentCardReader auth.ConsentCardReader,
 	tokenUseCase oidc.Token,
 ) {
 	oidc.RegisterOIDCServer(registrar, authorizeUseCase, tokenUseCase)
-	auth.RegisterAuthServer(registrar, loginUseCase, registerUseCase, consentUseCase)
+	auth.RegisterAuthServer(registrar, loginUseCase, registerUseCase, consentUseCase, consentCardReader)
 }

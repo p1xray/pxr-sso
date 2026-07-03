@@ -14,6 +14,7 @@ func NewRouter(
 	loginUseCase auth.Login,
 	registerUseCase auth.Register,
 	consentUseCase auth.Consent,
+	consentCardReader auth.ConsentCardReader,
 	tokenUseCase oidc.Token,
 ) {
 	v1.NewRoutes(
@@ -22,6 +23,7 @@ func NewRouter(
 		loginUseCase,
 		registerUseCase,
 		consentUseCase,
+		consentCardReader,
 		tokenUseCase,
 	)
 }

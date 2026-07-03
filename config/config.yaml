@@ -13,7 +13,7 @@ redis:
   authorization_request_ttl: 10m
   authorized_grant_ttl: 10m
 uri_builder:
-  login: 'http://localhost:3000/login'
+  login: 'http://localhost:3000/signin'
   consent: 'http://localhost:3000/consent'
   select_account: 'http://localhost:3000/selectaccount'
   error: 'http://localhost:3000/error'

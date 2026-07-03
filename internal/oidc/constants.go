@@ -23,4 +23,6 @@ const (
 	RequestParameterNameError               = "error"
 	RequestParameterNameErrorDescription    = "error_description"
 	RequestParameterNameErrorURI            = "error_uri"
+
+	DefaultPrompt = "login"
 )

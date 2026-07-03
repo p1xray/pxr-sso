@@ -26,12 +26,19 @@ type Consent interface {
 	Execute(ctx context.Context, consentRequest dto.ConsentRequest) (string, error)
 }
 
+// ConsentCardReader
+type ConsentCardReader interface {
+	// Read
+	Read(ctx context.Context, request dto.ConsentCardRequest) (dto.ConsentCardResponse, error)
+}
+
 // server handles authentication-related processes in the context of OpenID Connect and OAuth2 protocols.
 type server struct {
 	authpb.UnimplementedAuthServer
-	login    Login
-	register Register
-	consent  Consent
+	login             Login
+	register          Register
+	consent           Consent
+	consentCardReader ConsentCardReader
 }
 
 // RegisterAuthServer registers the implementation of the auth API handlers with the gRPC server.
@@ -40,11 +47,13 @@ func RegisterAuthServer(
 	login Login,
 	register Register,
 	consent Consent,
+	consentCardReader ConsentCardReader,
 ) {
 	srv := &server{
-		login:    login,
-		register: register,
-		consent:  consent,
+		login:             login,
+		register:          register,
+		consent:           consent,
+		consentCardReader: consentCardReader,
 	}
 
 	authpb.RegisterAuthServer(registrar, srv)
@@ -129,4 +138,30 @@ func (s *server) Consent(
 	}
 
 	return &authpb.ConsentResponse{RedirectUri: consentResponse}, nil
+}
+
+// GetConsentCard is a gRPC handler for getting consent card data.
+func (s *server) GetConsentCard(
+	ctx context.Context,
+	req *authpb.GetConsentCardRequest,
+) (*authpb.GetConsentCardResponse, error) {
+	consentCardRequest := dto.NewConsentCardRequest(req.GetRequestUri())
+	consentCardResponse, err := s.consentCardReader.Read(ctx, consentCardRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	consentScopes := make([]*authpb.ConsentScope, len(consentCardResponse.Scopes()))
+	for i, scope := range consentCardResponse.Scopes() {
+		consentScope := &authpb.ConsentScope{
+			Code:        scope.Code(),
+			Name:        scope.Name(),
+			Description: scope.Description(),
+			IsGranted:   scope.IsGranted(),
+		}
+
+		consentScopes[i] = consentScope
+	}
+
+	return &authpb.GetConsentCardResponse{Scopes: consentScopes}, nil
 }

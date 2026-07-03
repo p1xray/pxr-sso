@@ -6,11 +6,11 @@ import (
 )
 
 func ToRoleDTO(role models.Role) dto.Role {
-	permissions := make([]string, len(role.PermissionLinks))
+	permissions := make([]dto.Permission, len(role.PermissionLinks))
 	for i, link := range role.PermissionLinks {
-		permissions[i] = link.Permission.Code
+		permissions[i] = ToPermissionDTO(link.Permission)
 	}
 
-	roleDTO := dto.NewRole(role.ID, role.Code, permissions)
+	roleDTO := dto.NewRole(role.ID, role.Code, role.Name, role.Description, permissions)
 	return roleDTO
 }

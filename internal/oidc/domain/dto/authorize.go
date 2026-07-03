@@ -1,5 +1,10 @@
 package dto
 
+import (
+	"github.com/p1xray/pxr-sso/internal/oidc"
+	"strings"
+)
+
 type AuthorizeRequest struct {
 	responseType        []string
 	prompt              []string
@@ -25,6 +30,10 @@ func NewAuthorizeRequest(
 	scope []string,
 	sessions []SessionCookie,
 ) AuthorizeRequest {
+	if len(prompt) == 0 {
+		prompt = []string{oidc.DefaultPrompt}
+	}
+
 	return AuthorizeRequest{
 		responseType:        responseType,
 		prompt:              prompt,
@@ -72,7 +81,12 @@ func (a *AuthorizeRequest) Audience() []string {
 }
 
 func (a *AuthorizeRequest) Scope() []string {
-	return a.scope
+	scopes := make([]string, 0)
+	for _, scope := range a.scope {
+		scopes = append(scopes, strings.Split(scope, " ")...)
+	}
+
+	return scopes
 }
 
 func (a *AuthorizeRequest) Sessions() []SessionCookie {

@@ -4,13 +4,17 @@ package dto
 type Role struct {
 	id          int64
 	code        string
-	permissions []string
+	name        string
+	description string
+	permissions []Permission
 }
 
-func NewRole(id int64, code string, permissions []string) Role {
+func NewRole(id int64, code, name, description string, permissions []Permission) Role {
 	return Role{
 		id:          id,
 		code:        code,
+		name:        name,
+		description: description,
 		permissions: permissions,
 	}
 }
@@ -23,6 +27,14 @@ func (r *Role) Code() string {
 	return r.code
 }
 
-func (r *Role) Permissions() []string {
+func (r *Role) Name() string {
+	return r.name
+}
+
+func (r *Role) Description() string {
+	return r.description
+}
+
+func (r *Role) Permissions() []Permission {
 	return r.permissions
 }

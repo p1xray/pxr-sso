@@ -89,6 +89,7 @@ func (u *usecase) Execute(ctx context.Context, req dto.AuthorizeRequest) (string
 
 	log := u.log.With(
 		sl.Strings("response_type", req.ResponseType()),
+		sl.Strings("prompt", req.Prompt()),
 		sl.Strings("client_id", req.ClientID()),
 		sl.Strings("redirect_uri", req.RedirectURI()),
 		sl.Strings("code_challenge", req.CodeChallenge()),

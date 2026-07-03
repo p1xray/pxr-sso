@@ -173,7 +173,7 @@ func (u *usecase) Execute(ctx context.Context, loginRequest dto.LoginRequest) (d
 		savedSession.Code().String(),
 		user.ID(),
 		savedSession.AuthTime(),
-		"pxr.soo",
+		"pxr.sso",
 	)
 	encodedSession, err := u.sessionCookieEncoder.Encode(sessionToEncode)
 	if err != nil {

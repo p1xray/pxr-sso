@@ -81,7 +81,7 @@ func (v *ValidatedAuthorizeRequest) PendingScopes() []string {
 }
 
 func (v *ValidatedAuthorizeRequest) AllScopes() []string {
-	return v.scopes.AllScopes()
+	return v.scopes.All()
 }
 
 type ValidatedScopesRequest struct {
@@ -112,7 +112,7 @@ func (v *ValidatedScopesRequest) Pending() []string {
 	return v.pending
 }
 
-func (v *ValidatedScopesRequest) AllScopes() []string {
+func (v *ValidatedScopesRequest) All() []string {
 	allScopes := make([]string, 0, len(v.granted)+len(v.pending))
 	allScopes = append(allScopes, v.granted...)
 	allScopes = append(allScopes, v.pending...)
