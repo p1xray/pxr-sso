@@ -1,10 +1,11 @@
-package jwtmiddleware
+package middleware
 
 import (
 	"context"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/go-cmp/cmp"
-	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
+	"github.com/p1xray/pxr-sso/pkg/jwt/claims"
+	"github.com/p1xray/pxr-sso/pkg/jwt/crypto"
 	"github.com/p1xray/pxr-sso/pkg/jwt/validator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,80 +13,88 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func Test_ParseJWT(t *testing.T) {
 	const (
-		validToken   = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0IiwiZXhwIjoxNzUwNzExODQ0LCJpYXQiOjE3NTA3MDgyNDQsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6NjAwNCIsImp0aSI6ImI2MWE0NjI2LWQ4MjItNDE0Yy04YWE1LTdiYjVmNjcwMGJhZSIsIm5iZiI6MTc1MDcwODI0NCwic2NvcGUiOiJwcm9maWxlLnJlYWQiLCJzdWIiOiIxIn0.F4noN66vHF5-jCFHMpta6ENobWeKnwFwy0kkoy5Ow1U"
-		invalidToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJpbnZhbGlkVGVzdElzc3VlciIsImlhdCI6MTc1MDQ5MzQwNiwiZXhwIjoxNzgyMDI5NDA2LCJhdWQiOiIiLCJzdWIiOiIifQ.osd2XpJtwCHsGTJkCIu_yZKDG1TuGk9IyZi9mjdpe3A"
-		issuer       = "http://localhost:6004"
-		audience     = "test"
+		validKey = "05c5328f-17cb-4b42-a085-4089c03b86f8"
+		issuer   = "https://example.com/"
+		audience = "testAudience"
+		subject  = "1"
+
+		validToken   = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0QXVkaWVuY2UiLCJleHAiOjMzMzA1NjQ0ODAwLCJpYXQiOjE3NTA0OTcyOTUsImlzcyI6Imh0dHBzOi8vZXhhbXBsZS5jb20vIiwianRpIjoiYTBjNDNhYjMtMzA2Ny00MjExLTgwODYtZjZjN2YzMDA5YTgyIiwibmJmIjoxNzUwNDk3Mjk1LCJzdWIiOiIxIn0.C6WSp4EaynQBbdgLEJ1hpoHxwEoGAW8RYnCa1YpwNfE"
+		invalidToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhd"
 	)
 
-	exp := jwt.NumericDate(1750711844)
-	nbf := jwt.NumericDate(1750708244)
-	iat := jwt.NumericDate(1750708244)
+	var (
+		expiry    = jwt.NewNumericDate(time.Unix(33305644800, 0))
+		issuedAt  = jwt.NewNumericDate(time.Unix(1750497295, 0))
+		notBefore = jwt.NewNumericDate(time.Unix(1750497295, 0))
+	)
 
-	expectedTokenClaims := jwtclaims.ValidatedClaims{
-		RegisteredClaims: jwtclaims.AccessTokenClaims{
-			Claims: jwt.Claims{
-				ID:        "b61a4626-d822-414c-8aa5-7bb5f6700bae",
-				Subject:   "1",
-				Issuer:    issuer,
-				Audience:  []string{audience},
-				Expiry:    &exp,
-				NotBefore: &nbf,
-				IssuedAt:  &iat,
-			},
-			RegisteredCustomClaims: jwtclaims.RegisteredCustomClaims{
-				Scope: "profile.read",
-			},
-		},
+	validTokenClaims := claims.RegisteredClaims{
+		ID:        "a0c43ab3-3067-4211-8086-f6c7f3009a82",
+		Issuer:    issuer,
+		Subject:   subject,
+		Audience:  []string{audience},
+		Expiry:    expiry,
+		IssuedAt:  issuedAt,
+		NotBefore: notBefore,
 	}
 
-	keyFunc := func(context.Context) ([]byte, error) {
-		return []byte("98649a5c-2137-4a78-a63f-fbab416a7f9e"), nil
+	keyFunc := func(context.Context) (any, error) {
+		return []byte(validKey), nil
 	}
 
-	jwtValidator, err := validator.New(keyFunc, issuer, []string{audience})
+	jwtValidator, err := validator.New(
+		validator.WithKeyFunc(keyFunc),
+		validator.WithIssuer(issuer),
+		validator.WithAudience(audience),
+		validator.WithAlgorithm(crypto.HS256))
 	require.NoError(t, err)
 
 	testCases := []struct {
 		name                string
-		validateToken       ValidateToken
+		method              string
 		path                string
-		expectedStatusCode  int
 		token               string
-		expectedTokenClaims interface{}
+		expectedStatusCode  int
+		expectedTokenClaims any
 		expectedBody        string
 	}{
 		{
 			name:                "successfully validate a token",
-			validateToken:       jwtValidator.ValidateToken,
-			expectedStatusCode:  http.StatusOK,
+			method:              http.MethodGet,
 			token:               validToken,
-			expectedTokenClaims: expectedTokenClaims,
+			expectedStatusCode:  http.StatusOK,
+			expectedTokenClaims: validTokenClaims,
 			expectedBody:        `{"message":"Authenticated."}`,
 		},
 		{
-			name:               "fails to validate a token with a invalid format",
-			validateToken:      jwtValidator.ValidateToken,
-			expectedStatusCode: http.StatusInternalServerError,
+			name:                "successfully validate a token on options method",
+			method:              http.MethodOptions,
+			token:               validToken,
+			expectedStatusCode:  http.StatusOK,
+			expectedTokenClaims: validTokenClaims,
+			expectedBody:        `{"message":"Authenticated."}`,
+		},
+		{
+			name:               "fails to validate a token with an invalid format",
 			token:              "invalid token",
+			expectedStatusCode: http.StatusInternalServerError,
 			expectedBody:       `{"message":"Something went wrong while checking the JWT."}`,
 		},
 		{
 			name:               "fails to validate an empty token",
-			validateToken:      jwtValidator.ValidateToken,
-			expectedStatusCode: http.StatusBadRequest,
 			token:              "",
+			expectedStatusCode: http.StatusBadRequest,
 			expectedBody:       `{"message":"JWT is missing."}`,
 		},
 		{
 			name:               "fails to validate an invalid token",
-			validateToken:      jwtValidator.ValidateToken,
-			expectedStatusCode: http.StatusUnauthorized,
 			token:              invalidToken,
+			expectedStatusCode: http.StatusUnauthorized,
 			expectedBody:       `{"message":"JWT is invalid."}`,
 		},
 	}
@@ -94,7 +103,7 @@ func Test_ParseJWT(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			middleware := New(tc.validateToken)
+			middleware := New(jwtValidator.ValidateToken)
 
 			var tokenClaims interface{}
 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -105,11 +114,11 @@ func Test_ParseJWT(t *testing.T) {
 				_, _ = w.Write([]byte(`{"message":"Authenticated."}`))
 			})
 
-			testServer := httptest.NewServer(middleware.ParseJWT(handler))
+			testServer := httptest.NewServer(middleware.CheckJWT(handler))
 			defer testServer.Close()
 
 			url := testServer.URL + tc.path
-			request, err := http.NewRequest(http.MethodGet, url, nil)
+			request, err := http.NewRequest(tc.method, url, nil)
 			require.NoError(t, err)
 
 			if tc.token != "" {

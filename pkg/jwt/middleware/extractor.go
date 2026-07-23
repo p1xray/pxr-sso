@@ -1,4 +1,4 @@
-package jwtmiddleware
+package middleware
 
 import (
 	"errors"
@@ -12,14 +12,17 @@ const (
 )
 
 var (
+	// ErrInvalidHeaderFormat is returned when the Authorization HTTP header exists
+	// but does not strictly adhere to the expected "Bearer <token>" format specification.
 	ErrInvalidHeaderFormat = errors.New("authorization header format must be Bearer {token}")
 )
 
-// TokenExtractor is a function that takes a request as input and returns either a token or an error.
+// TokenExtractor is a function that takes a request as input and returns either
+// a token or an error.
 type TokenExtractor func(r *http.Request) (string, error)
 
-// AuthHeaderTokenExtractor is a TokenExtractor that takes a request and extracts the token
-// from the Authorization header.
+// AuthHeaderTokenExtractor is a TokenExtractor that takes a request and extracts
+// the token from the Authorization header.
 func AuthHeaderTokenExtractor(r *http.Request) (string, error) {
 	authHeader := r.Header.Get(authorizationHeader)
 	if authHeader == "" {

@@ -1,4 +1,4 @@
-package jwtmiddleware
+package middleware
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func Test_AuthHeaderTokenExtractor(t *testing.T) {
+func TestAuthHeaderTokenExtractor(t *testing.T) {
 	const token = "token-example"
 
 	testCases := []struct {
