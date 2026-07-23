@@ -26,13 +26,40 @@ type ClientReader interface {
 }
 
 type TokensGenerator interface {
-	Generate(scope []string, audience string, user dto.User, client dto.Client) (dto.Tokens, error)
+	Generate(
+		scope []string,
+		audience string,
+		user dto.User,
+		client dto.Client,
+		session dto.AuthorizedSession,
+	) (dto.Tokens, error)
 }
 
-type Token interface {
-	Execute(ctx context.Context, tokenRequest dto.TokenRequest) (dto.TokenResponse, error)
+// RequestProcessor processes incoming token requests from clients, ensuring they
+// are valid and authorized before issuing the appropriate token response.
+//
+// Depending on the request type and granted permissions, the response can
+// include various types of tokens such as Access Tokens, Refresh Tokens and ID
+// Tokens.
+//
+// This interface abstracts the core logic behind token issuance in compliance
+// with OAuth 2.0 and OpenID Connect standards. Implementations are responsible
+// for validating the token request details, determining the types of tokens to
+// issue based on the request's scope and authorization, and generating a token
+// response that conforms to the protocol specifications. While the typical
+// response includes an Access Token and, in the case of OpenID Connect, an ID
+// Token, the exact contents of the response may vary based on the request
+// parameters and server policies.
+type RequestProcessor interface {
+	Execute(ctx context.Context, request dto.TokenRequest) (dto.TokenResponse, error)
 }
 
+// Processes token requests in compliance with OAuth 2.0 and OpenID Connect
+// standards, handling various types of token requests such as authorization code
+// and refresh token.
+//
+// Generates the appropriate token responses including access tokens, refresh
+// tokens, and ID tokens.
 type usecase struct {
 	log                    *slog.Logger
 	authorizedGrantReader  AuthorizedGrantReader
@@ -42,6 +69,7 @@ type usecase struct {
 	tokensGenerator        TokensGenerator
 }
 
+// New returns a new instance of the token requests processing usecase with required dependencies.
 func New(
 	log *slog.Logger,
 	authorizedGrantReader AuthorizedGrantReader,
@@ -60,21 +88,24 @@ func New(
 	}
 }
 
-// Execute ...
-func (u *usecase) Execute(ctx context.Context, tokenRequest dto.TokenRequest) (dto.TokenResponse, error) {
+// Execute processes a token request, determining the necessary tokens to
+// generate based on the request's scope and grant type. It generates an access
+// token for every request and, depending on the scope, may also generate a
+// refresh token and an ID token for OpenID Connect authentication.
+func (u *usecase) Execute(ctx context.Context, request dto.TokenRequest) (dto.TokenResponse, error) {
 	const op = "processing of token issuance"
 	const logTag = "[pxr-sso-use-case-token]"
 
 	log := u.log.With(
-		slog.String("grant_type", tokenRequest.GrantType()),
-		slog.String("authorization_code", tokenRequest.AuthorizationCode()),
-		slog.String("redirect_uri", tokenRequest.RedirectURI()),
-		slog.String("code_verifier", tokenRequest.CodeVerifier()),
-		slog.String("client_id", tokenRequest.ClientID()),
+		slog.String("grant_type", request.GrantType()),
+		slog.String("authorization_code", request.AuthorizationCode()),
+		slog.String("redirect_uri", request.RedirectURI()),
+		slog.String("code_verifier", request.CodeVerifier()),
+		slog.String("client_id", request.ClientID()),
 	)
 	log.Info(logTag + " attempting to token issuance")
 
-	authorizedGrant, err := u.authorizedGrantReader.AuthorizedGrant(ctx, tokenRequest.AuthorizationCode())
+	authorizedGrant, err := u.authorizedGrantReader.AuthorizedGrant(ctx, request.AuthorizationCode())
 	if err != nil {
 		log.Error(logTag+" get authorized grant", err.Error())
 
@@ -97,7 +128,7 @@ func (u *usecase) Execute(ctx context.Context, tokenRequest dto.TokenRequest) (d
 		return dto.TokenResponse{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	tokenRequestValidator := validator.NewTokenRequestValidator(tokenRequest, authorizedGrant.Request(), client)
+	tokenRequestValidator := validator.NewTokenRequestValidator(request, authorizedGrant.Request(), client)
 	err = tokenRequestValidator.Validate()
 	if err != nil {
 		log.Warn(logTag+" validate token request", err.Error())
@@ -110,6 +141,7 @@ func (u *usecase) Execute(ctx context.Context, tokenRequest dto.TokenRequest) (d
 		authorizedGrant.RequestAudience(),
 		user,
 		client,
+		authorizedGrant.Session(),
 	)
 	if err != nil {
 		log.Error(logTag+" generate tokens", err.Error())

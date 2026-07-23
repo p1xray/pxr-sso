@@ -70,7 +70,7 @@ type diContainer struct {
 	consentCardReaderUseCase consent.CardReader
 
 	//		token
-	tokenUseCase token.Token
+	tokenUseCase token.RequestProcessor
 
 	// API:
 	// 	gRPC
@@ -307,7 +307,7 @@ func (d *diContainer) ConsentCardReaderUseCase() consent.CardReader {
 }
 
 // TokenUseCase returns the use case for processing token request.
-func (d *diContainer) TokenUseCase() token.Token {
+func (d *diContainer) TokenUseCase() token.RequestProcessor {
 	if d.tokenUseCase == nil {
 		d.tokenUseCase = token.New(
 			d.Logger(),

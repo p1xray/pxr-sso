@@ -4,13 +4,26 @@ import (
 	"fmt"
 	"github.com/p1xray/pxr-sso/internal/oidc/domain/dto"
 	"github.com/p1xray/pxr-sso/pkg/extslices"
-	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
-	jwtcreator "github.com/p1xray/pxr-sso/pkg/jwt/creator"
+	"github.com/p1xray/pxr-sso/pkg/jwt"
+	"github.com/p1xray/pxr-sso/pkg/jwt/claims"
+	"slices"
 	"time"
 )
 
+const (
+	tokenTypeBearer  = "Bearer"
+	tokenTypeRefresh = "Refresh"
+	tokenTypeID      = "OpenID"
+)
+
 type TokensGenerator interface {
-	Generate(scope []string, audience string, user dto.User, client dto.Client) (dto.Tokens, error)
+	Generate(
+		scope []string,
+		audience string,
+		user dto.User,
+		client dto.Client,
+		session dto.AuthorizedSession,
+	) (dto.Tokens, error)
 }
 
 type tokens struct {
@@ -34,22 +47,29 @@ func (t *tokens) Generate(
 	audience string,
 	user dto.User,
 	client dto.Client,
+	session dto.AuthorizedSession,
 ) (dto.Tokens, error) {
 	const op = "tokens"
 
-	accessToken, err := t.generateAccessToken(scope, audience, user, client)
+	accessToken, err := t.generateAccessToken(scope, audience, user, client, session)
 	if err != nil {
 		return dto.Tokens{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
 	}
 
-	refreshToken, err := t.generateRefreshToken(client.SecretKey())
-	if err != nil {
-		return dto.Tokens{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	refreshToken := dto.Token{}
+	if slices.Contains(scope, "offline_access") {
+		refreshToken, err = t.generateRefreshToken(scope, audience, user, client, session)
+		if err != nil {
+			return dto.Tokens{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+		}
 	}
 
-	idToken, err := t.generateIDToken(user, client)
-	if err != nil {
-		return dto.Tokens{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+	idToken := dto.Token{}
+	if slices.Contains(scope, "openid") {
+		idToken, err = t.generateIDToken(scope, audience, user, client, session)
+		if err != nil {
+			return dto.Tokens{}, fmt.Errorf("%s: %s: %w", pkgTag, op, err)
+		}
 	}
 
 	generatedTokens := dto.NewTokens(
@@ -66,6 +86,7 @@ func (t *tokens) generateAccessToken(
 	audience string,
 	user dto.User,
 	client dto.Client,
+	session dto.AuthorizedSession,
 ) (dto.Token, error) {
 	const op = "access token"
 
@@ -77,73 +98,177 @@ func (t *tokens) generateAccessToken(
 	}
 	scopes := extslices.Union(scope, permissions)
 
-	createAccessTokenData := jwtcreator.AccessTokenCreateData{
-		Subject:   user.IDString(),
-		Audiences: []string{audience},
-		Scopes:    scopes,
-		Issuer:    t.issuer,
-		TTL:       t.accessTokenTTL,
-		Key:       []byte(client.SecretKey()),
-	}
-	claims, accessTokenString, err := jwtcreator.NewAccessToken(createAccessTokenData)
+	tokenClaims := claims.NewAccessTokenClaims(
+		t.issuer,
+		user.IDString(),
+		[]string{audience},
+		t.accessTokenTTL,
+		claims.WithAccessTokenAuthentication(session.AuthTime()),
+		claims.WithAccessTokenAuthorization(scopes),
+		claims.WithAccessTokenClient(client.Code()),
+	)
+
+	rawToken, err := jwt.CreateAccessToken(tokenClaims, []byte(client.SecretKey()))
 	if err != nil {
 		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	token := dto.NewToken(
-		claims.ID,
-		claims.TokenType,
-		accessTokenString,
-		jwtclaims.NumericDateToInt64(claims.Expiry),
+		tokenClaims.ID,
+		tokenTypeBearer,
+		rawToken,
+		claims.NumericDateToInt64(tokenClaims.Expiry),
 	)
 
 	return token, nil
 }
 
-func (t *tokens) generateRefreshToken(key string) (dto.Token, error) {
+func (t *tokens) generateRefreshToken(
+	scopes []string,
+	audience string,
+	user dto.User,
+	client dto.Client,
+	session dto.AuthorizedSession,
+) (dto.Token, error) {
 	const op = "refresh token"
 
-	claims, refreshTokenString, err := jwtcreator.NewRefreshToken([]byte(key), t.refreshTokenTTL)
+	tokenClaims := claims.NewRefreshTokenClaims(
+		t.issuer,
+		user.IDString(),
+		[]string{audience},
+		t.refreshTokenTTL,
+		claims.WithRefreshTokenAuthentication(session.AuthTime()),
+		claims.WithRefreshTokenAuthorization(scopes),
+		claims.WithRefreshTokenClient(client.Code()),
+		claims.WithRefreshTokenSession(session.ID()),
+	)
+
+	rawToken, err := jwt.CreateRefreshToken(tokenClaims, []byte(client.SecretKey()))
 	if err != nil {
 		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	token := dto.NewToken(
-		claims.ID,
-		claims.TokenType,
-		refreshTokenString,
-		jwtclaims.NumericDateToInt64(claims.Expiry),
+		tokenClaims.ID,
+		tokenTypeRefresh,
+		rawToken,
+		claims.NumericDateToInt64(tokenClaims.Expiry),
 	)
 
 	return token, nil
 }
 
-func (t *tokens) generateIDToken(user dto.User, client dto.Client) (dto.Token, error) {
+func (t *tokens) generateIDToken(
+	scopes []string,
+	audience string,
+	user dto.User,
+	client dto.Client,
+	session dto.AuthorizedSession,
+) (dto.Token, error) {
 	const op = "id token"
 
-	createIDTokenData := jwtcreator.IDTokenCreateData{
-		Subject:   user.IDString(),
-		ClientID:  client.Code(),
-		Issuer:    t.issuer,
-		AuthTime:  time.Now(),
-		Username:  user.Username(),
-		Name:      user.FullName(),
-		Gender:    "",                                                       // TODO: implement user.Gender(),
-		Birthdate: time.Date(2000, time.November, 12, 0, 0, 0, 0, time.UTC), // TODO: implement user.Birthdate(),
-		Picture:   "",                                                       // TODO: implement user.PictureURL(),
-		TTL:       t.idTokenTTL,
-		Key:       []byte(client.SecretKey()),
+	claimsOptions := []claims.IDTokenClaimsOption{
+		claims.WithIDTokenAuthentication(session.AuthTime()),
 	}
-	claims, idTokenString, err := jwtcreator.NewIDToken(createIDTokenData)
+
+	if slices.Contains(scopes, "profile") {
+		// TODO: add this fields into db tables
+		const (
+			name              = "John Michael Doe"
+			familyName        = "Doe"
+			givenName         = "John"
+			middleName        = "Michael"
+			nickname          = "johndoe"
+			preferredUsername = "Johnny"
+			profile           = "https://example.com/profile/johndoe"
+			picture           = "https://example.com/profile/picture/johndoe"
+			website           = "https://johndoe.dev"
+			gender            = "male"
+			birthdate         = "1990-01-01"
+			zoneInfo          = "America/New_York"
+			locale            = "en-US"
+		)
+
+		updatedAt := time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC)
+
+		profileClaimsOption := claims.WithIDTokenProfile(
+			claims.WithProfileName(name, familyName, givenName, middleName),
+			claims.WithProfileNameAlias(nickname, preferredUsername),
+			claims.WithProfileURL(profile, picture, website),
+			claims.WithProfileGender(gender),
+			claims.WithProfileBirthdate(birthdate),
+			claims.WithProfileLocation(zoneInfo, locale),
+			claims.WithProfileUpdatedAt(updatedAt),
+		)
+
+		claimsOptions = append(claimsOptions, profileClaimsOption)
+	}
+
+	if slices.Contains(scopes, "email") {
+		// TODO: add this fields into db tables
+		const (
+			email         = "johndoe@example.com"
+			emailVerified = false
+		)
+
+		emailClaimsOption := claims.WithIDTokenEmail(email, emailVerified)
+
+		claimsOptions = append(claimsOptions, emailClaimsOption)
+	}
+
+	if slices.Contains(scopes, "phone") {
+		// TODO: add this fields into db tables
+		const (
+			phoneNumber         = "+1234567890"
+			phoneNumberVerified = true
+		)
+
+		phoneClaimsOption := claims.WithIDTokenPhoneNumber(phoneNumber, phoneNumberVerified)
+
+		claimsOptions = append(claimsOptions, phoneClaimsOption)
+	}
+
+	if slices.Contains(scopes, "address") {
+		// TODO: add this fields into db tables
+		const (
+			addressFormatted = "123 Main St\nMetropolis, NY 10001\nUSA"
+			streetAddress    = "123 Main St"
+			locality         = "Metropolis"
+			region           = "NY"
+			postalCode       = "10001"
+			country          = "USA"
+		)
+
+		addressClaimsOption := claims.WithIDTokenAddress(
+			addressFormatted,
+			streetAddress,
+			locality,
+			region,
+			postalCode,
+			country,
+		)
+
+		claimsOptions = append(claimsOptions, addressClaimsOption)
+	}
+
+	tokenClaims := claims.NewIDTokenClaims(
+		t.issuer,
+		user.IDString(),
+		[]string{audience},
+		t.refreshTokenTTL,
+		claimsOptions...,
+	)
+
+	rawToken, err := jwt.CreateIDToken(tokenClaims, []byte(client.SecretKey()))
 	if err != nil {
 		return dto.Token{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	token := dto.NewToken(
-		claims.ID,
-		claims.TokenType,
-		idTokenString,
-		jwtclaims.NumericDateToInt64(claims.Expiry),
+		tokenClaims.ID,
+		tokenTypeID,
+		rawToken,
+		claims.NumericDateToInt64(tokenClaims.Expiry),
 	)
 
 	return token, nil
