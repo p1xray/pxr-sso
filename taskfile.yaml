@@ -1,16 +1,41 @@
 version: '3'
 
 tasks:
+  local:
+    aliases:
+      - local
+    desc: 'run sso app with local config'
+    cmds:
+      - go run ./cmd/sso --config=./config/config.yaml --env-config=./config/config.local.yaml
+
   dev:
     aliases:
       - dev
-    desc: 'run sso app with local config'
+    desc: 'run sso app with dev config'
     cmds:
-      - go run ./cmd/sso --config=./config/local.yaml
+      - go run ./cmd/sso --config=./config/config.yaml --env-config=./config/config.dev.yaml
 
-  migrate:
+  create_migration:
     aliases:
-      - migrate
-    desc: 'up migrations'
+      - 'migration create'
+    desc: 'create a new SQL migration'
+    vars:
+      FILE_NAME: '{{.FILE_NAME}}'
     cmds:
-      - go run ./cmd/migrator --storage-path=./storage/sso.db -migrations-path=./migrations
+      - goose -dir db/migrations create {{.FILE_NAME}} sql
+
+  migrate_up:
+    aliases:
+      - 'migrate up'
+    desc: 'apply all available migrations'
+    cmds:
+      - goose -dir db/migrations up
+
+  migrate_down:
+    aliases:
+      - 'migrate down'
+    desc: 'roll back migrations to a specific version'
+    vars:
+      VERSION: '{{.VERSION}}'
+    cmds:
+      - goose -dir db/migrations down-to {{.VERSION}}

@@ -12,18 +12,26 @@ const (
 )
 
 // Server provides access to the gRPC server.
-type Server struct {
-	App     *grpc.Server
-	notify  chan error
-	address string
+type Server interface {
+	Start()
+	Stop()
+	Notify() <-chan error
+	Registrar() grpc.ServiceRegistrar
+}
+
+// server provides access to the gRPC server.
+type server struct {
+	innerServer *grpc.Server
+	notify      chan error
+	address     string
 }
 
 // New returns new gRPC server instance.
-func New(opts ...Option) *Server {
-	s := &Server{
-		App:     grpc.NewServer(),
-		notify:  make(chan error),
-		address: net.JoinHostPort("", defaultPort),
+func New(opts ...Option) *server {
+	s := &server{
+		innerServer: grpc.NewServer(),
+		notify:      make(chan error),
+		address:     net.JoinHostPort("", defaultPort),
 	}
 
 	// Custom options
@@ -35,7 +43,7 @@ func New(opts ...Option) *Server {
 }
 
 // Start - starts the gRPC server.
-func (s *Server) Start() {
+func (s *server) Start() {
 	go func() {
 		defer close(s.notify)
 
@@ -45,16 +53,20 @@ func (s *Server) Start() {
 			return
 		}
 
-		s.notify <- s.App.Serve(ln)
+		s.notify <- s.innerServer.Serve(ln)
 	}()
 }
 
 // Notify - notifies about gRPC server errors.
-func (s *Server) Notify() <-chan error {
+func (s *server) Notify() <-chan error {
 	return s.notify
 }
 
 // Stop - stops the gRPC server.
-func (s *Server) Stop() {
-	s.App.GracefulStop()
+func (s *server) Stop() {
+	s.innerServer.GracefulStop()
+}
+
+func (s *server) Registrar() grpc.ServiceRegistrar {
+	return s.innerServer
 }

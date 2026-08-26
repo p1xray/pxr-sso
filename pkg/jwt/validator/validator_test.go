@@ -3,265 +3,265 @@ package validator
 import (
 	"context"
 	"errors"
-	"github.com/go-jose/go-jose/v4/jwt"
-	jwtclaims "github.com/p1xray/pxr-sso/pkg/jwt/claims"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
+	"github.com/p1xray/pxr-sso/pkg/jwt"
+	"github.com/p1xray/pxr-sso/pkg/jwt/claims"
+	"github.com/p1xray/pxr-sso/pkg/jwt/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
-const (
-	// JWT claim Issuer (iss).
-	issuer = "testIssuer"
-
-	// JWT claim Audience (aud).
-	audience = "testAudience"
-)
-
-type testCustomClaims struct {
-	TestCustom  string `json:"test_custom,omitempty"`
-	Test2Custom string `json:"test2_custom,omitempty"`
-	ReturnError error
-}
-
-func (tcc testCustomClaims) Validate(context.Context) error {
-	return tcc.ReturnError
-}
-
-func Test_New(t *testing.T) {
-	t.Run("throws an error when the keyFunc is nil", func(t *testing.T) {
-		_, err := New(nil, issuer, []string{audience})
-		assert.EqualError(t, err, ErrEmptyKeyFunc.Error())
-	})
-
-	t.Run("throws an error when the issuer is empty", func(t *testing.T) {
-		_, err := New(validKeyFunc, "", []string{audience})
-		assert.EqualError(t, err, ErrEmptyIssuer.Error())
-	})
-
-	t.Run("throws an error when the audience is nil", func(t *testing.T) {
-		_, err := New(validKeyFunc, issuer, nil)
-		assert.EqualError(t, err, ErrEmptyAudience.Error())
-	})
-
-	t.Run("throws an error when the audience is empty", func(t *testing.T) {
-		_, err := New(validKeyFunc, issuer, []string{})
-		assert.EqualError(t, err, ErrEmptyAudience.Error())
-	})
-}
-
-func Test_ValidateToken(t *testing.T) {
-
+func TestNew(t *testing.T) {
 	const (
-		// JWT claim ID (jti).
-		id = "0472dd7c-4821-4910-a6bc-29d4c5157f22"
-
-		// JWT claim Subject (sub).
-		subject = "1"
-
-		// Валидный токен с заполненными стандартными клэймами.
-		validDefaultToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0QXVkaWVuY2UiLCJleHAiOjMzMzA1NjQ0ODAwLCJpYXQiOjE3NTA0OTcyOTUsImlzcyI6InRlc3RJc3N1ZXIiLCJqdGkiOiIwNDcyZGQ3Yy00ODIxLTQ5MTAtYTZiYy0yOWQ0YzUxNTdmMjIiLCJuYmYiOjE3NTA0OTcyOTUsInN1YiI6IjEifQ.NoYm5P_1hlqC3e-C0fsdkvCX9TqKg8Wr1bYunQpNJsE"
-
-		// Токен с другим алгоритмом подписи.
-		tokenWithAnotherSignatureAlgorithm = "eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.e30.CIcOiI5WfaY7BTYlGcMtE24fKDAqSvpnv8jCb9-3VYQuXlh4qh0ssPvu3QNycFuD"
-
-		// Валидный минимальный токен, заполнены только Issuer и Audience.
-		validMinimalToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0QXVkaWVuY2UiLCJpc3MiOiJ0ZXN0SXNzdWVyIn0.d2qDNajH-3dsEf1ZVbYepR6KgrNkaPOSfrKwH-c2tAE"
-
-		// Токен с заполненными стандартными клэймами (Issuer невалидный).
-		tokenWithInvalidIssuer = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0QXVkaWVuY2UiLCJpc3MiOiJpbnZhbGlkVGVzdElzc3VlciJ9.mKXEhugZ9DBwD8ELzCYBug3nQQbJZ2p4kj65SAx63Fw"
-
-		// Токен с заполненными стандартными клэймами (Audience невалидный).
-		tokenWithInvalidAudience = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJpbnZhbGlkVGVzdEF1ZGllbmNlIiwiaXNzIjoidGVzdElzc3VlciJ9.GcWshNfR-Fy9zAQ1Kh_tchxADIbofK58BQBvyrwZDpU"
-
-		// Токен с заполненными стандартными клэймами (NotBefore невалидный).
-		tokenWithInvalidNotBefore = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0QXVkaWVuY2UiLCJleHAiOjMzMzA1NjQ0ODAwLCJpYXQiOjE3NTA0OTcyOTUsImlzcyI6InRlc3RJc3N1ZXIiLCJuYmYiOjMzMzA1NjQ0ODAwfQ.BmMPHQhYhF5dBu4L1UB3ffkIQofwubeogr5JVPWDllI"
-
-		// Токен с заполненными стандартными клэймами (Expiry невалидный).
-		tokenWithInvalidExpiry = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0QXVkaWVuY2UiLCJleHAiOjE3NTA0OTcyOTUsImlhdCI6MTc1MDQ5NzI5NSwiaXNzIjoidGVzdElzc3VlciIsIm5iZiI6MTc1MDQ5NzI5NX0.PG-3-ZtvmXlNXid5ctW9Kg0mvaxI8WUrjYIK0ef3acA"
-
-		// Токен с заполненными стандартными клэймами (IssuedAt невалидный).
-		tokenWithInvalidIssuedAt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0QXVkaWVuY2UiLCJleHAiOjMzMzA1NjQ0ODAwLCJpYXQiOjMzMzA1NjQ0ODAwLCJpc3MiOiJ0ZXN0SXNzdWVyIiwibmJmIjoxNzUwNDk3Mjk1fQ.sAOuHEUvLkP-GzLeLUOz961IVZxnUvmUvTZqL_yh0fE"
-
-		// Токен с заполненными стандартными клэймами + заполнен Scope.
-		tokenWithRegisteredCustomClaims = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0QXVkaWVuY2UiLCJleHAiOjMzMzA1NjQ0ODAwLCJpYXQiOjE3NTA0OTcyOTUsImlzcyI6InRlc3RJc3N1ZXIiLCJqdGkiOiIwNDcyZGQ3Yy00ODIxLTQ5MTAtYTZiYy0yOWQ0YzUxNTdmMjIiLCJuYmYiOjE3NTA0OTcyOTUsInNjb3BlIjoidGVzdC5yZWFkIHRlc3Qud3JpdGUiLCJzdWIiOiIxIn0.iih5bOFv6qcG8VrgcAxufA6AeGW62Pb_wOiEnnswkEc"
-
-		// Токен с заполненными стандартными клэймами + добавлены кастомные клэймы.
-		tokenWithCustomClaims = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0QXVkaWVuY2UiLCJleHAiOjMzMzA1NjQ0ODAwLCJpYXQiOjE3NTA0OTcyOTUsImlzcyI6InRlc3RJc3N1ZXIiLCJqdGkiOiIwNDcyZGQ3Yy00ODIxLTQ5MTAtYTZiYy0yOWQ0YzUxNTdmMjIiLCJuYmYiOjE3NTA0OTcyOTUsInNjb3BlIjoidGVzdC5yZWFkIHRlc3Qud3JpdGUiLCJzdWIiOiIxIiwidGVzdDJfY3VzdG9tIjoidGVzdCBjdXN0b20gY2xhaW0gMiIsInRlc3RfY3VzdG9tIjoidGVzdCBjdXN0b20gY2xhaW0ifQ.9O_WaXeDWacQuBmzWpbptBP6GV4Wz6aN4UbW5L6qVuY"
+		issuer    = "https://example.com/"
+		audience  = "test_audience"
+		algorithm = crypto.HS256
 	)
 
-	var (
-		// Large numeric date value for Expiry, NotBefore or IssuedAt JWT claims (exp, nbf, iat).
-		largeNumericDate = jwt.NumericDate(33305644800)
-
-		// Before now time numeric date value for Expiry, NotBefore or IssuedAt JWT claims (exp, nbf, iat).
-		beforeNowNumericDate = jwt.NumericDate(1750497295)
-
-		// Token claims for default valid token.
-		defaultTokenClaims = jwtclaims.ValidatedClaims{
-			RegisteredClaims: jwtclaims.AccessTokenClaims{
-				Claims: jwt.Claims{
-					ID:        id,
-					Subject:   subject,
-					Issuer:    issuer,
-					Audience:  []string{audience},
-					Expiry:    &largeNumericDate,
-					NotBefore: &beforeNowNumericDate,
-					IssuedAt:  &beforeNowNumericDate,
-				},
-			},
-		}
-	)
+	var keyFunc = func(context.Context) (any, error) {
+		return []byte("secret_key"), nil
+	}
 
 	testCases := []struct {
-		name                string
-		token               string
-		keyFunc             func(context.Context) ([]byte, error)
-		customClaims        func() jwtclaims.CustomClaims
-		expectedTokenClaims jwtclaims.ValidatedClaims
-		expectedError       error
+		name          string
+		opts          []Option
+		expectedError error
 	}{
+		// successful tests:
 		{
-			name:          "throws an error when token is empty",
-			token:         "",
-			keyFunc:       validKeyFunc,
-			expectedError: ErrParsingToken,
-		},
-		{
-			name:          "throws an error when token has a different signing algorithm than the validator",
-			token:         tokenWithAnotherSignatureAlgorithm,
-			keyFunc:       validKeyFunc,
-			expectedError: ErrParsingToken,
-		},
-		{
-			name:          "throws an error when it fails to fetch the keys from the key func",
-			token:         validDefaultToken,
-			keyFunc:       keyFuncReturnsNil,
-			expectedError: ErrGettingKey,
-		},
-		{
-			name:          "throws an error when parsing the token by invalid key",
-			token:         validDefaultToken,
-			keyFunc:       invalidKeyFunc,
-			expectedError: ErrParsingToken,
-		},
-		{
-			name:    "successfully validates a minimal token",
-			token:   validMinimalToken,
-			keyFunc: validKeyFunc,
-			expectedTokenClaims: jwtclaims.ValidatedClaims{
-				RegisteredClaims: jwtclaims.AccessTokenClaims{
-					Claims: jwt.Claims{
-						Issuer:   issuer,
-						Audience: []string{audience},
-					},
-				},
+			name: "successful creation with all required options",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
 			},
 		},
 		{
-			name:                "successfully validates a default token",
-			token:               validDefaultToken,
-			keyFunc:             validKeyFunc,
-			expectedTokenClaims: defaultTokenClaims,
-		},
-		{
-			name:          "throws an error when token issuer is invalid",
-			token:         tokenWithInvalidIssuer,
-			keyFunc:       validKeyFunc,
-			expectedError: jwt.ErrInvalidIssuer,
-		},
-		{
-			name:          "throws an error when token audience is invalid",
-			token:         tokenWithInvalidAudience,
-			keyFunc:       validKeyFunc,
-			expectedError: jwt.ErrInvalidAudience,
-		},
-		{
-			name:          "throws an error when token is not valid yet",
-			token:         tokenWithInvalidNotBefore,
-			keyFunc:       validKeyFunc,
-			expectedError: jwt.ErrNotValidYet,
-		},
-		{
-			name:          "throws an error when token is expired",
-			token:         tokenWithInvalidExpiry,
-			keyFunc:       validKeyFunc,
-			expectedError: jwt.ErrExpired,
-		},
-		{
-			name:          "throws an error when token is issued in the future",
-			token:         tokenWithInvalidIssuedAt,
-			keyFunc:       validKeyFunc,
-			expectedError: jwt.ErrIssuedInTheFuture,
-		},
-		{
-			name:    "successfully validates a token with registered custom claims",
-			token:   tokenWithRegisteredCustomClaims,
-			keyFunc: validKeyFunc,
-			expectedTokenClaims: jwtclaims.ValidatedClaims{
-				RegisteredClaims: jwtclaims.AccessTokenClaims{
-					Claims: jwt.Claims{
-						ID:        id,
-						Subject:   subject,
-						Issuer:    issuer,
-						Audience:  []string{audience},
-						Expiry:    &largeNumericDate,
-						NotBefore: &beforeNowNumericDate,
-						IssuedAt:  &beforeNowNumericDate,
-					},
-					RegisteredCustomClaims: jwtclaims.RegisteredCustomClaims{
-						Scope: "test.read test.write",
-					},
-				},
+			name: "successful creation with WithAudiences",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudiences([]string{audience, "test_audience_2"}),
 			},
 		},
 		{
-			name:    "successfully validates a token even if customClaims function returns nil",
-			token:   validDefaultToken,
-			keyFunc: validKeyFunc,
-			customClaims: func() jwtclaims.CustomClaims {
-				return nil
-			},
-			expectedTokenClaims: defaultTokenClaims,
-		},
-		{
-			name:    "successfully validates a token with custom claims",
-			token:   tokenWithCustomClaims,
-			keyFunc: validKeyFunc,
-			customClaims: func() jwtclaims.CustomClaims {
-				return &testCustomClaims{}
-			},
-			expectedTokenClaims: jwtclaims.ValidatedClaims{
-				RegisteredClaims: jwtclaims.AccessTokenClaims{
-					Claims: jwt.Claims{
-						ID:        id,
-						Subject:   subject,
-						Issuer:    issuer,
-						Audience:  []string{audience},
-						Expiry:    &largeNumericDate,
-						NotBefore: &beforeNowNumericDate,
-						IssuedAt:  &beforeNowNumericDate,
-					},
-					RegisteredCustomClaims: jwtclaims.RegisteredCustomClaims{
-						Scope: "test.read test.write",
-					},
-				},
-				CustomClaims: &testCustomClaims{
-					TestCustom:  "test custom claim",
-					Test2Custom: "test custom claim 2",
-				},
+			name: "successful creation with optional parameters",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+				WithAllowedClockSkew(30 * time.Second),
 			},
 		},
 		{
-			name:    "throws an error when it fails to validate the custom claims",
-			token:   tokenWithCustomClaims,
-			keyFunc: validKeyFunc,
-			customClaims: func() jwtclaims.CustomClaims {
-				return &testCustomClaims{
-					ReturnError: errors.New("error validating custom claims"),
-				}
+			name: "successful creation with multiple algorithms",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithms([]crypto.SignatureAlgorithm{algorithm, crypto.RS256}),
+				WithIssuer(issuer),
+				WithAudience(audience),
 			},
-			expectedError: ErrValidatingCustomClaims,
+		},
+		{
+			name: "successful creation with multiple issuers",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuers([]string{issuer, "https://other_example.com/"}),
+				WithAudience(audience),
+			},
+		},
+		{
+			name: "successful creation with multiple audiences",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudiences([]string{audience, "other_audience"}),
+			},
+		},
+
+		// failed keyFunc tests:
+		{
+			name: "throws an error when the keyFunc is nil",
+			opts: []Option{
+				WithKeyFunc(nil),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrEmptyKeyFunc,
+		},
+		{
+			name: "throws an error when keyFunc is missing",
+			opts: []Option{
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrKeyFuncMissing,
+		},
+
+		// failed signature algorithm tests:
+		{
+			name: "throws an error when the signature algorithm is empty",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithms([]crypto.SignatureAlgorithm{}),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrEmptyAlgorithms,
+		},
+		{
+			name: "throws an error when the signature algorithm is unsupported",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm("unsupported"),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrUnsupportedAlgorithm,
+		},
+		{
+			name: "throws an error when algorithm is missing",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrSignatureAlgorithmMissing,
+		},
+		{
+			name: "throws an error when both algorithm options are set up",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithAlgorithms([]crypto.SignatureAlgorithm{algorithm}),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrUseBothAlgorithmOption,
+		},
+
+		// failed issuer tests:
+		{
+			name: "throws an error when the issuer is empty",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(""),
+				WithAudience(audience),
+			},
+			expectedError: ErrEmptyIssuer,
+		},
+		{
+			name: "throws an error when the issuer URL is invalid",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer("htt$p://invalid issuer url"),
+				WithAudience(audience),
+			},
+			expectedError: ErrInvalidIssuerURL,
+		},
+		{
+			name: "throws an error when issuer is missing",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithAudience(audience),
+			},
+			expectedError: ErrIssuerMissing,
+		},
+		{
+			name: "throws an error when the issuers list is empty",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuers([]string{}),
+				WithAudience(audience),
+			},
+			expectedError: ErrEmptyIssuers,
+		},
+		{
+			name: "throws an error when the issuers list contains empty string",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuers([]string{""}),
+				WithAudience(audience),
+			},
+			expectedError: ErrEmptyIssuer,
+		},
+		{
+			name: "throws an error when the issuers list contains invalid issuer URL",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuers([]string{"htt$p://invalid issuer url"}),
+				WithAudience(audience),
+			},
+			expectedError: ErrInvalidIssuerURL,
+		},
+
+		// failed audience tests:
+		{
+			name: "throws an error when the audience is empty",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(""),
+			},
+			expectedError: ErrEmptyAudience,
+		},
+		{
+			name: "throws an error when audience is missing",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+			},
+			expectedError: ErrAudienceMissing,
+		},
+		{
+			name: "throws an error when the audiences list is empty",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudiences([]string{}),
+			},
+			expectedError: ErrEmptyAudiences,
+		},
+		{
+			name: "throws an error when the audiences list contains empty string",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudiences([]string{""}),
+			},
+			expectedError: ErrEmptyAudience,
+		},
+
+		// failed clock skew tests:
+		{
+			name: "throws an error when clock skew is negative",
+			opts: []Option{
+				WithKeyFunc(keyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+				WithAllowedClockSkew(-30 * time.Second),
+			},
+			expectedError: ErrNegativeClockSkew,
 		},
 	}
 
@@ -269,32 +269,184 @@ func Test_ValidateToken(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			validator, err := New(
-				tc.keyFunc,
-				issuer,
-				[]string{audience},
-				WithCustomClaims(tc.customClaims))
-			require.NoError(t, err)
-
-			tokenClaims, err := validator.ValidateToken(context.Background(), tc.token)
+			v, err := New(tc.opts...)
 			if tc.expectedError != nil {
 				assert.ErrorIs(t, err, tc.expectedError)
 			} else {
 				require.NoError(t, err)
-				assert.Exactly(t, tc.expectedTokenClaims, tokenClaims)
+				assert.NotNil(t, v)
 			}
 		})
 	}
 }
 
-func validKeyFunc(context.Context) ([]byte, error) {
-	return []byte("05c5328f-17cb-4b42-a085-4089c03b86f8"), nil
-}
+func TestValidateToken(t *testing.T) {
+	const (
+		issuer    = "https://example.com/"
+		audience  = "test_audience"
+		algorithm = crypto.HS256
 
-func invalidKeyFunc(context.Context) ([]byte, error) {
-	return []byte("fae35d9e-3696-499d-ae4a-9786b4273e68"), nil
-}
+		validToken                    = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0X2F1ZGllbmNlIiwiZXhwIjozMzMwNTY0NDgwMCwiaWF0IjoxNzUwNDk3Mjk1LCJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tLyIsImp0aSI6IjQ2M2FjMDJmLTAzOWMtNGRlZS1iNDhhLTExZThlMjQ5ZGVmOSIsIm5iZiI6MTc1MDQ5NzI5NSwic3ViIjoiMSJ9.9nu4HlbShynL16YJerbsRdr8-w2KecdncvlfvDbELdg"
+		invalidIssuerToken            = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0X2F1ZGllbmNlIiwiZXhwIjozMzMwNTY0NDgwMCwiaWF0IjoxNzUwNDk3Mjk1LCJpc3MiOiJodHRwczovL290aGVyX2V4YW1wbGUuY29tLyIsImp0aSI6IjQ2M2FjMDJmLTAzOWMtNGRlZS1iNDhhLTExZThlMjQ5ZGVmOSIsIm5iZiI6MTc1MDQ5NzI5NSwic3ViIjoiMSJ9.Jb6gG6kuQ69MzEK5GMJDbuRS5oefi5iu5Ge0FULVSvg"
+		invalidAudienceToken          = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJvdGhlcl9hdWRpZW5jZSIsImV4cCI6MzMzMDU2NDQ4MDAsImlhdCI6MTc1MDQ5NzI5NSwiaXNzIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS8iLCJqdGkiOiI0NjNhYzAyZi0wMzljLTRkZWUtYjQ4YS0xMWU4ZTI0OWRlZjkiLCJuYmYiOjE3NTA0OTcyOTUsInN1YiI6IjEifQ.h63ONV-p5Ud1oV6bMakm_69Vq_4EnfkwXiY8X4PYyBc"
+		invalidNotValidYetToken       = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0X2F1ZGllbmNlIiwiZXhwIjozMzMwNTY0NDgwMCwiaWF0IjoxNzUwNDk3Mjk1LCJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tLyIsImp0aSI6IjQ2M2FjMDJmLTAzOWMtNGRlZS1iNDhhLTExZThlMjQ5ZGVmOSIsIm5iZiI6MzMzMDU2NDQ4MDAsInN1YiI6IjEifQ.iR5JIW184mOm0hTQdslnNBw2aBagJA59JAetggg5uHA"
+		invalidExpiredToken           = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0X2F1ZGllbmNlIiwiZXhwIjoxNzUwNDk3Mjk1LCJpYXQiOjE3NTA0OTcyOTUsImlzcyI6Imh0dHBzOi8vZXhhbXBsZS5jb20vIiwianRpIjoiNDYzYWMwMmYtMDM5Yy00ZGVlLWI0OGEtMTFlOGUyNDlkZWY5IiwibmJmIjoxNzUwNDk3Mjk1LCJzdWIiOiIxIn0.WxVkBGfth_follr0Cy6_5LuGnXoR5fgsSe9CxxpaZjk"
+		invalidIssuedInTheFutureToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0X2F1ZGllbmNlIiwiZXhwIjozMzMwNTY0NDgwMCwiaWF0IjozMzMwNTY0NDgwMCwiaXNzIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS8iLCJqdGkiOiI0NjNhYzAyZi0wMzljLTRkZWUtYjQ4YS0xMWU4ZTI0OWRlZjkiLCJuYmYiOjE3NTA0OTcyOTUsInN1YiI6IjEifQ.HD8oblJj91TiihhlrmKCdlNJeVnTiJXyboL42YJ5noA"
+	)
 
-func keyFuncReturnsNil(context.Context) ([]byte, error) {
-	return nil, ErrGettingKey
+	var validKeyFunc = func(context.Context) (any, error) {
+		return []byte("05c5328f-17cb-4b42-a085-4089c03b86f8"), nil
+	}
+
+	var invalidKeyFunc = func(context.Context) (any, error) {
+		return []byte("fae35d9e-3696-499d-ae4a-9786b4273e68"), nil
+	}
+
+	var keyFuncReturnsNil = func(context.Context) (any, error) {
+		return nil, errors.New("failed to fetch key")
+	}
+
+	testCases := []struct {
+		name           string
+		token          string
+		opts           []Option
+		expectedClaims claims.RegisteredClaims
+		expectedError  error
+	}{
+		{
+			name:  "successfully validates the token",
+			token: validToken,
+			opts: []Option{
+				WithKeyFunc(validKeyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedClaims: claims.RegisteredClaims{
+				ID:        "463ac02f-039c-4dee-b48a-11e8e249def9",
+				Issuer:    issuer,
+				Subject:   "1",
+				Audience:  []string{audience},
+				Expiry:    josejwt.NewNumericDate(time.Unix(33305644800, 0)),
+				IssuedAt:  josejwt.NewNumericDate(time.Unix(1750497295, 0)),
+				NotBefore: josejwt.NewNumericDate(time.Unix(1750497295, 0)),
+			},
+		},
+		{
+			name:  "throws an error when token is empty",
+			token: "",
+			opts: []Option{
+				WithKeyFunc(validKeyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrEmptyToken,
+		},
+		{
+			name:  "throws an error when token has a different signing algorithm than the validator",
+			token: validToken,
+			opts: []Option{
+				WithKeyFunc(validKeyFunc),
+				WithAlgorithm(crypto.RS256),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: jwt.ErrParseToken,
+		},
+		{
+			name:  "throws an error when it fails to fetch the keys from the key func",
+			token: validToken,
+			opts: []Option{
+				WithKeyFunc(keyFuncReturnsNil),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrKeyFunc,
+		},
+		{
+			name:  "throws an error when parsing the token by invalid key",
+			token: validToken,
+			opts: []Option{
+				WithKeyFunc(invalidKeyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: jwt.ErrParseClaims,
+		},
+		{
+			name:  "throws an error when token issuer is invalid",
+			token: invalidIssuerToken,
+			opts: []Option{
+				WithKeyFunc(validKeyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrInvalidIssuerClaim,
+		},
+		{
+			name:  "throws an error when token audience is invalid",
+			token: invalidAudienceToken,
+			opts: []Option{
+				WithKeyFunc(validKeyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrInvalidAudienceClaim,
+		},
+		{
+			name:  "throws an error when token is not valid yet",
+			token: invalidNotValidYetToken,
+			opts: []Option{
+				WithKeyFunc(validKeyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrNotValidYet,
+		},
+		{
+			name:  "throws an error when token is expired",
+			token: invalidExpiredToken,
+			opts: []Option{
+				WithKeyFunc(validKeyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrExpired,
+		},
+		{
+			name:  "throws an error when token is issued in the future",
+			token: invalidIssuedInTheFutureToken,
+			opts: []Option{
+				WithKeyFunc(validKeyFunc),
+				WithAlgorithm(algorithm),
+				WithIssuer(issuer),
+				WithAudience(audience),
+			},
+			expectedError: ErrIssuedInTheFuture,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			v, err := New(tc.opts...)
+			require.NoError(t, err)
+
+			tokenClaims, err := v.ValidateToken(context.Background(), tc.token)
+			if tc.expectedError != nil {
+				assert.ErrorIs(t, err, tc.expectedError)
+			} else {
+				require.NoError(t, err)
+				assert.Exactly(t, tc.expectedClaims, tokenClaims)
+			}
+		})
+	}
 }

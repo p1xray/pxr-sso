@@ -1,0 +1,19 @@
+env: 'local'
+port: '6004'
+timeout: 1h
+token:
+  access_token_ttl: 1h
+  refresh_token_ttl: 24h
+  id_token_ttl: 1h
+  issuer: 'http://localhost:6003/'
+postgres:
+  connection_url: 'postgresql://postgres:admin@127.0.0.1:5432/sso?sslmode=disable'
+redis:
+  connection_url: 'redis://test_redis_user:test_redis_user_pass@localhost:6380/0'
+  authorization_request_ttl: 10m
+  authorized_grant_ttl: 10m
+uri_builder:
+  login: 'http://localhost:3000/signin'
+  consent: 'http://localhost:3000/consent'
+  select_account: 'http://localhost:3000/selectaccount'
+  error: 'http://localhost:3000/error'

@@ -1,0 +1,10 @@
+package infrastructure
+
+import (
+	"errors"
+)
+
+var (
+	ErrEntityNotFound = errors.New("entity not found")
+	ErrEntityExists   = errors.New("entity already exists")
+)
