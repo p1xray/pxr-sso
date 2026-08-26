@@ -1,15 +1,7 @@
 package app
 
 import (
-	grpcapp "github.com/p1xray/pxr-sso/internal/app/grpc"
-	"github.com/p1xray/pxr-sso/internal/config"
-	"github.com/p1xray/pxr-sso/internal/infrastructure/repository"
-	"github.com/p1xray/pxr-sso/internal/infrastructure/storage/sqlite"
-	"github.com/p1xray/pxr-sso/internal/usecase/auth/login"
-	"github.com/p1xray/pxr-sso/internal/usecase/auth/logout"
-	"github.com/p1xray/pxr-sso/internal/usecase/auth/refresh"
-	"github.com/p1xray/pxr-sso/internal/usecase/auth/register"
-	"github.com/p1xray/pxr-sso/internal/usecase/profile/card"
+	"github.com/p1xray/pxr-sso/pkg/grpcserver"
 	"github.com/p1xray/pxr-sso/pkg/logger/sl"
 	"log/slog"
 	"os"
@@ -17,75 +9,80 @@ import (
 	"syscall"
 )
 
-// App is an application.
+const logTag = "[pxr-sso-app]"
+
+// App is the application structure.
 type App struct {
-	log     *slog.Logger
-	grpcApp *grpcapp.App
+	di         *diContainer
+	grpcServer grpcserver.Server
 }
 
-// New creates a new application.
-func New(
-	log *slog.Logger,
-	cfg *config.Config,
-) *App {
-	storage, err := sqlite.New(cfg.StoragePath)
-	if err != nil {
-		panic(err)
+// New creates a new application and initializes all dependencies through the DI container.
+func New() *App {
+	a := &App{
+		di: newDIContainer(),
 	}
 
-	authRepository := repository.NewAuthRepository(log, storage)
-	profileRepository := repository.NewProfileRepository(log, storage)
+	a.initDeps()
 
-	loginUseCase := login.New(log, cfg.Tokens, authRepository)
-	registerUseCase := register.New(log, cfg.Tokens, authRepository)
-	refreshUseCase := refresh.New(log, cfg.Tokens, authRepository)
-	logoutUseCase := logout.New(log, cfg.Tokens, authRepository)
-
-	profileUseCase := card.New(log, profileRepository)
-
-	grpcApp := grpcapp.New(
-		log,
-		cfg.GRPC.Port,
-		loginUseCase,
-		registerUseCase,
-		refreshUseCase,
-		logoutUseCase,
-		profileUseCase,
-	)
-
-	return &App{
-		log:     log,
-		grpcApp: grpcApp,
-	}
+	return a
 }
 
-// Start - starts the application.
+// Start launches the application.
 func (a *App) Start() {
-	const op = "app.Start"
+	log := a.di.Logger()
 
-	log := a.log.With(slog.String("op", op))
-	log.Info("starting application")
+	log.Info(logTag + " starting application")
+	log.Debug(logTag+" application configuration", slog.Any("config", a.di.Config()))
 
-	a.grpcApp.Start()
+	a.grpcServer.Start()
+	a.handleError()
 }
 
-// GracefulStop - gracefully stops the application.
+// GracefulStop gracefully stops the application.
 func (a *App) GracefulStop() {
-	const op = "app.GracefulStop"
-
-	log := a.log.With(slog.String("op", op))
-
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 
-	select {
-	case s := <-stop:
-		log.Info("signal received from OS", slog.String("signal:", s.String()))
-	case err := <-a.grpcApp.Notify():
-		log.Error("received an error from the gRPC server:", sl.Err(err))
+	s := <-stop
+
+	log := a.di.Logger()
+	log.Debug(logTag + " signal received from OS: " + s.String())
+	log.Info(logTag + " stopping application...")
+
+	a.grpcServer.Stop()
+
+	log.Info(logTag + " application stopped")
+}
+
+func (a *App) handleError() {
+	go func() {
+		for {
+			select {
+			case err := <-a.grpcServer.Notify():
+				if err != nil {
+					a.di.Logger().Error(logTag+" received an error from the gRPC server:", sl.Err(err))
+				}
+			default:
+			}
+		}
+	}()
+}
+
+// initDeps sequentially calls initialization functions.
+// If you need to add a new step (migration, metrics, etc.),
+// you must add the function to the inits slice.
+func (a *App) initDeps() {
+	inits := []func(){
+		a.initGRPCServer,
 	}
 
-	log.Info("stopping application")
+	for _, fn := range inits {
+		fn()
+	}
+}
 
-	a.grpcApp.Stop()
+// initGRPCServer initializes the GRPC server.
+func (a *App) initGRPCServer() {
+	a.grpcServer = a.di.GRPCServer()
 }

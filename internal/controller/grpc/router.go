@@ -1,25 +1,29 @@
 package grpc
 
 import (
-	"github.com/p1xray/pxr-sso/internal/controller"
 	v1 "github.com/p1xray/pxr-sso/internal/controller/grpc/v1"
+	"github.com/p1xray/pxr-sso/internal/controller/grpc/v1/auth"
+	"github.com/p1xray/pxr-sso/internal/controller/grpc/v1/oidc"
 	"google.golang.org/grpc"
 )
 
 // NewRouter creates a new router for the gRPC server controller.
 func NewRouter(
-	server *grpc.Server,
-	loginUseCase controller.Login,
-	registerUseCase controller.Register,
-	refreshUseCase controller.RefreshTokens,
-	logoutUseCase controller.Logout,
-	profileUseCase controller.UserProfile,
+	registrar grpc.ServiceRegistrar,
+	authorizeUseCase oidc.Authorize,
+	loginUseCase auth.Login,
+	registerUseCase auth.Register,
+	consentUseCase auth.Consent,
+	consentCardReader auth.ConsentCardReader,
+	tokenUseCase oidc.Token,
 ) {
 	v1.NewRoutes(
-		server,
+		registrar,
+		authorizeUseCase,
 		loginUseCase,
 		registerUseCase,
-		refreshUseCase,
-		logoutUseCase,
-		profileUseCase)
+		consentUseCase,
+		consentCardReader,
+		tokenUseCase,
+	)
 }

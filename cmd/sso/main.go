@@ -1,25 +1,11 @@
 package main
 
-import (
-	"github.com/p1xray/pxr-sso/internal/app"
-	"github.com/p1xray/pxr-sso/internal/config"
-	"github.com/p1xray/pxr-sso/pkg/logger"
-	"log/slog"
-)
+import "github.com/p1xray/pxr-sso/internal/app"
 
 func main() {
-	cfg := config.MustLoad()
+	application := app.New()
 
-	log := logger.SetupLogger(cfg.Env)
-
-	log.Info("starting application", slog.Any("config", cfg))
-
-	application := app.New(log, cfg)
-
-	go func() {
-		application.Start()
-	}()
+	go application.Start()
 
 	application.GracefulStop()
-	log.Info("application stopped")
 }
